@@ -17,6 +17,7 @@ const (
 
 const (
 	OutboxEventPaymentCaptured       = "payment.captured"
+	OutboxEventPaymentCancelled      = "payment.cancelled"
 	OutboxEventFiscalDocumentCreated = "fiscal.document.created"
 	OutboxEventCashMovementPosted    = "cash.movement.posted"
 	OutboxEventOperationalDayClosed  = "operational_day.closed"

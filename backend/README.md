@@ -148,6 +148,7 @@ The Store Edge service has the first checkout and terminal monitoring paths:
 - `POST /v1/stores/{storeId}/catalog/sync` - pulls catalog delta from central backend into the local cache.
 - `POST /v1/receipts/{receiptId}/payments` - creates a captured mock payment.
 - `GET /v1/receipts/{receiptId}/payments` - lists receipt payments.
+- `POST /v1/receipts/{receiptId}/payments/{paymentId}/cancel` - cancels a captured card payment on the receipt business date and rolls receipt payment progress back.
 - `POST /v1/receipts/{receiptId}/fiscal-documents` - creates a mock fiscal document for a fully paid receipt.
 - `GET /v1/receipts/{receiptId}/fiscal-documents` - lists receipt fiscal documents.
 - `POST /v1/stores/{storeId}/cash-movements` - posts an immutable cash movement between cash containers.
@@ -166,7 +167,8 @@ The Store Edge service has the first checkout and terminal monitoring paths:
 Use `GET /v1/stores/{storeId}/monitoring/*` for REST polling of terminal tiles and store KPIs; use SSE for live heartbeat push.
 
 When `MERCADIA_STORE_EDGE_USE_HARDWARE_AGENT=true`, card payments and fiscalization send commands to
-the local hardware-agent (`authorize`/`capture`, `print_receipt`) with mock fallback enabled by default.
+the local hardware-agent (`authorize`/`capture`, `cancel`, `print_receipt`) with mock fallback enabled by default.
+Same-day card payment cancel uses the hardware-agent `cancel` command when a terminal is configured.
 
 Command endpoints require `Idempotency-Key`. Reusing the same key for the same command returns
 the same result; reusing it with a different command payload returns an idempotency conflict.

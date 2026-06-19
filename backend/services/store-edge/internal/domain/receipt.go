@@ -197,6 +197,27 @@ func (r *Receipt) Cancel(input CancelReceiptInput) error {
 	return nil
 }
 
+func (r *Receipt) SyncPaymentProgress(remainingMinor int64, now time.Time) error {
+	if r.Status == ReceiptStatusFiscalized || r.Status == ReceiptStatusCancelled {
+		return ErrReceiptClosed
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+
+	total := r.TotalMinor()
+	switch {
+	case remainingMinor >= total:
+		r.Status = ReceiptStatusDraft
+	case remainingMinor > 0:
+		r.Status = ReceiptStatusPaymentStarted
+	default:
+		r.Status = ReceiptStatusPaid
+	}
+	r.UpdatedAt = now
+	return nil
+}
+
 type ApplyLineDiscountInput struct {
 	AmountMinor int64
 	Reason      string

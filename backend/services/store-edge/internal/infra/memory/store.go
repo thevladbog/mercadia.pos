@@ -213,6 +213,17 @@ func (s *Store) SavePayment(ctx context.Context, payment domain.Payment) error {
 	return nil
 }
 
+func (s *Store) FindPayment(ctx context.Context, paymentID string) (domain.Payment, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	payment, ok := s.payments[paymentID]
+	if !ok {
+		return domain.Payment{}, app.ErrPaymentNotFound
+	}
+	return payment, nil
+}
+
 func (s *Store) FindPaymentsByReceipt(ctx context.Context, receiptID string) ([]domain.Payment, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

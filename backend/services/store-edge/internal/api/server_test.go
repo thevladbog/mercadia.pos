@@ -3,9 +3,11 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
@@ -116,6 +118,9 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	}
 	if _, ok := paths["/v1/stores/{storeId}/catalog/sync"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/catalog/sync path")
+	}
+	if _, ok := paths["/v1/receipts/{receiptId}/payments/{paymentId}/cancel"]; !ok {
+		t.Fatal("expected /v1/receipts/{receiptId}/payments/{paymentId}/cancel path")
 	}
 }
 
@@ -452,6 +457,96 @@ func TestStoreMonitoringEndpoints(t *testing.T) {
 	}
 	if summary.ActiveTerminalCount != 1 || summary.ReceiptCountToday != 1 || summary.RevenueMinorToday != 50000 {
 		t.Fatalf("monitoring summary = %+v", summary)
+	}
+}
+
+func TestCancelReceiptPayment(t *testing.T) {
+	server := NewServer()
+	openStoreDayAndShiftForDate(t, server, "payment-cancel", time.Now().UTC().Format("2006-01-02"))
+
+	openReceiptResponse := httptest.NewRecorder()
+	openReceiptRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts", bytes.NewBufferString(`{
+		"storeId": "store-1",
+		"terminalId": "pos-1",
+		"cashierId": "cashier-1",
+		"channel": "pos"
+	}`))
+	openReceiptRequest.Header.Set("Content-Type", "application/json")
+	openReceiptRequest.Header.Set("Idempotency-Key", "payment-cancel-receipt-open-1")
+	server.ServeHTTP(openReceiptResponse, openReceiptRequest)
+	if openReceiptResponse.Code != http.StatusAccepted {
+		t.Fatalf("open receipt status = %d body = %s", openReceiptResponse.Code, openReceiptResponse.Body.String())
+	}
+
+	var openedReceipt ReceiptAcceptedResponse
+	if err := json.Unmarshal(openReceiptResponse.Body.Bytes(), &openedReceipt); err != nil {
+		t.Fatalf("decode open receipt response: %v", err)
+	}
+
+	addLineResponse := httptest.NewRecorder()
+	addLineRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/lines", bytes.NewBufferString(`{
+		"productId": "sku-1",
+		"name": "Milk",
+		"quantity": 1,
+		"unitPriceMinor": 50000
+	}`))
+	addLineRequest.Header.Set("Content-Type", "application/json")
+	addLineRequest.Header.Set("Idempotency-Key", "payment-cancel-line-1")
+	server.ServeHTTP(addLineResponse, addLineRequest)
+	if addLineResponse.Code != http.StatusAccepted {
+		t.Fatalf("add line status = %d body = %s", addLineResponse.Code, addLineResponse.Body.String())
+	}
+
+	paymentResponse := httptest.NewRecorder()
+	paymentRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/payments", bytes.NewBufferString(`{
+		"method": "card_mock",
+		"amountMinor": 50000
+	}`))
+	paymentRequest.Header.Set("Content-Type", "application/json")
+	paymentRequest.Header.Set("Idempotency-Key", "payment-cancel-payment-1")
+	server.ServeHTTP(paymentResponse, paymentRequest)
+	if paymentResponse.Code != http.StatusAccepted {
+		t.Fatalf("create payment status = %d body = %s", paymentResponse.Code, paymentResponse.Body.String())
+	}
+
+	var accepted PaymentAcceptedResponse
+	if err := json.Unmarshal(paymentResponse.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode payment response: %v", err)
+	}
+
+	cancelResponse := httptest.NewRecorder()
+	cancelRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/payments/"+accepted.Payment.ID+"/cancel", bytes.NewBufferString(`{
+		"actorId": "cashier-1",
+		"reason": "Customer changed mind"
+	}`))
+	cancelRequest.Header.Set("Content-Type", "application/json")
+	cancelRequest.Header.Set("Idempotency-Key", "payment-cancel-cancel-1")
+	server.ServeHTTP(cancelResponse, cancelRequest)
+	if cancelResponse.Code != http.StatusAccepted {
+		t.Fatalf("cancel payment status = %d body = %s", cancelResponse.Code, cancelResponse.Body.String())
+	}
+
+	var cancelled PaymentAcceptedResponse
+	if err := json.Unmarshal(cancelResponse.Body.Bytes(), &cancelled); err != nil {
+		t.Fatalf("decode cancel payment response: %v", err)
+	}
+	if cancelled.Payment.Status != "cancelled" {
+		t.Fatalf("payment status = %s", cancelled.Payment.Status)
+	}
+
+	getReceiptResponse := httptest.NewRecorder()
+	getReceiptRequest := httptest.NewRequest(http.MethodGet, "/v1/receipts/"+openedReceipt.Receipt.ID, nil)
+	server.ServeHTTP(getReceiptResponse, getReceiptRequest)
+	if getReceiptResponse.Code != http.StatusOK {
+		t.Fatalf("get receipt status = %d body = %s", getReceiptResponse.Code, getReceiptResponse.Body.String())
+	}
+
+	var receipt ReceiptResponse
+	if err := json.Unmarshal(getReceiptResponse.Body.Bytes(), &receipt); err != nil {
+		t.Fatalf("decode receipt response: %v", err)
+	}
+	if receipt.Status != "draft" {
+		t.Fatalf("receipt status = %s", receipt.Status)
 	}
 }
 
@@ -1637,8 +1732,13 @@ func TestScanReceiptWorkflow(t *testing.T) {
 
 func openStoreDayAndShift(t *testing.T, server http.Handler, keyPrefix string) {
 	t.Helper()
+	openStoreDayAndShiftForDate(t, server, keyPrefix, "2026-06-18")
+}
 
-	openDay(t, server, keyPrefix)
+func openStoreDayAndShiftForDate(t *testing.T, server http.Handler, keyPrefix string, businessDate string) {
+	t.Helper()
+
+	openDayForDate(t, server, keyPrefix, businessDate)
 
 	shiftResponse := httptest.NewRecorder()
 	shiftRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts", bytes.NewBufferString(`{
@@ -1659,13 +1759,18 @@ func openStoreDayAndShift(t *testing.T, server http.Handler, keyPrefix string) {
 
 func openDay(t *testing.T, server http.Handler, keyPrefix string) {
 	t.Helper()
+	openDayForDate(t, server, keyPrefix, "2026-06-18")
+}
+
+func openDayForDate(t *testing.T, server http.Handler, keyPrefix string, businessDate string) {
+	t.Helper()
 
 	dayResponse := httptest.NewRecorder()
-	dayRequest := httptest.NewRequest(http.MethodPost, "/v1/operational-days", bytes.NewBufferString(`{
+	dayRequest := httptest.NewRequest(http.MethodPost, "/v1/operational-days", bytes.NewBufferString(fmt.Sprintf(`{
 		"storeId": "store-1",
-		"businessDate": "2026-06-18",
+		"businessDate": %q,
 		"openedById": "senior-1"
-	}`))
+	}`, businessDate)))
 	dayRequest.Header.Set("Idempotency-Key", keyPrefix+"-oday-open-1")
 
 	server.ServeHTTP(dayResponse, dayRequest)

@@ -309,6 +309,20 @@ func (s *Store) SavePayment(ctx context.Context, payment domain.Payment) error {
 	return err
 }
 
+func (s *Store) FindPayment(ctx context.Context, paymentID string) (domain.Payment, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT id, receipt_id, method, status, amount_minor, provider_reference,
+			created_at, updated_at, captured_at
+		FROM payments
+		WHERE id = $1
+	`, paymentID)
+	payment, err := scanPayment(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Payment{}, app.ErrPaymentNotFound
+	}
+	return payment, err
+}
+
 func (s *Store) FindPaymentsByReceipt(ctx context.Context, receiptID string) ([]domain.Payment, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, receipt_id, method, status, amount_minor, provider_reference,

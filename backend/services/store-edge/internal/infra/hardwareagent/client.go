@@ -219,6 +219,25 @@ func (c *Client) AuthorizeAndCapture(ctx context.Context, deviceID string, amoun
 	return providerRef, nil
 }
 
+func (c *Client) CancelCardPayment(ctx context.Context, deviceID, reference string) error {
+	command, err := c.SendCommand(ctx, deviceID, "cancel", map[string]any{
+		"reference": reference,
+	})
+	if err != nil {
+		return err
+	}
+	command, err = c.WaitCommand(ctx, deviceID, command.ID, 5*time.Second)
+	if err != nil {
+		return err
+	}
+	if command.Result != nil {
+		if status, ok := command.Result["status"].(string); ok && status == "cancelled" {
+			return nil
+		}
+	}
+	return fmt.Errorf("card payment cancel did not complete")
+}
+
 func (c *Client) PrintReceipt(ctx context.Context, deviceID string, totalMinor int64) (string, error) {
 	command, err := c.SendCommand(ctx, deviceID, "print_receipt", map[string]any{
 		"totalMinor": totalMinor,

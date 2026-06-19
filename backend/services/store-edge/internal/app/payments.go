@@ -14,15 +14,20 @@ var (
 	ErrInvalidPaymentCommand         = errors.New("invalid payment command")
 	ErrPaymentAmountExceedsRemaining = errors.New("payment amount exceeds receipt remaining amount")
 	ErrCashDrawerRequired            = errors.New("cash drawer is required for cash payment")
+	ErrPaymentCannotBeCancelled      = errors.New("payment cannot be cancelled")
+	ErrPaymentCancelSameDayRequired  = errors.New("payment cancel is allowed only on the receipt business date")
+	ErrPaymentCancelNotSupported     = errors.New("payment cancel is not supported for this method")
 )
 
 type PaymentRepository interface {
 	SavePayment(ctx context.Context, payment domain.Payment) error
+	FindPayment(ctx context.Context, paymentID string) (domain.Payment, error)
 	FindPaymentsByReceipt(ctx context.Context, receiptID string) ([]domain.Payment, error)
 }
 
 type CardPaymentTerminal interface {
 	AuthorizeAndCapture(ctx context.Context, deviceID string, amountMinor int64, currency, reference string) (string, error)
+	CancelCardPayment(ctx context.Context, deviceID, reference string) error
 }
 
 type PaymentService struct {
@@ -223,7 +228,116 @@ func (s *PaymentService) ListReceiptPayments(ctx context.Context, receiptID stri
 	return s.payments.FindPaymentsByReceipt(ctx, receiptID)
 }
 
+type CancelPaymentCommand struct {
+	IdempotencyKey string
+	ReceiptID      string
+	PaymentID      string
+	ActorID        string
+	Reason         string
+}
+
+func (s *PaymentService) CancelPayment(ctx context.Context, command CancelPaymentCommand) (PaymentResult, error) {
+	if command.IdempotencyKey == "" {
+		return PaymentResult{}, ErrIdempotencyKeyRequired
+	}
+	if command.ReceiptID == "" || command.PaymentID == "" {
+		return PaymentResult{}, ErrInvalidPaymentCommand
+	}
+
+	const operation = "payments.cancel_payment"
+	fingerprint := fmt.Sprintf("%s|%s|%s|%s", command.ReceiptID, command.PaymentID, command.ActorID, command.Reason)
+	if result, found, err := s.findCancelPaymentIdempotency(ctx, operation, command.IdempotencyKey, command.PaymentID, fingerprint); err != nil || found {
+		return result, err
+	}
+
+	receipt, err := s.receipts.FindReceipt(ctx, command.ReceiptID)
+	if err != nil {
+		return PaymentResult{}, err
+	}
+	if receipt.Status == domain.ReceiptStatusFiscalized {
+		return PaymentResult{}, ErrPaymentCannotBeCancelled
+	}
+	if receipt.BusinessDate != s.now().Format("2006-01-02") {
+		return PaymentResult{}, ErrPaymentCancelSameDayRequired
+	}
+
+	payment, err := s.payments.FindPayment(ctx, command.PaymentID)
+	if err != nil {
+		return PaymentResult{}, err
+	}
+	if payment.ReceiptID != command.ReceiptID {
+		return PaymentResult{}, ErrPaymentNotFound
+	}
+	if payment.Method != domain.PaymentMethodCardMock {
+		return PaymentResult{}, ErrPaymentCancelNotSupported
+	}
+	if payment.Status != domain.PaymentStatusCaptured {
+		return PaymentResult{}, ErrPaymentCannotBeCancelled
+	}
+
+	if s.cardTerminal != nil && s.paymentTerminalID != "" && payment.ProviderReference != "" {
+		if err := s.cardTerminal.CancelCardPayment(ctx, s.paymentTerminalID, payment.ProviderReference); err != nil {
+			if !s.hardwareAgentFallback {
+				return PaymentResult{}, err
+			}
+		}
+	}
+
+	now := s.now()
+	if err := payment.Cancel(now); err != nil {
+		return PaymentResult{}, err
+	}
+	if err := s.payments.SavePayment(ctx, payment); err != nil {
+		return PaymentResult{}, err
+	}
+
+	payments, err := s.payments.FindPaymentsByReceipt(ctx, command.ReceiptID)
+	if err != nil {
+		return PaymentResult{}, err
+	}
+	if err := receipt.SyncPaymentProgress(remainingAmountMinor(receipt, payments), now); err != nil {
+		return PaymentResult{}, err
+	}
+	if err := s.receipts.SaveReceipt(ctx, receipt); err != nil {
+		return PaymentResult{}, err
+	}
+
+	result := PaymentResult{Payment: payment}
+	if err := s.idempotency.Save(ctx, IdempotencyRecord{
+		Operation:   operation,
+		Key:         command.IdempotencyKey,
+		TargetID:    command.PaymentID,
+		Fingerprint: fingerprint,
+		Result:      result,
+		CreatedAt:   now,
+	}); err != nil {
+		return PaymentResult{}, err
+	}
+	if err := recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
+		return recorder.RecordPaymentCancelled(ctx, payment, receipt.StoreID, command.ActorID, command.Reason)
+	}); err != nil {
+		return PaymentResult{}, err
+	}
+
+	return result, nil
+}
+
 func (s *PaymentService) findPaymentIdempotency(ctx context.Context, operation string, key string, targetID string, fingerprint string) (PaymentResult, bool, error) {
+	record, found, err := s.idempotency.Find(ctx, operation, key)
+	if err != nil || !found {
+		return PaymentResult{}, found, err
+	}
+	if record.TargetID != targetID || record.Fingerprint != fingerprint {
+		return PaymentResult{}, true, ErrIdempotencyKeyReused
+	}
+	result, ok := record.Result.(PaymentResult)
+	if !ok {
+		return PaymentResult{}, true, ErrIdempotencyResultMissing
+	}
+	return result, true, nil
+}
+
+func (s *PaymentService) findCancelPaymentIdempotency(ctx context.Context, operation string, key string, targetID string, fingerprint string) (PaymentResult, bool, error) {
 	record, found, err := s.idempotency.Find(ctx, operation, key)
 	if err != nil || !found {
 		return PaymentResult{}, found, err

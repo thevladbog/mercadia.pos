@@ -39,6 +39,8 @@ func TestClientAuthorizeAndCapture(t *testing.T) {
 				command.Result = map[string]any{"authCode": "AUTH123", "rrn": "RRN456"}
 			case "capture":
 				command.Result = map[string]any{"rrn": "RRN456"}
+			case "cancel":
+				command.Result = map[string]any{"status": "cancelled"}
 			}
 			mu.Lock()
 			commands[command.ID] = command
@@ -64,6 +66,52 @@ func TestClientAuthorizeAndCapture(t *testing.T) {
 	}
 	if ref != "RRN456" {
 		t.Fatalf("provider ref = %q", ref)
+	}
+}
+
+func TestClientCancelCardPayment(t *testing.T) {
+	var mu sync.Mutex
+	commands := map[string]hardwareagent.Command{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/devices/sim-payment-1/commands":
+			var request struct {
+				Type    string         `json:"type"`
+				Payload map[string]any `json:"payload"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			command := hardwareagent.Command{
+				ID:       "cmd-" + request.Type,
+				DeviceID: "sim-payment-1",
+				Type:     request.Type,
+				Payload:  request.Payload,
+				Status:   hardwareagent.CommandStatusCompleted,
+				Result:   map[string]any{"status": "cancelled"},
+			}
+			mu.Lock()
+			commands[command.ID] = command
+			mu.Unlock()
+			w.WriteHeader(http.StatusAccepted)
+			_ = json.NewEncoder(w).Encode(map[string]any{"command": command})
+		case r.Method == http.MethodGet:
+			commandID := r.URL.Path[len("/v1/devices/sim-payment-1/commands/"):]
+			mu.Lock()
+			command := commands[commandID]
+			mu.Unlock()
+			_ = json.NewEncoder(w).Encode(command)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := hardwareagent.NewClient(server.URL, server.Client())
+	if err := client.CancelCardPayment(context.Background(), "sim-payment-1", "RRN456"); err != nil {
+		t.Fatalf("cancel card payment: %v", err)
 	}
 }
 

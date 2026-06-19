@@ -189,6 +189,221 @@ func TestCreateCardPaymentDoesNotPostCashSaleMovement(t *testing.T) {
 	}
 }
 
+type mockCardTerminal struct {
+	cancelCalls int
+	cancelErr   error
+}
+
+func (m *mockCardTerminal) AuthorizeAndCapture(context.Context, string, int64, string, string) (string, error) {
+	return "RRN-123", nil
+}
+
+func (m *mockCardTerminal) CancelCardPayment(context.Context, string, string) error {
+	m.cancelCalls++
+	return m.cancelErr
+}
+
+func TestCancelCardPaymentReturnsReceiptToDraft(t *testing.T) {
+	store := memory.NewStore(memory.WithProducts(testProduct()))
+	checkout, payments := newTestCheckoutAndPaymentServicesWithStore(store)
+	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
+
+	created, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-1",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCardMock,
+		AmountMinor:    39998,
+	})
+	if err != nil {
+		t.Fatalf("create card payment: %v", err)
+	}
+
+	cancelled, err := payments.CancelPayment(context.Background(), app.CancelPaymentCommand{
+		IdempotencyKey: "cancel-1",
+		ReceiptID:      receiptID,
+		PaymentID:      created.Payment.ID,
+		ActorID:        "cashier-1",
+		Reason:         "Customer changed mind",
+	})
+	if err != nil {
+		t.Fatalf("cancel payment: %v", err)
+	}
+	if cancelled.Payment.Status != domain.PaymentStatusCancelled {
+		t.Fatalf("payment status = %s", cancelled.Payment.Status)
+	}
+
+	receipt, err := store.FindReceipt(context.Background(), receiptID)
+	if err != nil {
+		t.Fatalf("find receipt: %v", err)
+	}
+	if receipt.Status != domain.ReceiptStatusDraft {
+		t.Fatalf("receipt status = %s", receipt.Status)
+	}
+}
+
+func TestCancelCardPaymentCallsHardwareAgentTerminal(t *testing.T) {
+	store := memory.NewStore(memory.WithProducts(testProduct()))
+	terminal := &mockCardTerminal{}
+	checkout, _ := newTestCheckoutAndPaymentServicesWithStore(store)
+	payments := app.NewPaymentService(store, store, store,
+		app.WithCardPaymentTerminal(terminal, "sim-payment-1", false),
+		app.WithPaymentClock(func() time.Time {
+			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+		}),
+		app.WithPaymentIDGenerator(func(prefix string) string {
+			return prefix + "-test-1"
+		}),
+	)
+	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
+
+	created, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-1",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCardMock,
+		AmountMinor:    39998,
+	})
+	if err != nil {
+		t.Fatalf("create card payment: %v", err)
+	}
+
+	if _, err := payments.CancelPayment(context.Background(), app.CancelPaymentCommand{
+		IdempotencyKey: "cancel-1",
+		ReceiptID:      receiptID,
+		PaymentID:      created.Payment.ID,
+	}); err != nil {
+		t.Fatalf("cancel payment: %v", err)
+	}
+	if terminal.cancelCalls != 1 {
+		t.Fatalf("cancel calls = %d", terminal.cancelCalls)
+	}
+}
+
+func TestCancelPaymentBlocksFiscalizedReceipt(t *testing.T) {
+	store := memory.NewStore(memory.WithProducts(testProduct()))
+	checkout, payments := newTestCheckoutAndPaymentServicesWithStore(store)
+	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
+
+	created, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-1",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCardMock,
+		AmountMinor:    39998,
+	})
+	if err != nil {
+		t.Fatalf("create card payment: %v", err)
+	}
+
+	receipt, err := store.FindReceipt(context.Background(), receiptID)
+	if err != nil {
+		t.Fatalf("find receipt: %v", err)
+	}
+	if err := receipt.MarkFiscalized(time.Date(2026, 6, 18, 10, 1, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("mark fiscalized: %v", err)
+	}
+	if err := store.SaveReceipt(context.Background(), receipt); err != nil {
+		t.Fatalf("save receipt: %v", err)
+	}
+
+	_, err = payments.CancelPayment(context.Background(), app.CancelPaymentCommand{
+		IdempotencyKey: "cancel-1",
+		ReceiptID:      receiptID,
+		PaymentID:      created.Payment.ID,
+	})
+	if !errors.Is(err, app.ErrPaymentCannotBeCancelled) {
+		t.Fatalf("expected ErrPaymentCannotBeCancelled, got %v", err)
+	}
+}
+
+func TestCancelPaymentRequiresSameBusinessDate(t *testing.T) {
+	store := memory.NewStore(memory.WithProducts(testProduct()))
+	checkout := app.NewCheckoutService(store, store,
+		app.WithProductRepository(store),
+		app.WithStoreOperations(store, store),
+		app.WithClock(func() time.Time {
+			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+		}),
+		app.WithIDGenerator(func(prefix string) string {
+			return prefix + "-test-1"
+		}),
+	)
+	payments := app.NewPaymentService(store, store, store,
+		app.WithPaymentClock(func() time.Time {
+			return time.Date(2026, 6, 19, 10, 0, 0, 0, time.UTC)
+		}),
+		app.WithPaymentIDGenerator(func(prefix string) string {
+			return prefix + "-test-1"
+		}),
+	)
+	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
+
+	created, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-1",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCardMock,
+		AmountMinor:    39998,
+	})
+	if err != nil {
+		t.Fatalf("create card payment: %v", err)
+	}
+
+	_, err = payments.CancelPayment(context.Background(), app.CancelPaymentCommand{
+		IdempotencyKey: "cancel-1",
+		ReceiptID:      receiptID,
+		PaymentID:      created.Payment.ID,
+	})
+	if !errors.Is(err, app.ErrPaymentCancelSameDayRequired) {
+		t.Fatalf("expected ErrPaymentCancelSameDayRequired, got %v", err)
+	}
+}
+
+func TestCancelPaymentNotSupportedForCash(t *testing.T) {
+	store := memory.NewStore(memory.WithProducts(testProduct()))
+	checkout, payments, _ := newTestCheckoutPaymentAndCashServices(store)
+	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
+
+	created, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-1",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCash,
+		AmountMinor:    39998,
+	})
+	if err != nil {
+		t.Fatalf("create cash payment: %v", err)
+	}
+
+	_, err = payments.CancelPayment(context.Background(), app.CancelPaymentCommand{
+		IdempotencyKey: "cancel-1",
+		ReceiptID:      receiptID,
+		PaymentID:      created.Payment.ID,
+	})
+	if !errors.Is(err, app.ErrPaymentCancelNotSupported) {
+		t.Fatalf("expected ErrPaymentCancelNotSupported, got %v", err)
+	}
+}
+
+func newTestCheckoutAndPaymentServicesWithStore(store *memory.Store) (*app.CheckoutService, *app.PaymentService) {
+	var counter int
+	now := func() time.Time {
+		return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+	}
+	newID := func(prefix string) string {
+		counter++
+		return fmt.Sprintf("%s-test-%d", prefix, counter)
+	}
+
+	checkout := app.NewCheckoutService(store, store,
+		app.WithProductRepository(store),
+		app.WithStoreOperations(store, store),
+		app.WithClock(now),
+		app.WithIDGenerator(newID),
+	)
+	payments := app.NewPaymentService(store, store, store,
+		app.WithPaymentClock(now),
+		app.WithPaymentIDGenerator(newID),
+	)
+	return checkout, payments
+}
+
 func newTestCheckoutAndPaymentServices() (*app.CheckoutService, *app.PaymentService) {
 	store := memory.NewStore(memory.WithProducts(testProduct()))
 	var counter int
