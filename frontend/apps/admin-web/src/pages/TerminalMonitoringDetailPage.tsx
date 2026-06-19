@@ -1,6 +1,7 @@
 import { useListStores } from '@mercadia/api-clients-central';
 import { useGetTerminal, useListStoreMonitoringTerminals } from '@mercadia/api-clients-store-edge';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
@@ -15,6 +16,7 @@ import { TerminalHeartbeatEventsPanel } from './TerminalHeartbeatEventsPanel.js'
 import { PageBackLink } from './users-shared.js';
 
 export function TerminalMonitoringDetailPage() {
+  const { t } = useTranslation();
   const { storeId = '', terminalId = '' } = useParams();
 
   const queryOptions = useMemo(
@@ -74,14 +76,15 @@ export function TerminalMonitoringDetailPage() {
 
   return (
     <section className="stack monitoring-page">
-      <PageBackLink label="Back to monitoring" to={backHref} />
+      <PageBackLink label={t('monitoring.backToMonitoring')} to={backHref} />
 
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Terminal</h2>
+            <h2>{t('monitoring.terminalDetailTitle')}</h2>
             <p className="muted">
-              {terminalId || 'Unknown terminal'} — {title || 'Unknown store'}
+              {terminalId || t('common.noData')} {t('common.emDash')}{' '}
+              {title || t('reporting.unknownStore')}
             </p>
           </div>
           <button
@@ -90,7 +93,7 @@ export function TerminalMonitoringDetailPage() {
             onClick={refetchAll}
             type="button"
           >
-            {isLoading ? 'Refreshing…' : 'Refresh'}
+            {isLoading ? t('common.refreshing') : t('common.refresh')}
           </button>
         </div>
       </div>
@@ -102,9 +105,9 @@ export function TerminalMonitoringDetailPage() {
       ) : null}
 
       <div className="panel">
-        <h3>Terminal state</h3>
+        <h3>{t('monitoring.terminalState')}</h3>
         {terminalQuery.isLoading && !terminal ? (
-          <p className="muted">Loading terminal…</p>
+          <p className="muted">{t('monitoring.loadingTerminal')}</p>
         ) : terminal ? (
           <dl className="kpi-grid">
             <div>
@@ -112,15 +115,15 @@ export function TerminalMonitoringDetailPage() {
               <dd>{terminal.id}</dd>
             </div>
             <div>
-              <dt>Store ID</dt>
+              <dt>{t('stores.storeId')}</dt>
               <dd>{terminal.storeId}</dd>
             </div>
             <div>
-              <dt>Kind</dt>
+              <dt>{t('monitoring.kind')}</dt>
               <dd>{terminal.kind}</dd>
             </div>
             <div>
-              <dt>Status</dt>
+              <dt>{t('monitoring.status')}</dt>
               <dd>
                 {statusSource ? (
                   <span className={terminalStatusClass(statusSource)}>
@@ -132,76 +135,76 @@ export function TerminalMonitoringDetailPage() {
               </dd>
             </div>
             <div>
-              <dt>Software version</dt>
-              <dd>{terminal.softwareVersion ?? '—'}</dd>
+              <dt>{t('monitoring.softwareVersion')}</dt>
+              <dd>{terminal.softwareVersion ?? t('common.emDash')}</dd>
             </div>
             <div>
-              <dt>Last seen</dt>
+              <dt>{t('monitoring.lastSeen')}</dt>
               <dd>{formatTimestamp(terminal.lastSeenAt)}</dd>
             </div>
             <div>
-              <dt>Updated</dt>
+              <dt>{t('monitoring.updated')}</dt>
               <dd>{formatTimestamp(terminal.updatedAt)}</dd>
             </div>
           </dl>
         ) : (
-          <p className="muted">No terminal data.</p>
+          <p className="muted">{t('monitoring.noTerminal')}</p>
         )}
       </div>
 
       <div className="panel">
-        <h3>Live operations</h3>
+        <h3>{t('monitoring.liveOperations')}</h3>
         {terminalsQuery.isLoading && !monitoringCard ? (
-          <p className="muted">Loading monitoring data…</p>
+          <p className="muted">{t('monitoring.loadingMonitoring')}</p>
         ) : monitoringCard ? (
           <dl className="kpi-grid">
             <div>
-              <dt>Cashier</dt>
-              <dd>{monitoringCard.cashierId ?? '—'}</dd>
+              <dt>{t('monitoring.cashier')}</dt>
+              <dd>{monitoringCard.cashierId ?? t('common.emDash')}</dd>
             </div>
             <div>
-              <dt>Shift</dt>
-              <dd>{monitoringCard.shiftId ?? '—'}</dd>
+              <dt>{t('monitoring.shift')}</dt>
+              <dd>{monitoringCard.shiftId ?? t('common.emDash')}</dd>
             </div>
             <div>
-              <dt>Drawer</dt>
-              <dd>{monitoringCard.drawerId ?? '—'}</dd>
+              <dt>{t('monitoring.drawer')}</dt>
+              <dd>{monitoringCard.drawerId ?? t('common.emDash')}</dd>
             </div>
             <div>
-              <dt>Receipt count</dt>
+              <dt>{t('monitoring.receiptCount')}</dt>
               <dd>{monitoringCard.receiptCount}</dd>
             </div>
             <div>
-              <dt>Revenue</dt>
+              <dt>{t('monitoring.revenue')}</dt>
               <dd>{formatMinorAmount(monitoringCard.revenueMinor)}</dd>
             </div>
             <div>
-              <dt>Drawer balance</dt>
+              <dt>{t('monitoring.drawerBalance')}</dt>
               <dd>{formatMinorAmount(monitoringCard.drawerBalanceMinor)}</dd>
             </div>
             <div>
-              <dt>Attention needed</dt>
-              <dd>{monitoringCard.attentionNeeded ? 'Yes' : 'No'}</dd>
+              <dt>{t('monitoring.attentionNeeded')}</dt>
+              <dd>{monitoringCard.attentionNeeded ? t('common.yes') : t('common.no')}</dd>
             </div>
             <div>
-              <dt>Current receipt</dt>
-              <dd>{monitoringCard.currentReceiptId ?? '—'}</dd>
+              <dt>{t('monitoring.currentReceipt')}</dt>
+              <dd>{monitoringCard.currentReceiptId ?? t('common.emDash')}</dd>
             </div>
             <div>
-              <dt>Current receipt status</dt>
-              <dd>{monitoringCard.currentReceiptStatus ?? '—'}</dd>
+              <dt>{t('monitoring.currentReceiptStatus')}</dt>
+              <dd>{monitoringCard.currentReceiptStatus ?? t('common.emDash')}</dd>
             </div>
             <div>
-              <dt>Current receipt total</dt>
+              <dt>{t('monitoring.currentReceiptTotal')}</dt>
               <dd>
                 {monitoringCard.currentReceiptTotalMinor != null
                   ? formatMinorAmount(monitoringCard.currentReceiptTotalMinor)
-                  : '—'}
+                  : t('common.emDash')}
               </dd>
             </div>
           </dl>
         ) : (
-          <p className="muted">No live monitoring data for this terminal.</p>
+          <p className="muted">{t('monitoring.noLiveMonitoring')}</p>
         )}
       </div>
 
@@ -209,7 +212,7 @@ export function TerminalMonitoringDetailPage() {
         maxEvents={10}
         storeId={storeId}
         terminalId={terminalId}
-        title="Recent heartbeats"
+        title={t('monitoring.recentHeartbeats')}
       />
     </section>
   );

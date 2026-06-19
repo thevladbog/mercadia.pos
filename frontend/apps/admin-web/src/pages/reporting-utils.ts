@@ -1,3 +1,6 @@
+import { resolveIntlLocale } from '@/i18n/config.js';
+import { i18n } from '@/i18n/index.js';
+
 const PAGE_SIZE = 20;
 
 export function defaultReportingWindow(): { since: string; until: string } {
@@ -22,16 +25,18 @@ export function fromDatetimeLocalValue(value: string): string {
   return new Date(`${value}:00.000Z`).toISOString();
 }
 
-export function formatMinorAmount(minor: number): string {
-  return new Intl.NumberFormat(undefined, {
+export function formatMinorAmount(minor: number, locale?: string): string {
+  const intlLocale = resolveIntlLocale(locale ?? i18n.language);
+  return new Intl.NumberFormat(intlLocale, {
     style: 'currency',
     currency: 'RUB',
     minimumFractionDigits: 2,
   }).format(minor / 100);
 }
 
-export function formatTimestamp(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, {
+export function formatTimestamp(iso: string, locale?: string): string {
+  const intlLocale = resolveIntlLocale(locale ?? i18n.language);
+  return new Intl.DateTimeFormat(intlLocale, {
     dateStyle: 'medium',
     timeStyle: 'short',
     timeZone: 'UTC',

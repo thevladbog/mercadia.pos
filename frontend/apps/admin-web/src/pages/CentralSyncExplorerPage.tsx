@@ -14,22 +14,32 @@ import {
   useListStores,
 } from '@mercadia/api-clients-central';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { PaginationControls } from '@/components/PaginationControls.js';
+import { StorePicker } from '@/components/StorePicker.js';
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { formatMinorAmount, formatTimestamp, PAGE_SIZE } from './reporting-utils.js';
 import { parseSyncTab, syncEntityHref, type SyncEntityType, type SyncTab } from './sync-routes.js';
 
-const SYNC_TABS: { id: SyncTab; label: string }[] = [
-  { id: 'sync-events', label: 'Sync events' },
-  { id: 'payments', label: 'Payments' },
-  { id: 'cash-movements', label: 'Cash movements' },
-  { id: 'fiscal-documents', label: 'Fiscal documents' },
-  { id: 'returns', label: 'Returns' },
-  { id: 'operational-days', label: 'Operational days' },
+const SYNC_TABS: { id: SyncTab; labelKey: string }[] = [
+  { id: 'sync-events', labelKey: 'sync.tabs.syncEvents' },
+  { id: 'payments', labelKey: 'sync.tabs.payments' },
+  { id: 'cash-movements', labelKey: 'sync.tabs.cashMovements' },
+  { id: 'fiscal-documents', labelKey: 'sync.tabs.fiscalDocuments' },
+  { id: 'returns', labelKey: 'sync.tabs.returns' },
+  { id: 'operational-days', labelKey: 'sync.tabs.operationalDays' },
 ];
 
+function syncTabLabel(t: TFunction, tabId: SyncTab): string {
+  const tab = SYNC_TABS.find((entry) => entry.id === tabId);
+  return tab ? t(tab.labelKey) : tabId;
+}
+
 export function CentralSyncExplorerPage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const initialTab = parseSyncTab(searchParams.get('tab')) ?? 'sync-events';
   const initialStoreId = searchParams.get('store');
@@ -115,34 +125,26 @@ export function CentralSyncExplorerPage() {
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Central Sync Explorer</h2>
-            <p className="muted">Synchronized read models projected from Store Edge events.</p>
+            <h2>{t('sync.title')}</h2>
+            <p className="muted">{t('sync.subtitle')}</p>
           </div>
           <button className="secondary" disabled={isLoading} onClick={refetchAll} type="button">
-            {isLoading ? 'Refreshing…' : 'Refresh'}
+            {isLoading ? t('common.refreshing') : t('common.refresh')}
           </button>
         </div>
 
-        <label className="field store-picker">
-          <span>Store</span>
-          <select
-            disabled={storesQuery.isLoading || stores.length === 0}
-            value={activeStoreId}
-            onChange={(event) => {
-              setSelectedStoreId(event.target.value);
-              setOffset(0);
-            }}
-          >
-            {stores.length === 0 ? <option value="">No stores registered</option> : null}
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name} ({store.id})
-              </option>
-            ))}
-          </select>
-        </label>
+        <StorePicker
+          disabled={storesQuery.isLoading}
+          loading={storesQuery.isLoading}
+          stores={stores}
+          value={activeStoreId}
+          onChange={(storeId) => {
+            setSelectedStoreId(storeId);
+            setOffset(0);
+          }}
+        />
 
-        <div className="filters" role="tablist" aria-label="Sync projections">
+        <div className="filters" role="tablist" aria-label={t('sync.title')}>
           {SYNC_TABS.map((tab) => (
             <button
               key={tab.id}
@@ -157,7 +159,7 @@ export function CentralSyncExplorerPage() {
               aria-selected={activeTab === tab.id}
               aria-controls={`sync-tab-panel-${tab.id}`}
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           ))}
         </div>
@@ -171,7 +173,7 @@ export function CentralSyncExplorerPage() {
 
       {!activeStoreId ? (
         <div className="panel">
-          <p className="muted">Select a store to view synchronized read models.</p>
+          <p className="muted">{t('sync.selectStore')}</p>
         </div>
       ) : (
         <div
@@ -181,19 +183,21 @@ export function CentralSyncExplorerPage() {
           aria-labelledby={`sync-tab-${activeTab}`}
         >
           <div className="panel-heading">
-            <h3>{SYNC_TABS.find((tab) => tab.id === activeTab)?.label}</h3>
+            <h3>{syncTabLabel(t, activeTab)}</h3>
             <p className="muted">
-              {totalCount === 0 ? 'No items' : `Showing ${pageStart}–${pageEnd} of ${totalCount}`}
+              {totalCount === 0
+                ? t('common.noItems')
+                : t('common.showingRange', { from: pageStart, to: pageEnd, total: totalCount })}
             </p>
           </div>
 
           {activeQuery.isLoading && !pageData ? (
-            <p className="muted">Loading…</p>
+            <p className="muted">{t('common.loading')}</p>
           ) : pageData && pageData.items.length > 0 ? (
             <>
               <div className="table-wrap">
                 <table>
-                  <thead>{renderTableHead(activeTab)}</thead>
+                  <thead>{renderTableHead(activeTab, t)}</thead>
                   <tbody>
                     {renderTableBody(
                       activeTab,
@@ -203,27 +207,16 @@ export function CentralSyncExplorerPage() {
                   </tbody>
                 </table>
               </div>
-              <div className="pagination">
-                <button
-                  className="secondary"
-                  disabled={!canGoPrev || isLoading}
-                  onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))}
-                  type="button"
-                >
-                  Previous
-                </button>
-                <button
-                  className="secondary"
-                  disabled={!canGoNext || isLoading}
-                  onClick={() => setOffset((current) => current + PAGE_SIZE)}
-                  type="button"
-                >
-                  Next
-                </button>
-              </div>
+              <PaginationControls
+                canGoNext={canGoNext}
+                canGoPrev={canGoPrev}
+                disabled={isLoading}
+                onNext={() => setOffset((current) => current + PAGE_SIZE)}
+                onPrev={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))}
+              />
             </>
           ) : (
-            <p className="muted">No items for this projection.</p>
+            <p className="muted">{t('sync.noItemsProjection')}</p>
           )}
         </div>
       )}
@@ -231,7 +224,7 @@ export function CentralSyncExplorerPage() {
   );
 }
 
-function renderTableHead(activeTab: SyncTab) {
+function renderTableHead(activeTab: SyncTab, t: TFunction) {
   switch (activeTab) {
     case 'sync-events':
       return (
@@ -239,7 +232,7 @@ function renderTableHead(activeTab: SyncTab) {
           <th>Source event ID</th>
           <th>Event type</th>
           <th>Occurred</th>
-          <th>Received</th>
+          <th>{t('monitoring.eventReceived')}</th>
         </tr>
       );
     case 'payments':
@@ -247,26 +240,26 @@ function renderTableHead(activeTab: SyncTab) {
         <tr>
           <th>Payment ID</th>
           <th>Method</th>
-          <th>Amount</th>
-          <th>Status</th>
+          <th>{t('safe.amount')}</th>
+          <th>{t('monitoring.status')}</th>
           <th>Captured</th>
         </tr>
       );
     case 'cash-movements':
       return (
         <tr>
-          <th>Movement ID</th>
-          <th>Type</th>
-          <th>Amount</th>
-          <th>Posted</th>
+          <th>{t('safe.movementId')}</th>
+          <th>{t('safe.type')}</th>
+          <th>{t('safe.amount')}</th>
+          <th>{t('safe.posted')}</th>
         </tr>
       );
     case 'fiscal-documents':
       return (
         <tr>
           <th>Document ID</th>
-          <th>Kind</th>
-          <th>Amount</th>
+          <th>{t('monitoring.kind')}</th>
+          <th>{t('safe.amount')}</th>
           <th>Fiscalized</th>
         </tr>
       );
@@ -283,8 +276,8 @@ function renderTableHead(activeTab: SyncTab) {
       return (
         <tr>
           <th>Day ID</th>
-          <th>Business date</th>
-          <th>Closed</th>
+          <th>{t('eod.businessDate')}</th>
+          <th>{t('eod.closedAt')}</th>
           <th>Closed by</th>
         </tr>
       );

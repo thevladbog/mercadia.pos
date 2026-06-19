@@ -1,5 +1,6 @@
 import { useGetStoreReportingSummary, useListStores } from '@mercadia/api-clients-central';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
@@ -25,6 +26,7 @@ function readWindowFromSearchParams(searchParams: URLSearchParams): {
 }
 
 export function StoreReportingPage() {
+  const { t } = useTranslation();
   const { storeId = '' } = useParams();
   const [searchParams] = useSearchParams();
   const initialWindow = useMemo(() => readWindowFromSearchParams(searchParams), [searchParams]);
@@ -58,15 +60,16 @@ export function StoreReportingPage() {
 
   return (
     <section className="stack reporting-page">
-      <PageBackLink label="Back to reporting" to="/central/reporting" />
+      <PageBackLink label={t('reporting.backToReporting')} to="/central/reporting" />
 
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Store Reporting</h2>
+            <h2>{t('reporting.storeTitle')}</h2>
             <p className="muted">
-              {title || 'Unknown store'} — {formatTimestamp(applied.since)} –{' '}
-              {formatTimestamp(applied.until)} UTC
+              {title || t('reporting.unknownStore')} {t('common.emDash')}{' '}
+              {formatTimestamp(applied.since)} {t('common.emDash')} {formatTimestamp(applied.until)}{' '}
+              UTC
             </p>
           </div>
           <button
@@ -75,7 +78,7 @@ export function StoreReportingPage() {
             onClick={() => void summaryQuery.refetch()}
             type="button"
           >
-            {isLoading ? 'Refreshing…' : 'Refresh'}
+            {isLoading ? t('common.refreshing') : t('common.refresh')}
           </button>
         </div>
 
@@ -87,7 +90,7 @@ export function StoreReportingPage() {
           }}
         >
           <label className="field">
-            <span>Since (UTC)</span>
+            <span>{t('reporting.sinceUtc')}</span>
             <input
               required
               type="datetime-local"
@@ -96,7 +99,7 @@ export function StoreReportingPage() {
             />
           </label>
           <label className="field">
-            <span>Until (UTC)</span>
+            <span>{t('reporting.untilUtc')}</span>
             <input
               required
               type="datetime-local"
@@ -105,7 +108,7 @@ export function StoreReportingPage() {
             />
           </label>
           <button disabled={isLoading || storeId.length === 0} type="submit">
-            Apply
+            {t('common.apply')}
           </button>
         </form>
       </div>
@@ -117,13 +120,13 @@ export function StoreReportingPage() {
       ) : null}
 
       <div className="panel">
-        <h3>Store KPIs</h3>
+        <h3>{t('reporting.storeKpis')}</h3>
         {summaryQuery.isLoading && !summary ? (
-          <p className="muted">Loading summary…</p>
+          <p className="muted">{t('reporting.loadingSummary')}</p>
         ) : summary ? (
           <ReportingKpiGrid data={summary} />
         ) : (
-          <p className="muted">No summary data.</p>
+          <p className="muted">{t('reporting.noSummary')}</p>
         )}
       </div>
     </section>

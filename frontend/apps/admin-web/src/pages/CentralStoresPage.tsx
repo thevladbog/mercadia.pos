@@ -1,4 +1,5 @@
 import { useListStores } from '@mercadia/api-clients-central';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
@@ -7,6 +8,7 @@ import { canManageCentralUsers } from '@/auth/permissions.js';
 import { formatTimestamp } from './reporting-utils.js';
 
 export function CentralStoresPage() {
+  const { t } = useTranslation();
   const { roles } = useAuth();
   const storesQuery = useListStores();
   const stores = storesQuery.data?.status === 200 ? storesQuery.data.data.stores : null;
@@ -18,8 +20,8 @@ export function CentralStoresPage() {
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Store Registry</h2>
-            <p className="muted">Registered stores in the central backend.</p>
+            <h2>{t('stores.title')}</h2>
+            <p className="muted">{t('stores.subtitle')}</p>
           </div>
           <div className="header-actions-inline">
             <button
@@ -28,11 +30,11 @@ export function CentralStoresPage() {
               onClick={() => void storesQuery.refetch()}
               type="button"
             >
-              {storesQuery.isFetching ? 'Refreshing…' : 'Refresh'}
+              {storesQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
             </button>
             {canRegister ? (
               <Link className="button-link" to="/central/stores/new">
-                Register store
+                {t('stores.registerStore')}
               </Link>
             ) : null}
           </div>
@@ -41,17 +43,17 @@ export function CentralStoresPage() {
         {errorMessage ? (
           <p className="error">{errorMessage}</p>
         ) : storesQuery.isLoading && !stores ? (
-          <p className="muted">Loading stores…</p>
+          <p className="muted">{t('stores.loadingStores')}</p>
         ) : stores && stores.length > 0 ? (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Store ID</th>
-                  <th>Name</th>
-                  <th>Region</th>
-                  <th>Registered</th>
-                  <th>Updated</th>
+                  <th>{t('stores.storeId')}</th>
+                  <th>{t('stores.name')}</th>
+                  <th>{t('stores.region')}</th>
+                  <th>{t('stores.created')}</th>
+                  <th>{t('stores.updated')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -59,7 +61,7 @@ export function CentralStoresPage() {
                   <tr key={store.id}>
                     <td>{store.id}</td>
                     <td>{store.name}</td>
-                    <td>{store.region || '—'}</td>
+                    <td>{store.region || t('common.emDash')}</td>
                     <td>{formatTimestamp(store.registeredAt)}</td>
                     <td>{formatTimestamp(store.updatedAt)}</td>
                   </tr>
@@ -68,7 +70,7 @@ export function CentralStoresPage() {
             </table>
           </div>
         ) : (
-          <p className="muted">No stores registered yet.</p>
+          <p className="muted">{t('stores.noStores')}</p>
         )}
       </div>
     </section>

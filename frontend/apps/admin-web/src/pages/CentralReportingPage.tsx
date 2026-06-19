@@ -3,8 +3,10 @@ import {
   useListCentralStoreReportingSummaries,
 } from '@mercadia/api-clients-central';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
+import { PaginationControls } from '@/components/PaginationControls.js';
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { ReportingKpiGrid } from './ReportingKpiGrid.js';
 import {
@@ -22,6 +24,7 @@ function storeReportingHref(storeId: string, since: string, until: string): stri
 }
 
 export function CentralReportingPage() {
+  const { t } = useTranslation();
   const defaults = useMemo(() => defaultReportingWindow(), []);
   const [sinceInput, setSinceInput] = useState(toDatetimeLocalValue(defaults.since));
   const [untilInput, setUntilInput] = useState(toDatetimeLocalValue(defaults.until));
@@ -84,14 +87,14 @@ export function CentralReportingPage() {
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Central Reporting</h2>
+            <h2>{t('reporting.title')}</h2>
             <p className="muted">
-              Cross-store aggregates for {formatTimestamp(applied.since)} –{' '}
+              {t('reporting.subtitle')} {formatTimestamp(applied.since)} {t('common.emDash')}{' '}
               {formatTimestamp(applied.until)} UTC
             </p>
           </div>
           <button className="secondary" disabled={isLoading} onClick={refetchAll} type="button">
-            {isLoading ? 'Refreshing…' : 'Refresh'}
+            {isLoading ? t('common.refreshing') : t('common.refresh')}
           </button>
         </div>
 
@@ -103,7 +106,7 @@ export function CentralReportingPage() {
           }}
         >
           <label className="field">
-            <span>Since (UTC)</span>
+            <span>{t('reporting.sinceUtc')}</span>
             <input
               required
               type="datetime-local"
@@ -112,7 +115,7 @@ export function CentralReportingPage() {
             />
           </label>
           <label className="field">
-            <span>Until (UTC)</span>
+            <span>{t('reporting.untilUtc')}</span>
             <input
               required
               type="datetime-local"
@@ -121,16 +124,16 @@ export function CentralReportingPage() {
             />
           </label>
           <label className="field">
-            <span>Region (optional)</span>
+            <span>{t('reporting.region')}</span>
             <input
-              placeholder="e.g. moscow"
+              placeholder={t('reporting.regionPlaceholder')}
               type="text"
               value={regionInput}
               onChange={(event) => setRegionInput(event.target.value)}
             />
           </label>
           <button disabled={isLoading} type="submit">
-            Apply
+            {t('common.apply')}
           </button>
         </form>
       </div>
@@ -142,41 +145,41 @@ export function CentralReportingPage() {
       ) : null}
 
       <div className="panel">
-        <h3>Network KPIs</h3>
+        <h3>{t('reporting.networkKpis')}</h3>
         {summaryQuery.isLoading && !summary ? (
-          <p className="muted">Loading summary…</p>
+          <p className="muted">{t('reporting.loadingSummary')}</p>
         ) : summary ? (
           <ReportingKpiGrid data={summary} />
         ) : (
-          <p className="muted">No summary data.</p>
+          <p className="muted">{t('reporting.noSummary')}</p>
         )}
       </div>
 
       <div className="panel">
         <div className="panel-heading">
-          <h3>Per-store breakdown</h3>
+          <h3>{t('reporting.storeBreakdown')}</h3>
           <p className="muted">
             {totalCount === 0
-              ? 'No stores in window'
-              : `Showing ${pageStart}–${pageEnd} of ${totalCount}`}
+              ? t('common.noItems')
+              : t('common.showingRange', { from: pageStart, to: pageEnd, total: totalCount })}
           </p>
         </div>
 
         {storesQuery.isLoading && !stores ? (
-          <p className="muted">Loading store rows…</p>
+          <p className="muted">{t('reporting.loadingSummary')}</p>
         ) : stores && stores.items.length > 0 ? (
           <>
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Store</th>
-                    <th>Receipts</th>
-                    <th>Receipt amount</th>
-                    <th>Returns settled</th>
-                    <th>Payments captured</th>
-                    <th>Cash movements</th>
-                    <th>Days closed</th>
+                    <th>{t('common.store')}</th>
+                    <th>{t('monitoring.receipts')}</th>
+                    <th>{t('reporting.fiscalReceipts')}</th>
+                    <th>{t('reporting.returnsSettled')}</th>
+                    <th>{t('reporting.paymentsCaptured')}</th>
+                    <th>{t('reporting.cashMovementsPosted')}</th>
+                    <th>{t('reporting.operationalDaysClosed')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -201,27 +204,16 @@ export function CentralReportingPage() {
                 </tbody>
               </table>
             </div>
-            <div className="pagination">
-              <button
-                className="secondary"
-                disabled={!canGoPrev || isLoading}
-                onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))}
-                type="button"
-              >
-                Previous
-              </button>
-              <button
-                className="secondary"
-                disabled={!canGoNext || isLoading}
-                onClick={() => setOffset((current) => current + PAGE_SIZE)}
-                type="button"
-              >
-                Next
-              </button>
-            </div>
+            <PaginationControls
+              canGoNext={canGoNext}
+              canGoPrev={canGoPrev}
+              disabled={isLoading}
+              onNext={() => setOffset((current) => current + PAGE_SIZE)}
+              onPrev={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))}
+            />
           </>
         ) : (
-          <p className="muted">No store rows for the selected window.</p>
+          <p className="muted">{t('reporting.noSummary')}</p>
         )}
       </div>
     </section>

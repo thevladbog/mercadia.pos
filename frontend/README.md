@@ -73,16 +73,21 @@ pnpm orval:store-edge
 2. Start **store-edge** on port `8081` for store monitoring (see `backend/README.md`).
 
 3. Start the admin UI (Vite dev server proxies most `/v1` traffic to central `:8082`; store-edge
-   paths under `/v1/stores/{storeId}/monitoring/*`, `/v1/stores/{storeId}/terminals/*`, and
-   `/v1/terminals/*` go to store-edge `:8081`):
+   paths under `/v1/stores/{storeId}/monitoring/*`, `/v1/stores/{storeId}/terminals/*`,
+   `/v1/stores/{storeId}/cash-*`, `/v1/stores/{storeId}/operation-journal`,
+   `/v1/stores/{storeId}/operational-days`, `/v1/stores/{storeId}/shifts`, `/v1/operational-days/*`,
+   `/v1/shifts/*`, and `/v1/terminals/*` go to store-edge `:8081`):
 
    ```bash
    cd frontend
    pnpm --filter admin-web dev
    ```
 
-4. Open `http://localhost:5173`, sign in, and open **Central Reporting**, **Monitoring**, or
-   **Users**.
+4. Open `http://localhost:5173`, sign in, and open **Central Reporting**, **Monitoring**, **Safe**,
+   **EoD**, or **Users**.
+
+The admin UI defaults to **Russian** (`ru`); use the language switcher in the header to switch to
+**English** (`en`). Locale files live in `apps/admin-web/src/i18n/locales/`.
 
 ### Central users smoke test
 
@@ -105,6 +110,24 @@ Requires central-backend (store list) and store-edge (monitoring KPIs/terminals)
 4. Confirm data refreshes automatically (every 5 seconds) or via **Refresh**.
 5. Confirm the **Terminal events** panel shows **Connected** and lists `terminal_heartbeat`
    events when store-edge emits terminal heartbeats.
+6. Toggle **List** / **Tiles** view and use the search box to filter terminals client-side.
+
+### Store Safe smoke test
+
+Requires central-backend (store list) and store-edge (cash-office APIs):
+
+1. Sign in and open **Safe** in the header.
+2. Select a store — balance KPI cards, cash movements table, and recounts table should load.
+3. Confirm data refreshes automatically (every 5 seconds) or via **Refresh**.
+
+### Store EoD smoke test
+
+Requires central-backend (store list) and store-edge (store-operations APIs):
+
+1. Sign in and open **EoD** in the header.
+2. Select a store with an open operational day — overview KPIs, blockers, open shifts, and
+   operation journal tabs should load.
+3. If no operational day is open, confirm the empty state message appears (not an error panel).
 
 Optional env vars when APIs are not same-origin (bypass Vite proxy):
 

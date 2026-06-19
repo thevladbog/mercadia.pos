@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 import {
@@ -11,17 +12,19 @@ type CentralRoleFieldsProps = {
   onChange: (roles: string[]) => void;
 };
 
-function roleLabel(role: string): string {
-  if (role === CENTRAL_ROLE_ADMIN) {
-    return 'Central admin';
-  }
-  if (role === CENTRAL_ROLE_VIEWER) {
-    return 'Central viewer';
-  }
-  return role;
-}
-
 export function CentralRoleFields({ roles, onChange }: CentralRoleFieldsProps) {
+  const { t } = useTranslation();
+
+  function roleLabel(role: string): string {
+    if (role === CENTRAL_ROLE_ADMIN) {
+      return t('users.roleAdmin');
+    }
+    if (role === CENTRAL_ROLE_VIEWER) {
+      return t('users.roleViewer');
+    }
+    return role;
+  }
+
   function toggleRole(role: string, checked: boolean) {
     if (checked) {
       onChange([...new Set([...roles, role])]);
@@ -32,7 +35,7 @@ export function CentralRoleFields({ roles, onChange }: CentralRoleFieldsProps) {
 
   return (
     <fieldset className="role-fieldset">
-      <legend>Roles</legend>
+      <legend>{t('users.roles')}</legend>
       <div className="role-options">
         {CENTRAL_ROLE_OPTIONS.map((role) => (
           <label className="checkbox-field" key={role}>
@@ -54,13 +57,12 @@ type PageBackLinkProps = {
   to?: string;
 };
 
-export function PageBackLink({
-  label = 'Back to users',
-  to = '/central/users',
-}: PageBackLinkProps) {
+export function PageBackLink({ label, to = '/central/users' }: PageBackLinkProps) {
+  const { t } = useTranslation();
+
   return (
     <p className="page-back">
-      <Link to={to}>{label}</Link>
+      <Link to={to}>{label ?? t('users.backToUsers')}</Link>
     </p>
   );
 }
