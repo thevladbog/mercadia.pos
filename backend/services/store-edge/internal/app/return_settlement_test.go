@@ -314,11 +314,94 @@ func TestSettleReturnBlocksAlreadySettled(t *testing.T) {
 	}
 }
 
-func TestSettleReturnBlocksNoReceiptReturn(t *testing.T) {
+func TestSettleNoReceiptReturnDisbursesCash(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
 	auth := app.NewAuthService(store, store)
 	returns := app.NewReturnsService(store, store, store, auth)
-	settlement := app.NewReturnSettlementService(store, store, store, nil, store)
+	cash := app.NewCashService(store, store)
+	settlement := app.NewReturnSettlementService(store, store, store, nil, store,
+		app.WithReturnSettlementCashLedger(store),
+		app.WithReturnSettlementShiftLookup(store),
+	)
+
+	if _, err := cash.CreateCashMovement(context.Background(), app.CreateCashMovementCommand{
+		IdempotencyKey:    "fund-1",
+		StoreID:           "store-1",
+		Type:              domain.CashMovementTypeChangeFund,
+		FromContainerID:   "safe-1",
+		FromContainerType: domain.CashContainerTypeSafe,
+		ToContainerID:     "drawer-1",
+		ToContainerType:   domain.CashContainerTypeDrawer,
+		AmountMinor:       100000,
+		Currency:          "RUB",
+		Reason:            "Opening fund",
+		ActorID:           "senior-1",
+		ApprovedByID:      "admin-1",
+	}); err != nil {
+		t.Fatalf("fund drawer: %v", err)
+	}
+
+	noReceipt, err := returns.CreateNoReceiptReturn(context.Background(), app.CreateNoReceiptReturnCommand{
+		IdempotencyKey: "return-no-receipt",
+		StoreID:        "store-1",
+		Lines:          []app.ReturnLineCommand{{ProductID: "sku-1", Name: "Milk", Quantity: 1, UnitPriceMinor: 1000}},
+		Reason:         "No receipt",
+		ActorID:        "senior-1",
+		ApprovedByID:   "admin-1",
+	})
+	if err != nil {
+		t.Fatalf("create no-receipt return: %v", err)
+	}
+
+	result, err := settlement.SettleReturn(context.Background(), app.SettleReturnCommand{
+		IdempotencyKey: "settle-1",
+		ReturnID:       noReceipt.Return.ID,
+		ActorID:        "senior-1",
+		DrawerID:       "drawer-1",
+	})
+	if err != nil {
+		t.Fatalf("settle no-receipt return: %v", err)
+	}
+	if result.Return.Status != domain.ReturnStatusSettled {
+		t.Fatalf("return status = %s", result.Return.Status)
+	}
+	if len(result.Payments) != 0 {
+		t.Fatalf("payments = %+v", result.Payments)
+	}
+
+	movements, err := cash.ListCashMovements(context.Background(), "store-1", app.PageParams{Limit: 50})
+	if err != nil {
+		t.Fatalf("list cash movements: %v", err)
+	}
+	var payoutCount int
+	for _, movement := range movements.Items {
+		if movement.Type == domain.CashMovementTypeNoReceiptReturnPayout {
+			payoutCount++
+			if movement.AmountMinor != 1000 || movement.ApprovedByID != "admin-1" {
+				t.Fatalf("payout movement = %+v", movement)
+			}
+		}
+	}
+	if payoutCount != 1 {
+		t.Fatalf("payout count = %d", payoutCount)
+	}
+
+	balances, err := cash.ListCashBalances(context.Background(), "store-1")
+	if err != nil {
+		t.Fatalf("list balances: %v", err)
+	}
+	if drawerBalanceMinor(balances, "drawer-1") != 99000 {
+		t.Fatalf("drawer balance = %d", drawerBalanceMinor(balances, "drawer-1"))
+	}
+}
+
+func TestSettleNoReceiptReturnBlocksApproverAsActor(t *testing.T) {
+	store := memory.NewStore(memory.WithDemoActors())
+	auth := app.NewAuthService(store, store)
+	returns := app.NewReturnsService(store, store, store, auth)
+	settlement := app.NewReturnSettlementService(store, store, store, nil, store,
+		app.WithReturnSettlementCashLedger(store),
+	)
 
 	noReceipt, err := returns.CreateNoReceiptReturn(context.Background(), app.CreateNoReceiptReturnCommand{
 		IdempotencyKey: "return-no-receipt",
@@ -335,9 +418,41 @@ func TestSettleReturnBlocksNoReceiptReturn(t *testing.T) {
 	_, err = settlement.SettleReturn(context.Background(), app.SettleReturnCommand{
 		IdempotencyKey: "settle-1",
 		ReturnID:       noReceipt.Return.ID,
+		ActorID:        "admin-1",
+		DrawerID:       "drawer-1",
 	})
-	if !errors.Is(err, app.ErrReturnSettlementNotAllowed) {
-		t.Fatalf("expected settlement not allowed, got %v", err)
+	if !errors.Is(err, app.ErrSeparationOfDutiesViolation) {
+		t.Fatalf("expected separation of duties violation, got %v", err)
+	}
+}
+
+func TestSettleNoReceiptReturnRequiresDrawer(t *testing.T) {
+	store := memory.NewStore(memory.WithDemoActors())
+	auth := app.NewAuthService(store, store)
+	returns := app.NewReturnsService(store, store, store, auth)
+	settlement := app.NewReturnSettlementService(store, store, store, nil, store,
+		app.WithReturnSettlementCashLedger(store),
+	)
+
+	noReceipt, err := returns.CreateNoReceiptReturn(context.Background(), app.CreateNoReceiptReturnCommand{
+		IdempotencyKey: "return-no-receipt",
+		StoreID:        "store-1",
+		Lines:          []app.ReturnLineCommand{{ProductID: "sku-1", Name: "Milk", Quantity: 1, UnitPriceMinor: 1000}},
+		Reason:         "No receipt",
+		ActorID:        "senior-1",
+		ApprovedByID:   "admin-1",
+	})
+	if err != nil {
+		t.Fatalf("create no-receipt return: %v", err)
+	}
+
+	_, err = settlement.SettleReturn(context.Background(), app.SettleReturnCommand{
+		IdempotencyKey: "settle-1",
+		ReturnID:       noReceipt.Return.ID,
+		ActorID:        "senior-1",
+	})
+	if !errors.Is(err, app.ErrCashDrawerRequired) {
+		t.Fatalf("expected cash drawer required, got %v", err)
 	}
 }
 
@@ -372,7 +487,10 @@ func newReturnSettlementServices(t *testing.T) (*memory.Store, *app.CheckoutServ
 	)
 	auth := app.NewAuthService(store, store)
 	returns := app.NewReturnsService(store, store, store, auth)
-	settlement := app.NewReturnSettlementService(store, store, store, payments, store)
+	settlement := app.NewReturnSettlementService(store, store, store, payments, store,
+		app.WithReturnSettlementCashLedger(store),
+		app.WithReturnSettlementShiftLookup(store),
+	)
 
 	return store, checkout, payments, fiscalization, returns, settlement, cash
 }

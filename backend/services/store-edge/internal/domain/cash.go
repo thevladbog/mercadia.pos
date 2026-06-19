@@ -23,6 +23,7 @@ const (
 	CashMovementTypeAdjustment       CashMovementType = "adjustment"
 	CashMovementTypeCashSale         CashMovementType = "cash_sale"
 	CashMovementTypeCashSaleReversal CashMovementType = "cash_sale_reversal"
+	CashMovementTypeNoReceiptReturnPayout CashMovementType = "no_receipt_return_payout"
 
 	CashMovementStatusPosted CashMovementStatus = "posted"
 )

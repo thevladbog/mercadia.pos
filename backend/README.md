@@ -154,7 +154,7 @@ The Store Edge service has the first checkout and terminal monitoring paths:
 - `GET /v1/receipts/{receiptId}/fiscal-documents` - lists receipt fiscal documents.
 - `POST /v1/receipts/{receiptId}/returns` - creates a with-receipt return against a fiscalized receipt.
 - `POST /v1/stores/{storeId}/returns/no-receipt` - creates a no-receipt return with approval.
-- `POST /v1/returns/{returnId}/settle` - settles a with-receipt return by refunding captured payments on the original receipt proportionally across payment methods. Supports partial line returns when the return total is less than the receipt total. Cumulative settled return totals for a receipt cannot exceed the receipt total. No-receipt returns are rejected.
+- `POST /v1/returns/{returnId}/settle` - settles a with-receipt return by refunding captured payments on the original receipt proportionally across payment methods, or disburses cash for an approved no-receipt return. Supports partial line returns when the return total is less than the receipt total. Optional `drawerId` selects the payout drawer for no-receipt returns (otherwise resolved from the actor's open shift). Cumulative settled return totals for a receipt cannot exceed the receipt total.
 - `POST /v1/stores/{storeId}/cash-movements` - posts an immutable cash movement between cash containers.
 - `GET /v1/stores/{storeId}/cash-movements` - lists cash movements posted for the store.
 - `GET /v1/stores/{storeId}/cash-balances` - derives current cash container balances from posted movements.
@@ -176,7 +176,7 @@ Same-day card payment cancel uses the hardware-agent `cancel` command when a ter
 Same-day cash payment cancel posts a compensating `cash_sale_reversal` movement from the receipt drawer back to the external customer container.
 Post-sale card refunds use the hardware-agent `refund` command with the original provider reference.
 Post-fiscal cash refunds post a compensating `cash_sale_reversal` movement from the receipt drawer back to the external customer container.
-Return settlement refunds captured payments on the original receipt through the existing refund paths (card via hardware-agent when enabled, cash via ledger reversal) and transitions the return to `settled`. Partial returns allocate refund amounts proportionally across refundable payment balances. Cumulative settled return totals for a receipt are capped at the receipt total; per-line cumulative validation across multiple returns is not yet enforced.
+Return settlement refunds captured payments on the original receipt through the existing refund paths (card via hardware-agent when enabled, cash via ledger reversal) and transitions the return to `settled`. Partial returns allocate refund amounts proportionally across refundable payment balances. Cumulative settled return totals for a receipt are capped at the receipt total; per-line cumulative validation across multiple returns is not yet enforced. No-receipt returns settle with a `no_receipt_return_payout` cash movement from the drawer; the approver recorded on the return is stored on the movement and cannot be the disbursing actor.
 
 Command endpoints require `Idempotency-Key`. Reusing the same key for the same command returns
 the same result; reusing it with a different command payload returns an idempotency conflict.

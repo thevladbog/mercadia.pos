@@ -678,6 +678,8 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	returnSettlement := app.NewReturnSettlementService(store, store, store, payments, store,
 		app.WithReturnSettlementOutboxRecorder(outbox),
 		app.WithReturnSettlementJournal(journal),
+		app.WithReturnSettlementCashLedger(store),
+		app.WithReturnSettlementShiftLookup(store),
 	)
 	discounts := app.NewDiscountService(store, store, auth, app.WithDiscountJournal(journal))
 	marking := app.NewMarkingService(store)

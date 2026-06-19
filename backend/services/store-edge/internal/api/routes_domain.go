@@ -112,8 +112,9 @@ type ReturnAcceptedResponse struct {
 }
 
 type SettleReturnRequest struct {
-	ActorID string `json:"actorId,omitempty"`
-	Reason  string `json:"reason,omitempty"`
+	ActorID  string `json:"actorId,omitempty"`
+	Reason   string `json:"reason,omitempty"`
+	DrawerID string `json:"drawerId,omitempty"`
 }
 
 type ReturnSettledResponse struct {
@@ -260,7 +261,7 @@ func mountDomainRoutes(
 		Method:              http.MethodPost,
 		Path:                "/v1/returns/{returnId}/settle",
 		OperationID:         "settleReturn",
-		Summary:             "Settle with-receipt return by refunding captured payments",
+		Summary:             "Settle return by refunding payments or disbursing cash for no-receipt returns",
 		Tags:                []string{"returns"},
 		RequiresIdempotency: true,
 		RequestBody: &httpapi.BodySpec{
@@ -291,6 +292,7 @@ func mountDomainRoutes(
 			ReturnID:       r.PathValue("returnId"),
 			ActorID:        request.ActorID,
 			Reason:         request.Reason,
+			DrawerID:       request.DrawerID,
 		})
 		if err != nil {
 			writeAppError(w, err)
@@ -575,8 +577,9 @@ func returnAcceptedResponseSchema() httpapi.Schema {
 
 func settleReturnRequestSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"actorId": httpapi.StringSchema(),
-		"reason":  httpapi.StringSchema(),
+		"actorId":  httpapi.StringSchema(),
+		"reason":   httpapi.StringSchema(),
+		"drawerId": httpapi.StringSchema(),
 	})
 }
 

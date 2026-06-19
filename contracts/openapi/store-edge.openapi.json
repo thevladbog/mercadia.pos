@@ -5256,6 +5256,9 @@
                   "actorId": {
                     "type": "string"
                   },
+                  "drawerId": {
+                    "type": "string"
+                  },
                   "reason": {
                     "type": "string"
                   }
@@ -5522,7 +5525,7 @@
             "description": "Return settlement conflict"
           }
         },
-        "summary": "Settle with-receipt return by refunding captured payments",
+        "summary": "Settle return by refunding payments or disbursing cash for no-receipt returns",
         "tags": [
           "returns"
         ]

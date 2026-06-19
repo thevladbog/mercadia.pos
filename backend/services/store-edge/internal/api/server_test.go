@@ -1082,6 +1082,74 @@ func TestSettlePartialReturnWorkflow(t *testing.T) {
 	}
 }
 
+func TestSettleNoReceiptReturnWorkflow(t *testing.T) {
+	server := NewServer()
+	openStoreDayAndShiftForDate(t, server, "return-settle-no-receipt", time.Now().UTC().Format("2006-01-02"))
+
+	fundResponse := httptest.NewRecorder()
+	fundRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/cash-movements", bytes.NewBufferString(`{
+		"type": "change_fund",
+		"fromContainerId": "safe-1",
+		"fromContainerType": "safe",
+		"toContainerId": "drawer-1",
+		"toContainerType": "drawer",
+		"amountMinor": 500000,
+		"currency": "RUB",
+		"reason": "Opening change fund",
+		"actorId": "senior-1",
+		"approvedById": "cashier-1"
+	}`))
+	fundRequest.Header.Set("Content-Type", "application/json")
+	fundRequest.Header.Set("Idempotency-Key", "return-settle-no-receipt-fund-1")
+	server.ServeHTTP(fundResponse, fundRequest)
+	if fundResponse.Code != http.StatusAccepted {
+		t.Fatalf("fund drawer status = %d body = %s", fundResponse.Code, fundResponse.Body.String())
+	}
+
+	returnResponseRecorder := httptest.NewRecorder()
+	returnRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/returns/no-receipt", bytes.NewBufferString(`{
+		"lines": [{"productId": "sku-1", "name": "Milk", "quantity": 1, "unitPriceMinor": 2500}],
+		"reason": "No receipt return",
+		"actorId": "senior-1",
+		"approvedById": "admin-1"
+	}`))
+	returnRequest.Header.Set("Content-Type", "application/json")
+	returnRequest.Header.Set("Idempotency-Key", "return-settle-no-receipt-return-1")
+	server.ServeHTTP(returnResponseRecorder, returnRequest)
+	if returnResponseRecorder.Code != http.StatusAccepted {
+		t.Fatalf("create return status = %d body = %s", returnResponseRecorder.Code, returnResponseRecorder.Body.String())
+	}
+
+	var acceptedReturn ReturnAcceptedResponse
+	if err := json.Unmarshal(returnResponseRecorder.Body.Bytes(), &acceptedReturn); err != nil {
+		t.Fatalf("decode return response: %v", err)
+	}
+
+	settleResponse := httptest.NewRecorder()
+	settleRequest := httptest.NewRequest(http.MethodPost, "/v1/returns/"+acceptedReturn.Return.ID+"/settle", bytes.NewBufferString(`{
+		"actorId": "senior-1",
+		"reason": "No receipt payout",
+		"drawerId": "drawer-1"
+	}`))
+	settleRequest.Header.Set("Content-Type", "application/json")
+	settleRequest.Header.Set("Idempotency-Key", "return-settle-no-receipt-settle-1")
+	server.ServeHTTP(settleResponse, settleRequest)
+	if settleResponse.Code != http.StatusAccepted {
+		t.Fatalf("settle return status = %d body = %s", settleResponse.Code, settleResponse.Body.String())
+	}
+
+	var settled ReturnSettledResponse
+	if err := json.Unmarshal(settleResponse.Body.Bytes(), &settled); err != nil {
+		t.Fatalf("decode settle response: %v", err)
+	}
+	if settled.Return.Status != "settled" {
+		t.Fatalf("return status = %s", settled.Return.Status)
+	}
+	if len(settled.Payments) != 0 {
+		t.Fatalf("payments = %+v", settled.Payments)
+	}
+}
+
 func TestCashMovementWorkflow(t *testing.T) {
 	server := NewServer()
 

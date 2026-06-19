@@ -11,16 +11,24 @@ import (
 )
 
 var (
-	ErrReturnSettlementPaymentMismatch           = errors.New("return settlement payment mismatch")
-	ErrReturnSettlementCumulativeTotalExceeded   = errors.New("return settlement cumulative total exceeded")
+	ErrReturnSettlementPaymentMismatch         = errors.New("return settlement payment mismatch")
+	ErrReturnSettlementCumulativeTotalExceeded = errors.New("return settlement cumulative total exceeded")
 )
 
 type PaymentRefunder interface {
 	RefundPayment(ctx context.Context, command RefundPaymentCommand) (PaymentResult, error)
 }
 
+type ReturnSettlementCashLedger interface {
+	SaveCashMovement(ctx context.Context, movement domain.CashMovement) error
+}
+
+type ReturnSettlementShiftLookup interface {
+	FindOpenShiftByCashier(ctx context.Context, cashierID string) (domain.Shift, error)
+}
+
 type ReturnSettlementOutboxRecorder interface {
-	RecordReturnSettled(ctx context.Context, ret domain.Return, paymentIDs []string, storeID string, actorID string) error
+	RecordReturnSettled(ctx context.Context, ret domain.Return, paymentIDs []string, storeID string, actorID string, cashMovementID string) error
 }
 
 type ReturnSettlementService struct {
@@ -28,10 +36,13 @@ type ReturnSettlementService struct {
 	receipts    ReceiptRepository
 	payments    PaymentRepository
 	refunder    PaymentRefunder
+	cash        ReturnSettlementCashLedger
+	shifts      ReturnSettlementShiftLookup
 	idempotency IdempotencyStore
 	outbox      ReturnSettlementOutboxRecorder
 	journal     OperationJournalRecorder
 	now         func() time.Time
+	newID       func(prefix string) string
 }
 
 type ReturnSettlementOption func(*ReturnSettlementService)
@@ -53,6 +64,7 @@ func NewReturnSettlementService(
 		now: func() time.Time {
 			return time.Now().UTC()
 		},
+		newID: randomID,
 	}
 	for _, option := range options {
 		option(service)
@@ -72,11 +84,24 @@ func WithReturnSettlementJournal(journal OperationJournalRecorder) ReturnSettlem
 	}
 }
 
+func WithReturnSettlementCashLedger(cash ReturnSettlementCashLedger) ReturnSettlementOption {
+	return func(service *ReturnSettlementService) {
+		service.cash = cash
+	}
+}
+
+func WithReturnSettlementShiftLookup(shifts ReturnSettlementShiftLookup) ReturnSettlementOption {
+	return func(service *ReturnSettlementService) {
+		service.shifts = shifts
+	}
+}
+
 type SettleReturnCommand struct {
 	IdempotencyKey string
 	ReturnID       string
 	ActorID        string
 	Reason         string
+	DrawerID       string
 }
 
 type SettleReturnResult struct {
@@ -92,18 +117,9 @@ func (s *ReturnSettlementService) SettleReturn(ctx context.Context, command Sett
 		return SettleReturnResult{}, ErrInvalidReturnCommand
 	}
 
-	const operation = "returns.settle"
-	fingerprint := fmt.Sprintf("%s|%s|%s", command.ReturnID, command.ActorID, command.Reason)
-	if result, found, err := s.findSettleIdempotency(ctx, operation, command.IdempotencyKey, command.ReturnID, fingerprint); err != nil || found {
-		return result, err
-	}
-
 	ret, err := s.returns.FindReturn(ctx, command.ReturnID)
 	if err != nil {
 		return SettleReturnResult{}, err
-	}
-	if ret.Kind != domain.ReturnKindWithReceipt {
-		return SettleReturnResult{}, ErrReturnSettlementNotAllowed
 	}
 	if ret.Status == domain.ReturnStatusSettled {
 		return SettleReturnResult{}, ErrReturnAlreadySettled
@@ -113,6 +129,23 @@ func (s *ReturnSettlementService) SettleReturn(ctx context.Context, command Sett
 	}
 	if ret.TotalMinor <= 0 {
 		return SettleReturnResult{}, ErrInvalidReturnCommand
+	}
+
+	switch ret.Kind {
+	case domain.ReturnKindWithReceipt:
+		return s.settleWithReceiptReturn(ctx, command, ret)
+	case domain.ReturnKindNoReceipt:
+		return s.settleNoReceiptReturn(ctx, command, ret)
+	default:
+		return SettleReturnResult{}, ErrReturnSettlementNotAllowed
+	}
+}
+
+func (s *ReturnSettlementService) settleWithReceiptReturn(ctx context.Context, command SettleReturnCommand, ret domain.Return) (SettleReturnResult, error) {
+	const operation = "returns.settle"
+	fingerprint := fmt.Sprintf("%s|%s|%s", command.ReturnID, command.ActorID, command.Reason)
+	if result, found, err := s.findSettleIdempotency(ctx, operation, command.IdempotencyKey, command.ReturnID, fingerprint); err != nil || found {
+		return result, err
 	}
 
 	receipt, err := s.receipts.FindReceipt(ctx, ret.ReceiptID)
@@ -170,6 +203,97 @@ func (s *ReturnSettlementService) SettleReturn(ctx context.Context, command Sett
 		refundedPayments = append(refundedPayments, refundResult.Payment)
 	}
 
+	paymentIDs := make([]string, 0, len(refundedPayments))
+	for _, payment := range refundedPayments {
+		paymentIDs = append(paymentIDs, payment.ID)
+	}
+
+	return s.finishSettledReturn(ctx, command, ret, operation, fingerprint, paymentIDs, "", refundedPayments)
+}
+
+func (s *ReturnSettlementService) settleNoReceiptReturn(ctx context.Context, command SettleReturnCommand, ret domain.Return) (SettleReturnResult, error) {
+	if ret.ApprovedByID == "" {
+		return SettleReturnResult{}, ErrReturnSettlementNotAllowed
+	}
+	if s.cash == nil {
+		return SettleReturnResult{}, ErrCashDrawerRequired
+	}
+
+	actorID := command.ActorID
+	if actorID == "" {
+		actorID = ret.ActorID
+	}
+	if actorID == ret.ApprovedByID {
+		return SettleReturnResult{}, ErrSeparationOfDutiesViolation
+	}
+
+	drawerID, err := s.resolveDrawerID(ctx, command.DrawerID, actorID)
+	if err != nil {
+		return SettleReturnResult{}, err
+	}
+
+	const operation = "returns.settle"
+	fingerprint := fmt.Sprintf("%s|%s|%s|%s", command.ReturnID, command.ActorID, command.Reason, drawerID)
+	if result, found, err := s.findSettleIdempotency(ctx, operation, command.IdempotencyKey, command.ReturnID, fingerprint); err != nil || found {
+		return result, err
+	}
+
+	now := s.now()
+	movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
+		ID:                s.newID("cash"),
+		StoreID:           ret.StoreID,
+		Type:              domain.CashMovementTypeNoReceiptReturnPayout,
+		FromContainerID:   drawerID,
+		FromContainerType: domain.CashContainerTypeDrawer,
+		ToContainerID:     "external-customer",
+		ToContainerType:   domain.CashContainerTypeExternal,
+		AmountMinor:       ret.TotalMinor,
+		Currency:          "RUB",
+		Reason:            "No-receipt return payout " + ret.ID,
+		ActorID:           actorID,
+		ApprovedByID:      ret.ApprovedByID,
+		Now:               now,
+	})
+	if err != nil {
+		return SettleReturnResult{}, err
+	}
+	if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+		return SettleReturnResult{}, err
+	}
+
+	return s.finishSettledReturn(ctx, command, ret, operation, fingerprint, nil, movement.ID, nil)
+}
+
+func (s *ReturnSettlementService) resolveDrawerID(ctx context.Context, drawerID string, actorID string) (string, error) {
+	if drawerID != "" {
+		return drawerID, nil
+	}
+	if s.shifts == nil {
+		return "", ErrCashDrawerRequired
+	}
+	shift, err := s.shifts.FindOpenShiftByCashier(ctx, actorID)
+	if err != nil {
+		if errors.Is(err, ErrShiftNotFound) {
+			return "", ErrCashDrawerRequired
+		}
+		return "", err
+	}
+	if shift.DrawerID == "" {
+		return "", ErrCashDrawerRequired
+	}
+	return shift.DrawerID, nil
+}
+
+func (s *ReturnSettlementService) finishSettledReturn(
+	ctx context.Context,
+	command SettleReturnCommand,
+	ret domain.Return,
+	operation string,
+	fingerprint string,
+	paymentIDs []string,
+	cashMovementID string,
+	refundedPayments []domain.Payment,
+) (SettleReturnResult, error) {
 	now := s.now()
 	if err := ret.MarkSettled(now); err != nil {
 		return SettleReturnResult{}, mapReturnSettlementDomainError(err)
@@ -178,20 +302,16 @@ func (s *ReturnSettlementService) SettleReturn(ctx context.Context, command Sett
 		return SettleReturnResult{}, err
 	}
 
-	paymentIDs := make([]string, 0, len(refundedPayments))
-	for _, payment := range refundedPayments {
-		paymentIDs = append(paymentIDs, payment.ID)
-	}
 	if s.outbox != nil {
 		actorID := command.ActorID
 		if actorID == "" {
 			actorID = ret.ActorID
 		}
-		if err := s.outbox.RecordReturnSettled(ctx, ret, paymentIDs, ret.StoreID, actorID); err != nil {
+		if err := s.outbox.RecordReturnSettled(ctx, ret, paymentIDs, ret.StoreID, actorID, cashMovementID); err != nil {
 			return SettleReturnResult{}, err
 		}
 	}
-	s.recordJournal(ctx, ret, paymentIDs)
+	s.recordJournal(ctx, ret, paymentIDs, cashMovementID)
 
 	result := SettleReturnResult{
 		Return:   ret,
@@ -295,16 +415,20 @@ func mapReturnSettlementDomainError(err error) error {
 	}
 }
 
-func (s *ReturnSettlementService) recordJournal(ctx context.Context, ret domain.Return, paymentIDs []string) {
+func (s *ReturnSettlementService) recordJournal(ctx context.Context, ret domain.Return, paymentIDs []string, cashMovementID string) {
 	if s.journal == nil {
 		return
+	}
+	summary := fmt.Sprintf("settled return %s payments=%d total=%d", ret.ID, len(paymentIDs), ret.TotalMinor)
+	if cashMovementID != "" {
+		summary = fmt.Sprintf("settled no-receipt return %s cashMovement=%s total=%d", ret.ID, cashMovementID, ret.TotalMinor)
 	}
 	_ = s.journal.RecordOperation(ctx, RecordOperationCommand{
 		StoreID:       ret.StoreID,
 		OperationType: "return.settled",
 		ActorID:       ret.ActorID,
 		ReferenceID:   ret.ID,
-		Summary:       fmt.Sprintf("settled return %s payments=%d total=%d", ret.ID, len(paymentIDs), ret.TotalMinor),
+		Summary:       summary,
 	})
 }
 
