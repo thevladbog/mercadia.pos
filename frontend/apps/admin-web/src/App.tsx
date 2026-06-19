@@ -8,6 +8,7 @@ import { UnauthorizedBridge } from './auth/UnauthorizedBridge.js';
 import { AppLayout } from './layout/AppLayout.js';
 import { CentralReportingPage } from './pages/CentralReportingPage.js';
 import { CentralStoresPage } from './pages/CentralStoresPage.js';
+import { CentralSyncExplorerPage } from './pages/CentralSyncExplorerPage.js';
 import { CentralUsersPage } from './pages/CentralUsersPage.js';
 import { CreateCentralUserPage } from './pages/CreateCentralUserPage.js';
 import { EditCentralUserPage } from './pages/EditCentralUserPage.js';
@@ -24,6 +25,7 @@ export function App() {
           <Route element={<AppLayout />}>
             <Route element={<CentralReportingPage />} path="/central/reporting" />
             <Route element={<CentralStoresPage />} path="/central/stores" />
+            <Route element={<CentralSyncExplorerPage />} path="/central/sync" />
             <Route element={<StoreMonitoringPage />} path="/store/monitoring" />
             <Route element={<RequireCentralAdmin />}>
               <Route element={<RegisterStorePage />} path="/central/stores/new" />

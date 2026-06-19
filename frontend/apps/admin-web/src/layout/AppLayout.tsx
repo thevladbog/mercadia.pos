@@ -20,6 +20,7 @@ export function AppLayout() {
           <nav>
             <Link to="/central/reporting">Reporting</Link>
             <Link to="/central/stores">Stores</Link>
+            <Link to="/central/sync">Sync</Link>
             <Link to="/store/monitoring">Monitoring</Link>
             {canManageCentralUsers(roles) ? <Link to="/central/users">Users</Link> : null}
           </nav>
