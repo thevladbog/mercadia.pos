@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrReturnNotFound    = errors.New("return not found")
+	ErrReturnNotFound     = errors.New("return not found")
 	ErrInvalidReturnQuery = errors.New("invalid return query")
 )
 

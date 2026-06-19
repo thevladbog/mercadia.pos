@@ -12,37 +12,37 @@ import (
 )
 
 type Store struct {
-	mu            sync.RWMutex
-	stores        map[string]domain.Store
-	syncEvents    map[string]domain.SyncEvent
-	syncByStore   map[string]map[string]string
-	products      map[string]domain.CatalogProduct
-	payments      map[string]domain.SyncedPayment
-	cashMovements  map[string]domain.SyncedCashMovement
+	mu              sync.RWMutex
+	stores          map[string]domain.Store
+	syncEvents      map[string]domain.SyncEvent
+	syncByStore     map[string]map[string]string
+	products        map[string]domain.CatalogProduct
+	payments        map[string]domain.SyncedPayment
+	cashMovements   map[string]domain.SyncedCashMovement
 	fiscalDocuments map[string]domain.SyncedFiscalDocument
-	returns           map[string]domain.SyncedReturn
-	operationalDays   map[string]domain.SyncedOperationalDay
-	users             map[string]domain.CentralUser
-	sessions          map[string]domain.CentralSession
-	idempotency   map[string]app.IdempotencyRecord
+	returns         map[string]domain.SyncedReturn
+	operationalDays map[string]domain.SyncedOperationalDay
+	users           map[string]domain.CentralUser
+	sessions        map[string]domain.CentralSession
+	idempotency     map[string]app.IdempotencyRecord
 }
 
 type StoreOption func(*Store)
 
 func NewStore(options ...StoreOption) *Store {
 	store := &Store{
-		stores:        map[string]domain.Store{},
-		syncEvents:    map[string]domain.SyncEvent{},
-		syncByStore:   map[string]map[string]string{},
-		products:    map[string]domain.CatalogProduct{},
-		payments:      map[string]domain.SyncedPayment{},
-		cashMovements:  map[string]domain.SyncedCashMovement{},
+		stores:          map[string]domain.Store{},
+		syncEvents:      map[string]domain.SyncEvent{},
+		syncByStore:     map[string]map[string]string{},
+		products:        map[string]domain.CatalogProduct{},
+		payments:        map[string]domain.SyncedPayment{},
+		cashMovements:   map[string]domain.SyncedCashMovement{},
 		fiscalDocuments: map[string]domain.SyncedFiscalDocument{},
-		returns:           map[string]domain.SyncedReturn{},
-		operationalDays:   map[string]domain.SyncedOperationalDay{},
-		users:             map[string]domain.CentralUser{},
-		sessions:          map[string]domain.CentralSession{},
-		idempotency:   map[string]app.IdempotencyRecord{},
+		returns:         map[string]domain.SyncedReturn{},
+		operationalDays: map[string]domain.SyncedOperationalDay{},
+		users:           map[string]domain.CentralUser{},
+		sessions:        map[string]domain.CentralSession{},
+		idempotency:     map[string]app.IdempotencyRecord{},
 	}
 	for _, option := range options {
 		option(store)

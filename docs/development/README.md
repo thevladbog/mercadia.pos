@@ -8,6 +8,7 @@ This folder contains engineering and agent-facing guidance for building Mercadia
 - [API contract workflow](api-contract-workflow.md) - OpenAPI generation, Scalar docs, and Orval client generation.
 - [Repository structure](repository-structure.md) - POS folder ownership and app/service/package layout.
 - [Dependency and version policy](dependency-policy.md) - current, maintained, and secure component rules.
+- [Continuous integration](ci.md) - GitHub Actions jobs, path filters, and branch protection.
 - [Documentation backlog](documentation-backlog.md) - important topics that are not yet described deeply enough.
 
 The short entry point for automated coding agents is:

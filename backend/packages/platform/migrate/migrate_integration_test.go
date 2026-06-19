@@ -28,7 +28,7 @@ func TestUpAppliesMigrationsWhenPostgresAvailable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open postgres: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 	result, err := platformmigrate.Up(ctx, db, "store-edge-test", migrationsDir)

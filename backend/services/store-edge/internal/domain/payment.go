@@ -18,10 +18,10 @@ const (
 )
 
 var (
-	ErrInvalidPaymentInput         = errors.New("invalid payment input")
-	ErrPaymentCannotBeCancelled    = errors.New("payment cannot be cancelled")
-	ErrPaymentCannotBeRefunded     = errors.New("payment cannot be refunded")
-	ErrPaymentRefundAmountInvalid  = errors.New("payment refund amount is invalid")
+	ErrInvalidPaymentInput        = errors.New("invalid payment input")
+	ErrPaymentCannotBeCancelled   = errors.New("payment cannot be cancelled")
+	ErrPaymentCannotBeRefunded    = errors.New("payment cannot be refunded")
+	ErrPaymentRefundAmountInvalid = errors.New("payment refund amount is invalid")
 )
 
 type Payment struct {

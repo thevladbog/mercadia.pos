@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"mercadia.dev/pos/platform/observability"
 	"mercadia.dev/pos/services/hardware-agent/internal/api"
@@ -31,8 +32,9 @@ func main() {
 	}
 
 	server := &http.Server{
-		Addr:    addr,
-		Handler: observability.InstrumentHTTP("hardware-agent", api.NewServer()),
+		Addr:              addr,
+		Handler:           observability.InstrumentHTTP("hardware-agent", api.NewServer()),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	slog.Info("starting hardware agent", "addr", addr, "otel", observability.OTELEnabled())

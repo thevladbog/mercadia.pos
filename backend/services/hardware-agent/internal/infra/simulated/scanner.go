@@ -30,7 +30,7 @@ func (a *ScannerAdapter) Execute(_ context.Context, device domain.Device, comman
 			barcode = value
 		}
 		return map[string]any{
-			"barcode": barcode,
+			"barcode":   barcode,
 			"symbology": "EAN13",
 		}, nil
 	default:

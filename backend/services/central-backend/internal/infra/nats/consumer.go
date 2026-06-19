@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	streamName       = "MERCADIA_STORE_EDGE"
-	subjectPrefix    = "mercadia.store-edge.sync"
-	consumerDurable  = "central-backend-sync"
+	streamName      = "MERCADIA_STORE_EDGE"
+	subjectPrefix   = "mercadia.store-edge.sync"
+	consumerDurable = "central-backend-sync"
 )
 
 type SyncEventAccepter interface {

@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrCashMovementNotFound    = errors.New("cash movement not found")
+	ErrCashMovementNotFound     = errors.New("cash movement not found")
 	ErrInvalidCashMovementQuery = errors.New("invalid cash movement query")
 )
 
@@ -19,7 +19,7 @@ type SyncedCashMovementRepository interface {
 }
 
 type CashMovementsService struct {
-	stores       StoreRepository
+	stores        StoreRepository
 	cashMovements SyncedCashMovementRepository
 }
 

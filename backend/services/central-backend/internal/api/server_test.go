@@ -153,18 +153,17 @@ func TestOpenAPIExposesCentralOperations(t *testing.T) {
 	}
 }
 
+func loginAdminAndRegisterStore(t *testing.T, server http.Handler, body, idempotencyKey string) string {
+	t.Helper()
+	token := loginTestSession(t, server, "admin@example.com", "admin-pass")
+	registerTestStore(t, server, body, idempotencyKey, registerTestStoreAuth{sessionToken: token})
+	return token
+}
+
 func TestRegisterStoreAndStatus(t *testing.T) {
 	server := newTestServer()
 
-	registerBody := bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street","region":"west"}`)
-	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", registerBody)
-	registerRequest.Header.Set("Content-Type", "application/json")
-	registerRequest.Header.Set("Idempotency-Key", "register-1")
-	registerResponse := httptest.NewRecorder()
-	server.ServeHTTP(registerResponse, registerRequest)
-	if registerResponse.Code != http.StatusAccepted {
-		t.Fatalf("register status = %d body=%s", registerResponse.Code, registerResponse.Body.String())
-	}
+	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street","region":"west"}`, "register-1")
 
 	statusResponse := httptest.NewRecorder()
 	statusRequest := httptest.NewRequest(http.MethodGet, "/v1/central/status", nil)
@@ -185,14 +184,7 @@ func TestRegisterStoreAndStatus(t *testing.T) {
 func TestSyncEventsAndCatalogEndpoints(t *testing.T) {
 	server := newTestServer()
 
-	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
-	registerRequest.Header.Set("Content-Type", "application/json")
-	registerRequest.Header.Set("Idempotency-Key", "register-1")
-	registerResponse := httptest.NewRecorder()
-	server.ServeHTTP(registerResponse, registerRequest)
-	if registerResponse.Code != http.StatusAccepted {
-		t.Fatalf("register status = %d", registerResponse.Code)
-	}
+	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-1")
 
 	since := time.Now().UTC().Add(-time.Hour).Format(time.RFC3339)
 	syncBody := bytes.NewBufferString(`{"events":[{"eventId":"evt-1","eventType":"catalog.product.upserted","payload":{"productId":"sku-1","name":"Milk","barcodes":["4600000000000"],"unitPriceMinor":19999,"taxCategoryId":"vat_20"}}]}`)
@@ -232,14 +224,7 @@ func TestSyncEventsAndCatalogEndpoints(t *testing.T) {
 func TestListStoreSyncEventsReturnsAcceptedEvents(t *testing.T) {
 	server := newTestServer()
 
-	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
-	registerRequest.Header.Set("Content-Type", "application/json")
-	registerRequest.Header.Set("Idempotency-Key", "register-list-sync")
-	registerResponse := httptest.NewRecorder()
-	server.ServeHTTP(registerResponse, registerRequest)
-	if registerResponse.Code != http.StatusAccepted {
-		t.Fatalf("register status = %d", registerResponse.Code)
-	}
+	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-list-sync")
 
 	syncBody := bytes.NewBufferString(`{"events":[{"eventId":"evt-list-1","eventType":"catalog.product.upserted","payload":{"productId":"sku-1","name":"Milk","barcodes":["4600000000000"],"unitPriceMinor":19999,"taxCategoryId":"vat_20"}}]}`)
 	syncRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/sync-events", syncBody)
@@ -273,14 +258,7 @@ func TestListStoreSyncEventsReturnsAcceptedEvents(t *testing.T) {
 func TestSyncEventsProjectPaymentsAndCashMovements(t *testing.T) {
 	server := newTestServer()
 
-	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
-	registerRequest.Header.Set("Content-Type", "application/json")
-	registerRequest.Header.Set("Idempotency-Key", "register-projection-1")
-	registerResponse := httptest.NewRecorder()
-	server.ServeHTTP(registerResponse, registerRequest)
-	if registerResponse.Code != http.StatusAccepted {
-		t.Fatalf("register status = %d", registerResponse.Code)
-	}
+	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-projection-1")
 
 	capturedAt := time.Date(2026, 6, 19, 14, 30, 0, 0, time.UTC).Format(time.RFC3339)
 	postedAt := time.Date(2026, 6, 19, 15, 0, 0, 0, time.UTC).Format(time.RFC3339)
@@ -330,14 +308,7 @@ func TestSyncEventsProjectPaymentsAndCashMovements(t *testing.T) {
 func TestSyncEventsUpdatePaymentLifecycle(t *testing.T) {
 	server := newTestServer()
 
-	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
-	registerRequest.Header.Set("Content-Type", "application/json")
-	registerRequest.Header.Set("Idempotency-Key", "register-lifecycle-http")
-	registerResponse := httptest.NewRecorder()
-	server.ServeHTTP(registerResponse, registerRequest)
-	if registerResponse.Code != http.StatusAccepted {
-		t.Fatalf("register status = %d", registerResponse.Code)
-	}
+	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-lifecycle-http")
 
 	capturedAt := time.Date(2026, 6, 19, 14, 30, 0, 0, time.UTC).Format(time.RFC3339)
 	cancelledAt := time.Date(2026, 6, 19, 15, 0, 0, 0, time.UTC).Format(time.RFC3339)
@@ -373,14 +344,7 @@ func TestSyncEventsUpdatePaymentLifecycle(t *testing.T) {
 func TestSyncEventsProjectFiscalDocument(t *testing.T) {
 	server := newTestServer()
 
-	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
-	registerRequest.Header.Set("Content-Type", "application/json")
-	registerRequest.Header.Set("Idempotency-Key", "register-fiscal-http")
-	registerResponse := httptest.NewRecorder()
-	server.ServeHTTP(registerResponse, registerRequest)
-	if registerResponse.Code != http.StatusAccepted {
-		t.Fatalf("register status = %d", registerResponse.Code)
-	}
+	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-fiscal-http")
 
 	fiscalizedAt := time.Date(2026, 6, 19, 16, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	syncBody := bytes.NewBufferString(`{"events":[` +
@@ -414,14 +378,7 @@ func TestSyncEventsProjectFiscalDocument(t *testing.T) {
 func TestSyncEventsProjectReturn(t *testing.T) {
 	server := newTestServer()
 
-	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
-	registerRequest.Header.Set("Content-Type", "application/json")
-	registerRequest.Header.Set("Idempotency-Key", "register-return-http")
-	registerResponse := httptest.NewRecorder()
-	server.ServeHTTP(registerResponse, registerRequest)
-	if registerResponse.Code != http.StatusAccepted {
-		t.Fatalf("register status = %d", registerResponse.Code)
-	}
+	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-return-http")
 
 	settledAt := time.Date(2026, 6, 19, 17, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	syncBody := bytes.NewBufferString(`{"events":[` +
@@ -455,14 +412,7 @@ func TestSyncEventsProjectReturn(t *testing.T) {
 func TestSyncEventsProjectOperationalDay(t *testing.T) {
 	server := newTestServer()
 
-	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
-	registerRequest.Header.Set("Content-Type", "application/json")
-	registerRequest.Header.Set("Idempotency-Key", "register-od-http")
-	registerResponse := httptest.NewRecorder()
-	server.ServeHTTP(registerResponse, registerRequest)
-	if registerResponse.Code != http.StatusAccepted {
-		t.Fatalf("register status = %d", registerResponse.Code)
-	}
+	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-od-http")
 
 	closedAt := time.Date(2026, 6, 19, 23, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	syncBody := bytes.NewBufferString(`{"events":[` +
@@ -496,14 +446,7 @@ func TestSyncEventsProjectOperationalDay(t *testing.T) {
 func TestStoreReportingSummaryEndpoint(t *testing.T) {
 	server := newTestServer()
 
-	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
-	registerRequest.Header.Set("Content-Type", "application/json")
-	registerRequest.Header.Set("Idempotency-Key", "register-reporting-http")
-	registerResponse := httptest.NewRecorder()
-	server.ServeHTTP(registerResponse, registerRequest)
-	if registerResponse.Code != http.StatusAccepted {
-		t.Fatalf("register status = %d", registerResponse.Code)
-	}
+	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-reporting-http")
 
 	capturedAt := time.Date(2026, 6, 19, 14, 30, 0, 0, time.UTC).Format(time.RFC3339)
 	fiscalizedAt := time.Date(2026, 6, 19, 15, 0, 0, 0, time.UTC).Format(time.RFC3339)
@@ -545,22 +488,16 @@ func TestStoreReportingSummaryEndpoint(t *testing.T) {
 
 func TestCentralReportingSummaryEndpoint(t *testing.T) {
 	server := newTestServer()
+	adminToken := loginTestSession(t, server, "admin@example.com", "admin-pass")
 
 	for _, fixture := range []struct {
-		body            string
-		idempotencyKey  string
+		body           string
+		idempotencyKey string
 	}{
 		{`{"storeId":"store-west","name":"West","region":"west"}`, "register-west-http"},
 		{`{"storeId":"store-east","name":"East","region":"east"}`, "register-east-http"},
 	} {
-		registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(fixture.body))
-		registerRequest.Header.Set("Content-Type", "application/json")
-		registerRequest.Header.Set("Idempotency-Key", fixture.idempotencyKey)
-		registerResponse := httptest.NewRecorder()
-		server.ServeHTTP(registerResponse, registerRequest)
-		if registerResponse.Code != http.StatusAccepted {
-			t.Fatalf("register status = %d body=%s", registerResponse.Code, registerResponse.Body.String())
-		}
+		registerTestStore(t, server, fixture.body, fixture.idempotencyKey, registerTestStoreAuth{sessionToken: adminToken})
 	}
 
 	capturedAt := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC).Format(time.RFC3339)
@@ -589,7 +526,7 @@ func TestCentralReportingSummaryEndpoint(t *testing.T) {
 
 	since := time.Date(2026, 6, 19, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	until := time.Date(2026, 6, 19, 23, 59, 59, 0, time.UTC).Format(time.RFC3339)
-	token := loginTestSession(t, server, "admin@example.com", "admin-pass")
+	token := adminToken
 
 	centralResponse := httptest.NewRecorder()
 	centralRequest := httptest.NewRequest(http.MethodGet, "/v1/central/reporting/summary?since="+since+"&until="+until, nil)
@@ -706,14 +643,7 @@ func TestSyncEventsRequireAPIKeyWhenConfigured(t *testing.T) {
 	store := memory.NewStore()
 	server := api.NewServerWithServices(newTestServicesWithSyncAPIKey(store, "test-key"))
 
-	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
-	registerRequest.Header.Set("Content-Type", "application/json")
-	registerRequest.Header.Set("Idempotency-Key", "register-sync-key")
-	registerResponse := httptest.NewRecorder()
-	server.ServeHTTP(registerResponse, registerRequest)
-	if registerResponse.Code != http.StatusAccepted {
-		t.Fatalf("register status = %d body=%s", registerResponse.Code, registerResponse.Body.String())
-	}
+	registerTestStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-sync-key", registerTestStoreAuth{syncAPIKey: "test-key"})
 
 	syncBody := bytes.NewBufferString(`{"events":[{"eventId":"evt-key-1","eventType":"catalog.product.upserted","payload":{"productId":"sku-1","name":"Milk","barcodes":["4600000000000"],"unitPriceMinor":19999,"taxCategoryId":"vat_20"}}]}`)
 
@@ -734,5 +664,144 @@ func TestSyncEventsRequireAPIKeyWhenConfigured(t *testing.T) {
 	server.ServeHTTP(authorizedResponse, authorizedRequest)
 	if authorizedResponse.Code != http.StatusAccepted {
 		t.Fatalf("sync with key status = %d body=%s", authorizedResponse.Code, authorizedResponse.Body.String())
+	}
+}
+
+type registerTestStoreAuth struct {
+	sessionToken string
+	syncAPIKey   string
+}
+
+func registerTestStore(t *testing.T, server http.Handler, body, idempotencyKey string, auth registerTestStoreAuth) {
+	t.Helper()
+
+	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(body))
+	registerRequest.Header.Set("Content-Type", "application/json")
+	registerRequest.Header.Set("Idempotency-Key", idempotencyKey)
+	if auth.sessionToken != "" {
+		registerRequest.Header.Set("X-Session-Token", auth.sessionToken)
+	}
+	if auth.syncAPIKey != "" {
+		registerRequest.Header.Set("X-Sync-Api-Key", auth.syncAPIKey)
+	}
+	registerResponse := httptest.NewRecorder()
+	server.ServeHTTP(registerResponse, registerRequest)
+	if registerResponse.Code != http.StatusAccepted {
+		t.Fatalf("register status = %d body=%s", registerResponse.Code, registerResponse.Body.String())
+	}
+}
+
+func TestRegisterStoreRequiresAdminSessionWhenSyncKeyUnset(t *testing.T) {
+	store := memory.NewStore()
+	if err := seedHTTPTestAdmin(store); err != nil {
+		t.Fatalf("seed admin: %v", err)
+	}
+	if err := seedHTTPTestViewer(store); err != nil {
+		t.Fatalf("seed viewer: %v", err)
+	}
+	server := api.NewServerWithServices(newTestServices(store))
+	body := `{"storeId":"store-1","name":"Main Street","region":"west"}`
+
+	unauthorizedRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(body))
+	unauthorizedRequest.Header.Set("Content-Type", "application/json")
+	unauthorizedRequest.Header.Set("Idempotency-Key", "register-unauthorized")
+	unauthorizedResponse := httptest.NewRecorder()
+	server.ServeHTTP(unauthorizedResponse, unauthorizedRequest)
+	if unauthorizedResponse.Code != http.StatusUnauthorized {
+		t.Fatalf("register without auth status = %d body=%s", unauthorizedResponse.Code, unauthorizedResponse.Body.String())
+	}
+
+	viewerToken := loginTestSession(t, server, "viewer@example.com", "viewer-pass")
+	forbiddenRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(body))
+	forbiddenRequest.Header.Set("Content-Type", "application/json")
+	forbiddenRequest.Header.Set("Idempotency-Key", "register-forbidden")
+	forbiddenRequest.Header.Set("X-Session-Token", viewerToken)
+	forbiddenResponse := httptest.NewRecorder()
+	server.ServeHTTP(forbiddenResponse, forbiddenRequest)
+	if forbiddenResponse.Code != http.StatusForbidden {
+		t.Fatalf("register viewer status = %d body=%s", forbiddenResponse.Code, forbiddenResponse.Body.String())
+	}
+
+	adminToken := loginTestSession(t, server, "admin@example.com", "admin-pass")
+	registerTestStore(t, server, body, "register-admin", registerTestStoreAuth{sessionToken: adminToken})
+}
+
+func TestRegisterStoreAcceptsSyncAPIKeyWhenConfigured(t *testing.T) {
+	store := memory.NewStore()
+	server := api.NewServerWithServices(newTestServicesWithSyncAPIKey(store, "test-key"))
+	body := `{"storeId":"store-1","name":"Main Street"}`
+
+	unauthorizedRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(body))
+	unauthorizedRequest.Header.Set("Content-Type", "application/json")
+	unauthorizedRequest.Header.Set("Idempotency-Key", "register-no-key")
+	unauthorizedResponse := httptest.NewRecorder()
+	server.ServeHTTP(unauthorizedResponse, unauthorizedRequest)
+	if unauthorizedResponse.Code != http.StatusUnauthorized {
+		t.Fatalf("register without key status = %d body=%s", unauthorizedResponse.Code, unauthorizedResponse.Body.String())
+	}
+
+	registerTestStore(t, server, body, "register-with-key", registerTestStoreAuth{syncAPIKey: "test-key"})
+}
+
+func TestRegisterStoreRejectsAdminSessionWhenSyncKeyConfigured(t *testing.T) {
+	store := memory.NewStore()
+	if err := seedHTTPTestAdmin(store); err != nil {
+		t.Fatalf("seed admin: %v", err)
+	}
+	server := api.NewServerWithServices(newTestServicesWithSyncAPIKey(store, "test-key"))
+	adminToken := loginTestSession(t, server, "admin@example.com", "admin-pass")
+
+	request := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Idempotency-Key", "register-admin-without-key")
+	request.Header.Set("X-Session-Token", adminToken)
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("register with session only status = %d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestListStoresRequiresSession(t *testing.T) {
+	store := memory.NewStore()
+	if err := seedHTTPTestAdmin(store); err != nil {
+		t.Fatalf("seed admin: %v", err)
+	}
+	if err := seedHTTPTestViewer(store); err != nil {
+		t.Fatalf("seed viewer: %v", err)
+	}
+	server := api.NewServerWithServices(newTestServices(store))
+	adminToken := loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-list-stores")
+
+	unauthorizedRequest := httptest.NewRequest(http.MethodGet, "/v1/stores", nil)
+	unauthorizedResponse := httptest.NewRecorder()
+	server.ServeHTTP(unauthorizedResponse, unauthorizedRequest)
+	if unauthorizedResponse.Code != http.StatusUnauthorized {
+		t.Fatalf("list without auth status = %d body=%s", unauthorizedResponse.Code, unauthorizedResponse.Body.String())
+	}
+
+	viewerToken := loginTestSession(t, server, "viewer@example.com", "viewer-pass")
+	viewerRequest := httptest.NewRequest(http.MethodGet, "/v1/stores", nil)
+	viewerRequest.Header.Set("X-Session-Token", viewerToken)
+	viewerResponse := httptest.NewRecorder()
+	server.ServeHTTP(viewerResponse, viewerRequest)
+	if viewerResponse.Code != http.StatusOK {
+		t.Fatalf("list viewer status = %d body=%s", viewerResponse.Code, viewerResponse.Body.String())
+	}
+
+	adminRequest := httptest.NewRequest(http.MethodGet, "/v1/stores", nil)
+	adminRequest.Header.Set("X-Session-Token", adminToken)
+	adminResponse := httptest.NewRecorder()
+	server.ServeHTTP(adminResponse, adminRequest)
+	if adminResponse.Code != http.StatusOK {
+		t.Fatalf("list admin status = %d body=%s", adminResponse.Code, adminResponse.Body.String())
+	}
+
+	var listed api.StoresResponse
+	if err := json.Unmarshal(adminResponse.Body.Bytes(), &listed); err != nil {
+		t.Fatalf("decode stores list: %v", err)
+	}
+	if len(listed.Stores) != 1 || listed.Stores[0].ID != "store-1" {
+		t.Fatalf("listed stores = %+v", listed.Stores)
 	}
 }

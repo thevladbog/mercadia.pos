@@ -87,12 +87,12 @@ func (s *OutboxService) Status(ctx context.Context, brokerConnected bool) (Outbo
 
 func (s *OutboxService) RecordPaymentCaptured(ctx context.Context, payment domain.Payment, storeID string) error {
 	payload, err := json.Marshal(map[string]any{
-		"storeId":   storeID,
-		"paymentId": payment.ID,
-		"receiptId": payment.ReceiptID,
-		"method":    payment.Method,
+		"storeId":     storeID,
+		"paymentId":   payment.ID,
+		"receiptId":   payment.ReceiptID,
+		"method":      payment.Method,
 		"amountMinor": payment.AmountMinor,
-		"capturedAt": payment.CapturedAt,
+		"capturedAt":  payment.CapturedAt,
 	})
 	if err != nil {
 		return err
@@ -109,14 +109,14 @@ func (s *OutboxService) RecordPaymentCaptured(ctx context.Context, payment domai
 
 func (s *OutboxService) RecordPaymentCancelled(ctx context.Context, payment domain.Payment, storeID string, actorID string, reason string) error {
 	payload, err := json.Marshal(map[string]any{
-		"storeId":   storeID,
-		"paymentId": payment.ID,
-		"receiptId": payment.ReceiptID,
-		"method":    payment.Method,
+		"storeId":     storeID,
+		"paymentId":   payment.ID,
+		"receiptId":   payment.ReceiptID,
+		"method":      payment.Method,
 		"amountMinor": payment.AmountMinor,
 		"cancelledAt": payment.UpdatedAt,
-		"actorId":   actorID,
-		"reason":    reason,
+		"actorId":     actorID,
+		"reason":      reason,
 	})
 	if err != nil {
 		return err
@@ -133,16 +133,16 @@ func (s *OutboxService) RecordPaymentCancelled(ctx context.Context, payment doma
 
 func (s *OutboxService) RecordPaymentRefunded(ctx context.Context, payment domain.Payment, storeID string, actorID string, reason string) error {
 	payload, err := json.Marshal(map[string]any{
-		"storeId":               storeID,
-		"paymentId":             payment.ID,
-		"receiptId":             payment.ReceiptID,
-		"method":                payment.Method,
-		"amountMinor":           payment.AmountMinor,
-		"refundedAmountMinor":   payment.RefundedAmountMinor,
-		"remainingAmountMinor":  payment.RefundableAmountMinor(),
-		"refundedAt":            payment.UpdatedAt,
-		"actorId":               actorID,
-		"reason":                reason,
+		"storeId":              storeID,
+		"paymentId":            payment.ID,
+		"receiptId":            payment.ReceiptID,
+		"method":               payment.Method,
+		"amountMinor":          payment.AmountMinor,
+		"refundedAmountMinor":  payment.RefundedAmountMinor,
+		"remainingAmountMinor": payment.RefundableAmountMinor(),
+		"refundedAt":           payment.UpdatedAt,
+		"actorId":              actorID,
+		"reason":               reason,
 	})
 	if err != nil {
 		return err
@@ -214,11 +214,11 @@ func (s *OutboxService) RecordCashMovementPosted(ctx context.Context, movement d
 
 func (s *OutboxService) RecordOperationalDayClosed(ctx context.Context, day domain.OperationalDay) error {
 	payload, err := json.Marshal(map[string]any{
-		"storeId":      day.StoreID,
+		"storeId":          day.StoreID,
 		"operationalDayId": day.ID,
-		"businessDate": day.BusinessDate,
-		"closedById":   day.ClosedByID,
-		"closedAt":     day.ClosedAt,
+		"businessDate":     day.BusinessDate,
+		"closedById":       day.ClosedByID,
+		"closedAt":         day.ClosedAt,
 	})
 	if err != nil {
 		return err
@@ -235,13 +235,13 @@ func (s *OutboxService) RecordOperationalDayClosed(ctx context.Context, day doma
 
 func (s *OutboxService) RecordReturnSettled(ctx context.Context, ret domain.Return, paymentIDs []string, storeID string, actorID string, cashMovementID string) error {
 	payload := map[string]any{
-		"storeId":     storeID,
-		"returnId":    ret.ID,
-		"receiptId":   ret.ReceiptID,
-		"totalMinor":  ret.TotalMinor,
-		"paymentIds":  paymentIDs,
-		"settledAt":   s.now(),
-		"actorId":     actorID,
+		"storeId":    storeID,
+		"returnId":   ret.ID,
+		"receiptId":  ret.ReceiptID,
+		"totalMinor": ret.TotalMinor,
+		"paymentIds": paymentIDs,
+		"settledAt":  s.now(),
+		"actorId":    actorID,
 	}
 	if cashMovementID != "" {
 		payload["cashMovementId"] = cashMovementID

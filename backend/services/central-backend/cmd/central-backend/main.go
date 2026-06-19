@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"mercadia.dev/pos/platform/observability"
 	"mercadia.dev/pos/services/central-backend/internal/api"
@@ -62,8 +63,9 @@ func main() {
 
 	handler := api.NewHandler(bundle.Services, serverOpts)
 	server := &http.Server{
-		Addr:    addr,
-		Handler: observability.InstrumentHTTP("central-backend", handler),
+		Addr:              addr,
+		Handler:           observability.InstrumentHTTP("central-backend", handler),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	go func() {

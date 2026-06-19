@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	ErrDeviceNotFound        = errors.New("device not found")
-	ErrCommandNotFound       = errors.New("command not found")
-	ErrInvalidDeviceCommand  = errors.New("invalid device command")
-	ErrUnsupportedCommand    = errors.New("unsupported device command")
+	ErrDeviceNotFound       = errors.New("device not found")
+	ErrCommandNotFound      = errors.New("command not found")
+	ErrInvalidDeviceCommand = errors.New("invalid device command")
+	ErrUnsupportedCommand   = errors.New("unsupported device command")
 )
 
 type DeviceRepository interface {
@@ -199,7 +199,7 @@ func (s *DeviceService) SendCommand(ctx context.Context, command SendDeviceComma
 	}
 
 	s.wg.Add(1)
-	go s.runCommand(device, created.ID)
+	go s.runCommand(device, created.ID) //nolint:gosec // command lifecycle is managed by the device service wait group
 
 	return result, nil
 }

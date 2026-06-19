@@ -96,8 +96,9 @@ func main() {
 	}
 
 	server := &http.Server{
-		Addr:    addr,
-		Handler: observability.InstrumentHTTP("store-edge", bundle.Handler),
+		Addr:              addr,
+		Handler:           observability.InstrumentHTTP("store-edge", bundle.Handler),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	slog.Info("starting store edge",

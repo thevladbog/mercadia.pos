@@ -30,15 +30,15 @@ func (a *FiscalAdapter) Execute(_ context.Context, device domain.Device, command
 	case "open_shift":
 		a.shiftOpen = true
 		return map[string]any{
-			"driverState":  "ready",
-			"shiftState":   "opened",
+			"driverState":   "ready",
+			"shiftState":    "opened",
 			"sessionNumber": 7,
 		}, nil
 	case "close_shift":
 		a.shiftOpen = false
 		return map[string]any{
-			"driverState": "ready",
-			"shiftState":  "closed",
+			"driverState":   "ready",
+			"shiftState":    "closed",
 			"zReportNumber": a.nextDocumentNumber,
 		}, nil
 	case "print_receipt":

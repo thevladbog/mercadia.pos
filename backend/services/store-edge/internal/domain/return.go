@@ -20,11 +20,11 @@ const (
 )
 
 var (
-	ErrInvalidReturnInput     = errors.New("invalid return input")
-	ErrReceiptNotReturnable   = errors.New("receipt is not returnable")
-	ErrReturnLineNotFound     = errors.New("return line not found")
-	ErrReturnQuantityExceeded = errors.New("return quantity exceeds line quantity")
-	ErrReturnAlreadySettled   = errors.New("return is already settled")
+	ErrInvalidReturnInput         = errors.New("invalid return input")
+	ErrReceiptNotReturnable       = errors.New("receipt is not returnable")
+	ErrReturnLineNotFound         = errors.New("return line not found")
+	ErrReturnQuantityExceeded     = errors.New("return quantity exceeds line quantity")
+	ErrReturnAlreadySettled       = errors.New("return is already settled")
 	ErrReturnSettlementNotAllowed = errors.New("return settlement is not allowed")
 )
 
@@ -200,6 +200,7 @@ func (r *Return) MarkSettled(now time.Time) error {
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
+	_ = now
 	r.Status = ReturnStatusSettled
 	return nil
 }

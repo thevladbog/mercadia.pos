@@ -34,6 +34,8 @@ pnpm verify
 `pnpm verify` runs, in order: Orval generation, typecheck, ESLint, Prettier check, and
 admin-web production build.
 
+CI workflow details: [`docs/development/ci.md`](../docs/development/ci.md).
+
 Individual checks:
 
 ```bash

@@ -26,8 +26,12 @@ import type {
 
 import type {
   ListStores200,
+  ListStores401,
+  ListStores403,
   RegisterStore202,
   RegisterStore400,
+  RegisterStore401,
+  RegisterStore403,
   RegisterStore409,
   RegisterStoreBody
 } from '../models';
@@ -59,12 +63,24 @@ export type listStoresResponse200 = {
   status: 200
 }
 
+export type listStoresResponse401 = {
+  data: ListStores401
+  status: 401
+}
+
+export type listStoresResponse403 = {
+  data: ListStores403
+  status: 403
+}
+
 export type listStoresResponseSuccess = (listStoresResponse200) & {
   headers: Headers;
 };
-;
+export type listStoresResponseError = (listStoresResponse401 | listStoresResponse403) & {
+  headers: Headers;
+};
 
-export type listStoresResponse = (listStoresResponseSuccess)
+export type listStoresResponse = (listStoresResponseSuccess | listStoresResponseError)
 
 export const getListStoresUrl = () => {
 
@@ -75,6 +91,7 @@ export const getListStoresUrl = () => {
 }
 
 /**
+ * Lists stores registered in the central registry. Requires `X-Session-Token` header.
  * @summary List registered stores
  */
 export const listStores = async ( options?: RequestInit): Promise<listStoresResponse> => {
@@ -99,7 +116,7 @@ export const getListStoresQueryKey = () => {
     }
 
 
-export const getListStoresQueryOptions = <TData = Awaited<ReturnType<typeof listStores>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStores>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getListStoresQueryOptions = <TData = Awaited<ReturnType<typeof listStores>>, TError = ListStores401 | ListStores403>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStores>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -118,10 +135,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListStoresQueryResult = NonNullable<Awaited<ReturnType<typeof listStores>>>
-export type ListStoresQueryError = unknown
+export type ListStoresQueryError = ListStores401 | ListStores403
 
 
-export function useListStores<TData = Awaited<ReturnType<typeof listStores>>, TError = unknown>(
+export function useListStores<TData = Awaited<ReturnType<typeof listStores>>, TError = ListStores401 | ListStores403>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStores>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listStores>>,
@@ -131,7 +148,7 @@ export function useListStores<TData = Awaited<ReturnType<typeof listStores>>, TE
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStores<TData = Awaited<ReturnType<typeof listStores>>, TError = unknown>(
+export function useListStores<TData = Awaited<ReturnType<typeof listStores>>, TError = ListStores401 | ListStores403>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStores>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listStores>>,
@@ -141,7 +158,7 @@ export function useListStores<TData = Awaited<ReturnType<typeof listStores>>, TE
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStores<TData = Awaited<ReturnType<typeof listStores>>, TError = unknown>(
+export function useListStores<TData = Awaited<ReturnType<typeof listStores>>, TError = ListStores401 | ListStores403>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStores>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -149,7 +166,7 @@ export function useListStores<TData = Awaited<ReturnType<typeof listStores>>, TE
  * @summary List registered stores
  */
 
-export function useListStores<TData = Awaited<ReturnType<typeof listStores>>, TError = unknown>(
+export function useListStores<TData = Awaited<ReturnType<typeof listStores>>, TError = ListStores401 | ListStores403>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStores>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -176,6 +193,16 @@ export type registerStoreResponse400 = {
   status: 400
 }
 
+export type registerStoreResponse401 = {
+  data: RegisterStore401
+  status: 401
+}
+
+export type registerStoreResponse403 = {
+  data: RegisterStore403
+  status: 403
+}
+
 export type registerStoreResponse409 = {
   data: RegisterStore409
   status: 409
@@ -184,7 +211,7 @@ export type registerStoreResponse409 = {
 export type registerStoreResponseSuccess = (registerStoreResponse202) & {
   headers: Headers;
 };
-export type registerStoreResponseError = (registerStoreResponse400 | registerStoreResponse409) & {
+export type registerStoreResponseError = (registerStoreResponse400 | registerStoreResponse401 | registerStoreResponse403 | registerStoreResponse409) & {
   headers: Headers;
 };
 
@@ -199,6 +226,7 @@ export const getRegisterStoreUrl = () => {
 }
 
 /**
+ * Registers a store in the central registry. Requires `X-Sync-Api-Key` when configured, otherwise `X-Session-Token` with `users.manage`.
  * @summary Register a store
  */
 export const registerStore = async (registerStoreBody: RegisterStoreBody, options?: RequestInit): Promise<registerStoreResponse> => {
@@ -215,7 +243,7 @@ export const registerStore = async (registerStoreBody: RegisterStoreBody, option
 
 
 
-export const getRegisterStoreMutationOptions = <TError = RegisterStore400 | RegisterStore409,
+export const getRegisterStoreMutationOptions = <TError = RegisterStore400 | RegisterStore401 | RegisterStore403 | RegisterStore409,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerStore>>, TError,{data: RegisterStoreBody}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof registerStore>>, TError,{data: RegisterStoreBody}, TContext> => {
 
@@ -244,12 +272,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RegisterStoreMutationResult = NonNullable<Awaited<ReturnType<typeof registerStore>>>
     export type RegisterStoreMutationBody = RegisterStoreBody
-    export type RegisterStoreMutationError = RegisterStore400 | RegisterStore409
+    export type RegisterStoreMutationError = RegisterStore400 | RegisterStore401 | RegisterStore403 | RegisterStore409
 
     /**
  * @summary Register a store
  */
-export const useRegisterStore = <TError = RegisterStore400 | RegisterStore409,
+export const useRegisterStore = <TError = RegisterStore400 | RegisterStore401 | RegisterStore403 | RegisterStore409,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerStore>>, TError,{data: RegisterStoreBody}, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof registerStore>>,

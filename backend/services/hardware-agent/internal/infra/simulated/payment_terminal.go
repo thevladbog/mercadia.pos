@@ -42,19 +42,19 @@ func (a *PaymentTerminalAdapter) Execute(_ context.Context, device domain.Device
 		a.lastAuthCode = "A1B2C3"
 		a.lastRRN = "SIMRRN000042"
 		return map[string]any{
-			"status":      "approved",
-			"authCode":    a.lastAuthCode,
-			"rrn":         a.lastRRN,
-			"cardMask":    "****1234",
-			"amountMinor": amountMinor,
-			"currency":    currency,
+			"status":        "approved",
+			"authCode":      a.lastAuthCode,
+			"rrn":           a.lastRRN,
+			"cardMask":      "****1234",
+			"amountMinor":   amountMinor,
+			"currency":      currency,
 			"terminalState": "idle",
 		}, nil
 	case "capture":
 		return map[string]any{
-			"status":      "captured",
-			"authCode":    a.lastAuthCode,
-			"rrn":         a.lastRRN,
+			"status":        "captured",
+			"authCode":      a.lastAuthCode,
+			"rrn":           a.lastRRN,
 			"terminalState": "idle",
 		}, nil
 	case "cancel":
