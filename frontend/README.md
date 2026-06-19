@@ -71,7 +71,18 @@ pnpm orval:central
    pnpm --filter admin-web dev
    ```
 
-3. Open `http://localhost:5173`, sign in, and open **Central Reporting**.
+3. Open `http://localhost:5173`, sign in, and open **Central Reporting** or **Users**.
+
+### Central users smoke test
+
+Requires a seeded user with the `central_admin` role (default seed admin):
+
+1. Sign in and open **Users** in the header.
+2. Confirm the user list loads.
+3. Create a viewer account (`central_viewer` role) via **Create user**.
+4. Edit the new user: toggle **Active**, adjust roles, or set a new password.
+5. Sign in as a `central_viewer` user: the **Users** nav link is hidden and direct
+   `/central/users` URLs redirect back to reporting.
 
 Optional: set `VITE_CENTRAL_BACKEND_URL` when the API is not same-origin (bypasses the
 Vite proxy).
