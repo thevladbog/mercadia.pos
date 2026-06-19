@@ -132,6 +132,29 @@ if (response.status === 202) {
 
 Returns **409** if the store already has an open day.
 
+### EoD shift close command
+
+Close cashier shift from the Open Shifts tab via `closeShift()`:
+
+```typescript
+import { createIdempotencyHeaders } from '@/pages/cash-mutation-utils.js';
+import { invalidateShiftCloseQueries } from '@/pages/shift-mutation-utils.js';
+
+await closeShift(
+  shiftId,
+  {
+    closingCashMinor: 0,
+  },
+  { headers: createIdempotencyHeaders() },
+);
+
+// When closingCashMinor > 0, also send safeId, actorId, approvedById (distinct actors).
+
+await invalidateShiftCloseQueries(queryClient, storeId, operationalDayId);
+```
+
+Returns **409** `shift_close_blocked` when the shift has unresolved receipts.
+
 ## Checklist for admin-web PRs
 
 - [ ] No new hardcoded user-facing strings in TSX
