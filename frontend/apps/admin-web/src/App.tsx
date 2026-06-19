@@ -10,6 +10,7 @@ import { CentralReportingPage } from './pages/CentralReportingPage.js';
 import { CentralUsersPage } from './pages/CentralUsersPage.js';
 import { CreateCentralUserPage } from './pages/CreateCentralUserPage.js';
 import { EditCentralUserPage } from './pages/EditCentralUserPage.js';
+import { StoreMonitoringPage } from './pages/StoreMonitoringPage.js';
 
 export function App() {
   return (
@@ -20,6 +21,7 @@ export function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route element={<CentralReportingPage />} path="/central/reporting" />
+            <Route element={<StoreMonitoringPage />} path="/store/monitoring" />
             <Route element={<RequireCentralAdmin />}>
               <Route element={<CentralUsersPage />} path="/central/users" />
               <Route element={<CreateCentralUserPage />} path="/central/users/new" />

@@ -19,6 +19,7 @@ export function AppLayout() {
         <div className="header-actions">
           <nav>
             <Link to="/central/reporting">Reporting</Link>
+            <Link to="/store/monitoring">Monitoring</Link>
             {canManageCentralUsers(roles) ? <Link to="/central/users">Users</Link> : null}
           </nav>
           <div className="user-meta">
