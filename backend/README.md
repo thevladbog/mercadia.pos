@@ -83,7 +83,7 @@ When NATS is enabled on both services, operational events flow from store-edge t
 ```text
 store-edge command -> outbox row -> JetStream (mercadia.store-edge.sync.{storeId})
   -> central-backend consumer -> POST-equivalent AcceptEvents -> sync_events table
-  -> read-model projection (catalog products, synced payments with lifecycle, synced cash movements, synced fiscal documents)
+  -> read-model projection (catalog products, synced payments with lifecycle, synced cash movements, synced fiscal documents, synced returns, synced operational days)
 ```
 
 On PostgreSQL, command handlers that emit outbox events persist business state and the outbox row in a single database transaction (ADR-0004 transactional outbox). Command paths that write the operation journal (returns, discounts, cash recounts, and related cash movements) commit journal entries atomically with business state and idempotency on PostgreSQL as well. In-memory mode remains single-process and does not use multi-statement transactions.
@@ -96,8 +96,8 @@ Local smoke:
 4. Start store-edge with `MERCADIA_STORE_EDGE_NATS_URL=nats://127.0.0.1:4222`
 5. Run a checkout command that records an outbox event (for example a captured payment)
 6. Confirm the event appears in central sync events: `GET /v1/stores/{storeId}/sync-events`
-7. Confirm projected read models: `GET /v1/stores/{storeId}/payments`, `GET /v1/stores/{storeId}/cash-movements`, and `GET /v1/stores/{storeId}/fiscal-documents`
-8. After cancel/refund commands on store-edge, confirm payment status updates on central (`status` field on synced payments)
+7. Confirm projected read models: `GET /v1/stores/{storeId}/payments`, `GET /v1/stores/{storeId}/cash-movements`, `GET /v1/stores/{storeId}/fiscal-documents`, `GET /v1/stores/{storeId}/returns`, and `GET /v1/stores/{storeId}/operational-days`
+8. After cancel/refund, return settlement, or EoD close on store-edge, confirm the corresponding central read models are updated
 
 The consumer uses durable name `central-backend-sync` and idempotency keys `nats:{storeId}:{eventId}` so JetStream redelivery is safe.
 

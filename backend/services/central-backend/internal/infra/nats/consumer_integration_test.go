@@ -34,6 +34,8 @@ func TestConsumerProcessesPublishedMessageWhenNatsAvailable(t *testing.T) {
 	paymentsService := app.NewPaymentsService(store, store)
 	cashMovementsService := app.NewCashMovementsService(store, store)
 	fiscalDocumentsService := app.NewFiscalDocumentsService(store, store)
+	returnsService := app.NewReturnsService(store, store)
+	operationalDaysService := app.NewOperationalDaysService(store, store)
 	consumer, err := centralnats.NewConsumer(natsURL, syncService)
 	if err != nil {
 		t.Fatalf("new consumer: %v", err)
@@ -57,6 +59,8 @@ func TestConsumerProcessesPublishedMessageWhenNatsAvailable(t *testing.T) {
 	cancelledAt := time.Date(2026, 6, 19, 15, 30, 0, 0, time.UTC)
 	refundedAt := time.Date(2026, 6, 19, 16, 0, 0, 0, time.UTC)
 	fiscalizedAt := time.Date(2026, 6, 19, 16, 30, 0, 0, time.UTC)
+	settledAt := time.Date(2026, 6, 19, 17, 0, 0, 0, time.UTC)
+	closedAt := time.Date(2026, 6, 19, 23, 0, 0, 0, time.UTC)
 
 	messages := []struct {
 		eventID   string
@@ -136,6 +140,31 @@ func TestConsumerProcessesPublishedMessageWhenNatsAvailable(t *testing.T) {
 				"fiscalizedAt":     fiscalizedAt,
 			},
 		},
+		{
+			eventID:   "integration-ret-1",
+			eventType: "return.settled",
+			payload: map[string]any{
+				"storeId":        "store-1",
+				"returnId":       "ret-1",
+				"receiptId":      "rcpt-1",
+				"totalMinor":     int64(50000),
+				"paymentIds":     []string{"pay-2"},
+				"cashMovementId": "cash-2",
+				"settledAt":      settledAt,
+				"actorId":        "cashier-1",
+			},
+		},
+		{
+			eventID:   "integration-od-1",
+			eventType: "operational_day.closed",
+			payload: map[string]any{
+				"storeId":          "store-1",
+				"operationalDayId": "od-1",
+				"businessDate":     "2026-06-19",
+				"closedById":       "manager-1",
+				"closedAt":         closedAt,
+			},
+		},
 	}
 
 	for _, message := range messages {
@@ -159,6 +188,8 @@ func TestConsumerProcessesPublishedMessageWhenNatsAvailable(t *testing.T) {
 		"integration-pay-cancel-1",
 		"integration-pay-refund-1",
 		"integration-fisc-1",
+		"integration-ret-1",
+		"integration-od-1",
 	}
 
 	deadline := time.Now().Add(5 * time.Second)
@@ -209,6 +240,22 @@ func TestConsumerProcessesPublishedMessageWhenNatsAvailable(t *testing.T) {
 		}
 		if document.FiscalSign != "sign-abc" {
 			t.Fatalf("projected fiscal document = %+v", document)
+		}
+
+		ret, err := returnsService.GetReturn(context.Background(), "store-1", "ret-1")
+		if err != nil {
+			t.Fatalf("get projected return: %v", err)
+		}
+		if ret.TotalMinor != 50000 {
+			t.Fatalf("projected return = %+v", ret)
+		}
+
+		day, err := operationalDaysService.GetOperationalDay(context.Background(), "store-1", "od-1")
+		if err != nil {
+			t.Fatalf("get projected operational day: %v", err)
+		}
+		if day.BusinessDate != "2026-06-19" {
+			t.Fatalf("projected operational day = %+v", day)
 		}
 		return
 	}

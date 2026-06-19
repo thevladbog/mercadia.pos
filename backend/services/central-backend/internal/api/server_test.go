@@ -56,6 +56,10 @@ func TestOpenAPIExposesCentralOperations(t *testing.T) {
 		"/v1/stores/{storeId}/cash-movements/{cashMovementId}",
 		"/v1/stores/{storeId}/fiscal-documents",
 		"/v1/stores/{storeId}/fiscal-documents/{fiscalDocumentId}",
+		"/v1/stores/{storeId}/returns",
+		"/v1/stores/{storeId}/returns/{returnId}",
+		"/v1/stores/{storeId}/operational-days",
+		"/v1/stores/{storeId}/operational-days/{operationalDayId}",
 	} {
 		if _, ok := paths[path]; !ok {
 			t.Fatalf("expected %s path", path)
