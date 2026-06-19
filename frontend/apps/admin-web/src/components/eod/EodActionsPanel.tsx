@@ -4,12 +4,14 @@ import { useTranslation } from 'react-i18next';
 
 import { CloseOperationalDayModal } from '@/components/eod/CloseOperationalDayModal.js';
 import { analyzeCloseReadiness } from '@/pages/eod-mutation-utils.js';
+import type { EodTab } from '@/pages/eod-blocker-utils.js';
 
 type EodActionsPanelProps = {
   storeId: string;
   operationalDayId: string;
   blockers: GetOperationalDaySummary200BlockersItem[];
   canWrite: boolean;
+  onEodTab?: (tab: EodTab) => void;
 };
 
 export function EodActionsPanel({
@@ -17,6 +19,7 @@ export function EodActionsPanel({
   operationalDayId,
   blockers,
   canWrite,
+  onEodTab,
 }: EodActionsPanelProps) {
   const { t } = useTranslation();
   const [closeModalOpen, setCloseModalOpen] = useState(false);
@@ -48,6 +51,10 @@ export function EodActionsPanel({
           operationalDayId={operationalDayId}
           storeId={storeId}
           onClose={() => setCloseModalOpen(false)}
+          onEodTab={(tab) => {
+            setCloseModalOpen(false);
+            onEodTab?.(tab);
+          }}
         />
       ) : null}
     </>

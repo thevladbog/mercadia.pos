@@ -308,6 +308,7 @@
     "code": "Код",
     "message": "Сообщение",
     "reference": "Ссылка",
+    "action": "Действие",
     "businessDate": "Операционная дата",
     "openedAt": "Открыт",
     "closedAt": "Закрыт",
@@ -387,6 +388,44 @@
       "nonzero_drawer_balance": "Остаток в кассовом ящике не равен нулю",
       "unresolved_receipt": "Чек не завершён и не отменён",
       "no_sales_receipts": "Фискализированных чеков продаж за операционный день не найдено"
+    },
+    "blockerActions": {
+      "viewShift": "Открытые смены",
+      "resolveRecount": "Устранить пересчёт",
+      "viewSafe": "Перейти в сейф",
+      "viewReceipt": "Просмотр чека",
+      "overrideInCloseModal": "Override в модалке закрытия",
+      "none": "—",
+      "referenceLink": "Открыть детали для {{reference}}"
+    },
+    "kpi": {
+      "draftReceipts": "Черновики",
+      "paymentStartedReceipts": "Оплата начата",
+      "unresolvedReceipts": "Незавершённые чеки",
+      "cancelledReceipts": "Отменённые чеки",
+      "fiscalizedSales": "Фискализированные продажи",
+      "recountTotal": "Пересчёты наличных",
+      "openRecountDiscrepancies": "Открытые расхождения пересчёта",
+      "containerId": "Контейнер",
+      "containerType": "Тип",
+      "balance": "Остаток",
+      "lastMovement": "Последнее движение",
+      "totalPayments": "Всего оплат",
+      "paymentMethod": "Способ",
+      "paymentCount": "Количество",
+      "paymentTotal": "Сумма",
+      "totalFiscal": "Всего фискальных записей"
+    },
+    "shiftDetail": {
+      "title": "Детали смены",
+      "drawerId": "Ящик",
+      "closingCash": "Закрывающие наличные"
+    },
+    "receiptDetail": {
+      "title": "Детали чека",
+      "receiptId": "ID чека",
+      "total": "Итого",
+      "lineCount": "Позиций"
     }
   },
   "users": {

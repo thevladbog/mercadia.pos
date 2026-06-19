@@ -52,7 +52,7 @@ Store-edge paths must be proxied to `:8081` **before** the central catch-all `/v
 '^/v1/stores/[^/]+/(monitoring|terminals|cash-|bank-|business-|operation-journal|operational-days|shifts)'
 ```
 
-Also proxy `/v1/operational-days`, `/v1/shifts`, `/v1/terminals`.
+Also proxy `/v1/operational-days`, `/v1/shifts`, `/v1/receipts`, `/v1/terminals`.
 
 Optional env override: `VITE_STORE_EDGE_URL`.
 
@@ -62,6 +62,7 @@ Import hooks/functions from [`@mercadia/api-clients-store-edge`](../../frontend/
 
 - `cash-office` — balances, movements, recounts, bank collection, expenses
 - `store-operations` — operational day, shifts, journal
+- `checkout` — receipt read for EoD blocker drill-down
 - `monitoring` — terminal KPIs and SSE
 
 ### Idempotency
