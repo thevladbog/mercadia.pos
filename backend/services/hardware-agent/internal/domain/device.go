@@ -62,11 +62,11 @@ type DeviceCommand struct {
 }
 
 type NewDeviceCommandInput struct {
-	ID        string
-	DeviceID  string
-	Type      string
-	Payload   map[string]any
-	Now       time.Time
+	ID       string
+	DeviceID string
+	Type     string
+	Payload  map[string]any
+	Now      time.Time
 }
 
 func NewDeviceCommand(input NewDeviceCommandInput) (DeviceCommand, error) {

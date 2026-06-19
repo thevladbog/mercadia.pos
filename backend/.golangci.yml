@@ -1,0 +1,21 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - gosec
+    - staticcheck
+    - unused
+  exclusions:
+    rules:
+      - linters:
+          - gosec
+        path: _test\.go
+      - linters:
+          - gosec
+        text: "G706"
+
+formatters:
+  enable:
+    - gofmt

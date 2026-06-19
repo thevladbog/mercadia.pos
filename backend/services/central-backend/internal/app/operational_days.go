@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrOperationalDayNotFound    = errors.New("operational day not found")
+	ErrOperationalDayNotFound     = errors.New("operational day not found")
 	ErrInvalidOperationalDayQuery = errors.New("invalid operational day query")
 )
 

@@ -73,7 +73,7 @@ func catalogSyncResponseSchema() httpapi.Schema {
 		"storeId":       httpapi.StringSchema(),
 		"since":         httpapi.DateTimeSchema(),
 		"syncedAt":      httpapi.DateTimeSchema(),
-		"productsCount": httpapi.Schema{"type": "integer"},
+		"productsCount": {"type": "integer"},
 	}, "storeId", "since", "syncedAt", "productsCount")
 }
 
@@ -102,7 +102,9 @@ func mountTerminalEventsRoute(mux *http.ServeMux, hub *app.TerminalEventHub) {
 		events := hub.Subscribe(storeID)
 		defer hub.Unsubscribe(storeID, events)
 
-		fmt.Fprintf(w, ": connected store=%s\n\n", storeID)
+		if _, err := fmt.Fprintf(w, ": connected store=%s\n\n", storeID); err != nil { //nolint:gosec // storeID is validated before subscribe
+			return
+		}
 		flusher.Flush()
 
 		notify := r.Context().Done()
@@ -118,8 +120,12 @@ func mountTerminalEventsRoute(mux *http.ServeMux, hub *app.TerminalEventHub) {
 				if err != nil {
 					continue
 				}
-				fmt.Fprintf(w, "event: %s\n", event.Type)
-				fmt.Fprintf(w, "data: %s\n\n", payload)
+				if _, err := fmt.Fprintf(w, "event: %s\n", event.Type); err != nil {
+					return
+				}
+				if _, err := fmt.Fprintf(w, "data: %s\n\n", payload); err != nil {
+					return
+				}
 				flusher.Flush()
 			}
 		}

@@ -18,18 +18,18 @@ import (
 const version = "0.1.0"
 
 type Services struct {
-	StoreRegistry *app.StoreRegistryService
-	Sync          *app.SyncService
-	Catalog       *app.CatalogService
-	Payments      *app.PaymentsService
-	CashMovements    *app.CashMovementsService
-	FiscalDocuments  *app.FiscalDocumentsService
-	Returns           *app.ReturnsService
-	OperationalDays   *app.OperationalDaysService
-	Reporting         *app.ReportingService
-	Auth              *app.AuthService
-	CentralUsers      *app.CentralUsersService
-	SyncAPIKey        *app.SyncAPIKeyService
+	StoreRegistry   *app.StoreRegistryService
+	Sync            *app.SyncService
+	Catalog         *app.CatalogService
+	Payments        *app.PaymentsService
+	CashMovements   *app.CashMovementsService
+	FiscalDocuments *app.FiscalDocumentsService
+	Returns         *app.ReturnsService
+	OperationalDays *app.OperationalDaysService
+	Reporting       *app.ReportingService
+	Auth            *app.AuthService
+	CentralUsers    *app.CentralUsersService
+	SyncAPIKey      *app.SyncAPIKeyService
 }
 
 type StatusResponse struct {
@@ -287,18 +287,18 @@ func NewServerBundle(opts ServerOptions) (*ServerBundle, error) {
 
 func newServices(repo infra.Repository) Services {
 	return Services{
-		StoreRegistry: app.NewStoreRegistryService(repo, repo),
-		Sync:              app.NewSyncService(repo, repo, repo, repo, repo, repo, repo, repo, repo),
-		Catalog:           app.NewCatalogService(repo, repo),
-		Payments:          app.NewPaymentsService(repo, repo),
-		CashMovements:     app.NewCashMovementsService(repo, repo),
-		FiscalDocuments:   app.NewFiscalDocumentsService(repo, repo),
-		Returns:           app.NewReturnsService(repo, repo),
-		OperationalDays:   app.NewOperationalDaysService(repo, repo),
-		Reporting:         app.NewReportingService(repo, repo),
-		Auth:              app.NewAuthService(repo, repo),
-		CentralUsers:      app.NewCentralUsersService(repo),
-		SyncAPIKey:        app.NewSyncAPIKeyServiceFromEnv(),
+		StoreRegistry:   app.NewStoreRegistryService(repo, repo),
+		Sync:            app.NewSyncService(repo, repo, repo, repo, repo, repo, repo, repo, repo),
+		Catalog:         app.NewCatalogService(repo, repo),
+		Payments:        app.NewPaymentsService(repo, repo),
+		CashMovements:   app.NewCashMovementsService(repo, repo),
+		FiscalDocuments: app.NewFiscalDocumentsService(repo, repo),
+		Returns:         app.NewReturnsService(repo, repo),
+		OperationalDays: app.NewOperationalDaysService(repo, repo),
+		Reporting:       app.NewReportingService(repo, repo),
+		Auth:            app.NewAuthService(repo, repo),
+		CentralUsers:    app.NewCentralUsersService(repo),
+		SyncAPIKey:      app.NewSyncAPIKeyServiceFromEnv(),
 	}
 }
 
@@ -386,7 +386,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		Summary:     "List registered stores",
 		Description: sessionProtectedDescription("Lists stores registered in the central registry."),
 		Tags:        []string{"stores"},
-		Responses: protectedResponseSpecs("200", "Registered stores", storesResponseSchema()),
+		Responses:   protectedResponseSpecs("200", "Registered stores", storesResponseSchema()),
 	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		stores, err := services.StoreRegistry.ListStores(r.Context())
 		if err != nil {
@@ -822,12 +822,12 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
-		Method:          http.MethodGet,
-		Path:            "/v1/central/reporting/summary",
-		OperationID:     "getCentralReportingSummary",
-		Summary:         "Get cross-store reporting summary for a time window",
-		Description:     sessionProtectedDescription("Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window). Optional `region` filters registered stores."),
-		Tags:            []string{"reporting"},
+		Method:      http.MethodGet,
+		Path:        "/v1/central/reporting/summary",
+		OperationID: "getCentralReportingSummary",
+		Summary:     "Get cross-store reporting summary for a time window",
+		Description: sessionProtectedDescription("Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window). Optional `region` filters registered stores."),
+		Tags:        []string{"reporting"},
 		QueryParameters: append(reportingWindowQueryParams(), httpapi.QueryParamSpec{
 			Name:        "region",
 			Description: "Optional store region filter",

@@ -56,7 +56,7 @@ func FindMigrationsDir(envKey, relativePath string) string {
 
 func UpPool(ctx context.Context, pool *pgxpool.Pool, service, dir string) (Result, error) {
 	db := stdlib.OpenDBFromPool(pool)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	return Up(ctx, db, service, dir)
 }
 

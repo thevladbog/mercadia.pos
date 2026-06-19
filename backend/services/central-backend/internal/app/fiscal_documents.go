@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrFiscalDocumentNotFound    = errors.New("fiscal document not found")
+	ErrFiscalDocumentNotFound     = errors.New("fiscal document not found")
 	ErrInvalidFiscalDocumentQuery = errors.New("invalid fiscal document query")
 )
 

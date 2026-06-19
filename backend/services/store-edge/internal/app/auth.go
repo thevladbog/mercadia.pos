@@ -11,11 +11,11 @@ import (
 )
 
 var (
-	ErrInvalidAuthCommand   = errors.New("invalid auth command")
-	ErrInvalidCredentials   = errors.New("invalid credentials")
-	ErrSessionNotFound      = errors.New("session not found")
-	ErrSessionExpired       = errors.New("session expired")
-	ErrPermissionDenied     = errors.New("permission denied")
+	ErrInvalidAuthCommand = errors.New("invalid auth command")
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrSessionNotFound    = errors.New("session not found")
+	ErrSessionExpired     = errors.New("session expired")
+	ErrPermissionDenied   = errors.New("permission denied")
 )
 
 type ActorRepository interface {

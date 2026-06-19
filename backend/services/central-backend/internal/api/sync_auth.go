@@ -8,7 +8,7 @@ import (
 	"mercadia.dev/pos/services/central-backend/internal/app"
 )
 
-const syncAPIKeyHeader = "X-Sync-Api-Key"
+const syncAPIKeyHeader = "X-Sync-Api-Key" //nolint:gosec // HTTP header name, not a credential
 
 func RequireSyncAPIKey(syncKeys *app.SyncAPIKeyService, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

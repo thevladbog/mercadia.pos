@@ -65,7 +65,7 @@ func TestListTerminalOverviewsIncludesShiftKPIs(t *testing.T) {
 		Name:           "Milk",
 		Quantity:       1,
 		UnitPriceMinor: 50000,
-		Now:              now,
+		Now:            now,
 	}); err != nil {
 		t.Fatalf("add line: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestListTerminalOverviewsSetsCurrentReceipt(t *testing.T) {
 		Name:           "Milk",
 		Quantity:       2,
 		UnitPriceMinor: 10000,
-		Now:              now,
+		Now:            now,
 	}); err != nil {
 		t.Fatalf("add line: %v", err)
 	}
@@ -311,7 +311,7 @@ func TestGetStoreMonitoringSummaryAggregatesCounts(t *testing.T) {
 		Name:           "Milk",
 		Quantity:       1,
 		UnitPriceMinor: 30000,
-		Now:              now,
+		Now:            now,
 	}); err != nil {
 		t.Fatalf("add line: %v", err)
 	}

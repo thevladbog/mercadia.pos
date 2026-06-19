@@ -55,11 +55,11 @@ func TestCentralUsersServiceCRUD(t *testing.T) {
 		t.Fatalf("create viewer session: %v", err)
 	}
 	if _, err := usersService.CreateUser(context.Background(), app.CreateCentralUserCommand{
-		UserID:      "blocked-1",
-		Email:       "blocked@example.com",
-		Password:    "blocked-pass",
-		Roles:       []domain.CentralRole{domain.CentralRoleViewer},
-		Session:     viewerSession,
+		UserID:   "blocked-1",
+		Email:    "blocked@example.com",
+		Password: "blocked-pass",
+		Roles:    []domain.CentralRole{domain.CentralRoleViewer},
+		Session:  viewerSession,
 	}); err == nil {
 		t.Fatal("expected permission denied for viewer creating users")
 	}

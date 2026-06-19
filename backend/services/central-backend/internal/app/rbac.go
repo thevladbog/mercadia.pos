@@ -5,9 +5,9 @@ import "mercadia.dev/pos/services/central-backend/internal/domain"
 type CentralPermission string
 
 const (
-	PermissionReportingRead         CentralPermission = "reporting.read"
-	PermissionReportingCentralRead  CentralPermission = "reporting.central.read"
-	PermissionUsersManage           CentralPermission = "users.manage"
+	PermissionReportingRead        CentralPermission = "reporting.read"
+	PermissionReportingCentralRead CentralPermission = "reporting.central.read"
+	PermissionUsersManage          CentralPermission = "users.manage"
 )
 
 var centralRolePermissions = map[domain.CentralRole][]CentralPermission{

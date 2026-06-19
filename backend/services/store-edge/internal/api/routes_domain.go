@@ -45,10 +45,10 @@ type SessionAcceptedResponse struct {
 }
 
 type SessionResponse struct {
-	Token     string         `json:"token"`
-	ActorID   string         `json:"actorId"`
-	Roles     []domain.Role  `json:"roles"`
-	ExpiresAt time.Time      `json:"expiresAt"`
+	Token     string        `json:"token"`
+	ActorID   string        `json:"actorId"`
+	Roles     []domain.Role `json:"roles"`
+	ExpiresAt time.Time     `json:"expiresAt"`
 }
 
 type PaginatedReceiptsResponse struct {
@@ -221,11 +221,11 @@ func mountDomainRoutes(
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
-		Method:          http.MethodGet,
-		Path:            "/v1/returns/{returnId}",
-		OperationID:     "getReturn",
-		Summary:         "Get return",
-		Tags:            []string{"returns"},
+		Method:      http.MethodGet,
+		Path:        "/v1/returns/{returnId}",
+		OperationID: "getReturn",
+		Summary:     "Get return",
+		Tags:        []string{"returns"},
 		Responses: map[string]httpapi.ResponseSpec{
 			"200": {Description: "Return", Schema: returnAcceptedResponseSchema()},
 			"404": {Description: "Return was not found", Schema: httpapi.ProblemSchema()},

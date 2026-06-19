@@ -480,9 +480,9 @@ type ServerOptions struct {
 }
 
 type ServerBundle struct {
-	Handler     http.Handler
-	Outbox      app.OutboxRepository
-	CatalogSync *app.CatalogSyncService
+	Handler        http.Handler
+	Outbox         app.OutboxRepository
+	CatalogSync    *app.CatalogSyncService
 	DefaultStoreID string
 }
 
@@ -3080,12 +3080,6 @@ func cashMovementAcceptedResponseSchema() httpapi.Schema {
 	}, "movement")
 }
 
-func cashMovementsResponseSchema() httpapi.Schema {
-	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"movements": httpapi.ArraySchema(cashMovementResponseSchema()),
-	}, "movements")
-}
-
 func cashBalancesResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"balances": httpapi.ArraySchema(cashBalanceResponseSchema()),
@@ -3096,12 +3090,6 @@ func cashRecountAcceptedResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"recount": cashRecountResponseSchema(),
 	}, "recount")
-}
-
-func cashRecountsResponseSchema() httpapi.Schema {
-	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"recounts": httpapi.ArraySchema(cashRecountResponseSchema()),
-	}, "recounts")
 }
 
 func cashMovementResponseSchema() httpapi.Schema {

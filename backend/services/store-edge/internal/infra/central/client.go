@@ -70,7 +70,7 @@ func (c *Client) CatalogDelta(ctx context.Context, storeID string, since time.Ti
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("fetch catalog delta: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {

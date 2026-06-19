@@ -10,13 +10,13 @@ import (
 )
 
 var (
-	ErrFiscalDocumentNotFound              = errors.New("fiscal document not found")
-	ErrInvalidFiscalizationCommand         = errors.New("invalid fiscalization command")
-	ErrReceiptNotFullyPaid                 = errors.New("receipt is not fully paid")
-	ErrReceiptAlreadyFiscalized            = errors.New("receipt is already fiscalized")
-	ErrReturnNotFiscalizable               = errors.New("return is not fiscalizable")
-	ErrReturnNotSettled                    = errors.New("return is not settled")
-	ErrReturnFiscalDocumentAlreadyExists   = errors.New("return fiscal document already exists")
+	ErrFiscalDocumentNotFound            = errors.New("fiscal document not found")
+	ErrInvalidFiscalizationCommand       = errors.New("invalid fiscalization command")
+	ErrReceiptNotFullyPaid               = errors.New("receipt is not fully paid")
+	ErrReceiptAlreadyFiscalized          = errors.New("receipt is already fiscalized")
+	ErrReturnNotFiscalizable             = errors.New("return is not fiscalizable")
+	ErrReturnNotSettled                  = errors.New("return is not settled")
+	ErrReturnFiscalDocumentAlreadyExists = errors.New("return fiscal document already exists")
 )
 
 type FiscalRepository interface {

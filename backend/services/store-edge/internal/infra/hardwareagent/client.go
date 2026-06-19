@@ -76,7 +76,7 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("hardware agent health check: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(response.Body)
 		return fmt.Errorf("hardware agent health status %d: %s", response.StatusCode, strings.TrimSpace(string(body)))
@@ -105,7 +105,7 @@ func (c *Client) SendCommand(ctx context.Context, deviceID, commandType string, 
 	if err != nil {
 		return Command{}, fmt.Errorf("send device command: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
@@ -133,7 +133,7 @@ func (c *Client) GetCommand(ctx context.Context, deviceID, commandID string) (Co
 	if err != nil {
 		return Command{}, fmt.Errorf("get device command: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {

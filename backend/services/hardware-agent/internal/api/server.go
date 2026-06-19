@@ -22,24 +22,24 @@ type StatusResponse struct {
 }
 
 type DeviceResponse struct {
-	ID        string             `json:"id"`
-	Kind      domain.DeviceKind  `json:"kind"`
+	ID        string              `json:"id"`
+	Kind      domain.DeviceKind   `json:"kind"`
 	Status    domain.DeviceStatus `json:"status"`
-	Model     string             `json:"model,omitempty"`
-	UpdatedAt time.Time          `json:"updatedAt"`
+	Model     string              `json:"model,omitempty"`
+	UpdatedAt time.Time           `json:"updatedAt"`
 }
 
 type DeviceCommandResponse struct {
-	ID          string                 `json:"id"`
-	DeviceID    string                 `json:"deviceId"`
-	Type        string                 `json:"type"`
-	Payload     map[string]any         `json:"payload,omitempty"`
-	Status      domain.CommandStatus   `json:"status"`
-	Result      map[string]any         `json:"result,omitempty"`
-	Error       string                 `json:"error,omitempty"`
-	CreatedAt   time.Time              `json:"createdAt"`
-	UpdatedAt   time.Time              `json:"updatedAt"`
-	CompletedAt *time.Time             `json:"completedAt,omitempty"`
+	ID          string               `json:"id"`
+	DeviceID    string               `json:"deviceId"`
+	Type        string               `json:"type"`
+	Payload     map[string]any       `json:"payload,omitempty"`
+	Status      domain.CommandStatus `json:"status"`
+	Result      map[string]any       `json:"result,omitempty"`
+	Error       string               `json:"error,omitempty"`
+	CreatedAt   time.Time            `json:"createdAt"`
+	UpdatedAt   time.Time            `json:"updatedAt"`
+	CompletedAt *time.Time           `json:"completedAt,omitempty"`
 }
 
 type SendDeviceCommandRequest struct {
@@ -254,7 +254,7 @@ func statusResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"terminalId":  httpapi.StringSchema(),
 		"status":      httpapi.StringSchema(),
-		"deviceCount": httpapi.Schema{"type": "integer"},
+		"deviceCount": {"type": "integer"},
 		"generatedAt": httpapi.DateTimeSchema(),
 	}, "terminalId", "status", "deviceCount", "generatedAt")
 }

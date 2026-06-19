@@ -43,17 +43,17 @@ type SyncEventsResult struct {
 }
 
 type SyncService struct {
-	stores        StoreRepository
-	syncEvents    SyncEventRepository
-	catalog       CatalogProductRepository
-	payments      SyncedPaymentRepository
-	cashMovements SyncedCashMovementRepository
-	fiscalDocs    SyncedFiscalDocumentRepository
-	returns           SyncedReturnRepository
-	operationalDays   SyncedOperationalDayRepository
-	idempotency       IdempotencyStore
-	now           func() time.Time
-	newID         func(prefix string) string
+	stores          StoreRepository
+	syncEvents      SyncEventRepository
+	catalog         CatalogProductRepository
+	payments        SyncedPaymentRepository
+	cashMovements   SyncedCashMovementRepository
+	fiscalDocs      SyncedFiscalDocumentRepository
+	returns         SyncedReturnRepository
+	operationalDays SyncedOperationalDayRepository
+	idempotency     IdempotencyStore
+	now             func() time.Time
+	newID           func(prefix string) string
 }
 
 func NewSyncService(
@@ -77,8 +77,8 @@ func NewSyncService(
 		returns:         returns,
 		operationalDays: operationalDays,
 		idempotency:     idempotency,
-		now:           time.Now,
-		newID:         defaultNewID,
+		now:             time.Now,
+		newID:           defaultNewID,
 	}
 }
 

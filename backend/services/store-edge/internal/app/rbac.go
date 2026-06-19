@@ -9,9 +9,9 @@ import (
 type Permission string
 
 const (
-	PermissionReturnsCreate   Permission = "returns.create"
-	PermissionDiscountApply   Permission = "discount.apply"
-	PermissionRecountApprove  Permission = "recount.approve"
+	PermissionReturnsCreate  Permission = "returns.create"
+	PermissionDiscountApply  Permission = "discount.apply"
+	PermissionRecountApprove Permission = "recount.approve"
 )
 
 var rolePermissions = map[domain.Role][]Permission{

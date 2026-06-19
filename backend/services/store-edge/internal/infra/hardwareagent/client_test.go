@@ -163,8 +163,8 @@ func TestClientRefundCardPayment(t *testing.T) {
 
 func TestClientPrintReceipt(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost:
+		switch r.Method {
+		case http.MethodPost:
 			command := hardwareagent.Command{
 				ID:       "cmd-print",
 				DeviceID: "sim-fiscal-1",
@@ -174,7 +174,7 @@ func TestClientPrintReceipt(t *testing.T) {
 			}
 			w.WriteHeader(http.StatusAccepted)
 			_ = json.NewEncoder(w).Encode(map[string]any{"command": command})
-		case r.Method == http.MethodGet:
+		case http.MethodGet:
 			_ = json.NewEncoder(w).Encode(hardwareagent.Command{
 				ID:       "cmd-print",
 				DeviceID: "sim-fiscal-1",

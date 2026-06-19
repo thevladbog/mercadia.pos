@@ -491,8 +491,8 @@ func TestCentralReportingSummaryEndpoint(t *testing.T) {
 	adminToken := loginTestSession(t, server, "admin@example.com", "admin-pass")
 
 	for _, fixture := range []struct {
-		body            string
-		idempotencyKey  string
+		body           string
+		idempotencyKey string
 	}{
 		{`{"storeId":"store-west","name":"West","region":"west"}`, "register-west-http"},
 		{`{"storeId":"store-east","name":"East","region":"east"}`, "register-east-http"},
