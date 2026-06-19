@@ -361,11 +361,10 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		Path:        "/v1/central/status",
 		OperationID: "getCentralStatus",
 		Summary:     "Get central backend status",
+		Description: sessionProtectedDescription("Returns region status and registered store count."),
 		Tags:        []string{"system"},
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Central backend status", Schema: statusResponseSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses:   protectedResponseSpecs("200", "Central backend status", statusResponseSchema()),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		count, err := services.StoreRegistry.CountStores(r.Context())
 		if err != nil {
 			writeAppError(w, err)
@@ -377,7 +376,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			StoreCount:  count,
 			GeneratedAt: time.Now().UTC(),
 		})
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
@@ -499,14 +498,17 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		Path:            "/v1/stores/{storeId}/sync-events",
 		OperationID:     "listStoreSyncEvents",
 		Summary:         "List synchronized Store Edge events",
+		Description:     sessionProtectedDescription("Lists synchronized Store Edge events accepted for a store."),
 		Tags:            []string{"sync"},
 		QueryParameters: paginationQueryParams(),
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Synchronized events", Schema: paginatedSyncEventsResponseSchema()},
-			"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
-			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Synchronized events", paginatedSyncEventsResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
+				"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
 		result, err := services.Sync.ListEvents(r.Context(), r.PathValue("storeId"), params)
 		if err != nil {
@@ -521,40 +523,51 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			Items:      items,
 			TotalCount: result.TotalCount,
 		})
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
 		Path:        "/v1/stores/{storeId}/catalog/products",
 		OperationID: "listStoreCatalogProducts",
 		Summary:     "List catalog products for a store",
+		Description: syncAPIKeyProtectedDescription("Lists catalog products for a store."),
 		Tags:        []string{"catalog"},
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Catalog products", Schema: catalogProductsResponseSchema()},
-			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			map[string]httpapi.ResponseSpec{
+				"200": {Description: "Catalog products", Schema: catalogProductsResponseSchema()},
+				"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+			},
+			map[string]httpapi.ResponseSpec{
+				"401": {Description: "Sync API key is missing or invalid", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSyncAPIKey(services.SyncAPIKey, func(w http.ResponseWriter, r *http.Request) {
 		result, err := services.Catalog.ListProducts(r.Context(), r.PathValue("storeId"))
 		if err != nil {
 			writeAppError(w, err)
 			return
 		}
 		httpapi.WriteJSON(w, http.StatusOK, CatalogProductsResponse{Products: catalogProductResponses(result.Products)})
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
 		Path:        "/v1/stores/{storeId}/catalog/delta",
 		OperationID: "getStoreCatalogDelta",
 		Summary:     "Get catalog changes since a timestamp",
-		Description: "Query parameter `since` must be an RFC3339 timestamp.",
+		Description: syncAPIKeyProtectedDescription("Query parameter `since` must be an RFC3339 timestamp."),
 		Tags:        []string{"catalog"},
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Catalog delta", Schema: catalogDeltaResponseSchema()},
-			"400": {Description: "Invalid catalog query", Schema: httpapi.ProblemSchema()},
-			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			map[string]httpapi.ResponseSpec{
+				"200": {Description: "Catalog delta", Schema: catalogDeltaResponseSchema()},
+				"400": {Description: "Invalid catalog query", Schema: httpapi.ProblemSchema()},
+				"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+			},
+			map[string]httpapi.ResponseSpec{
+				"401": {Description: "Sync API key is missing or invalid", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSyncAPIKey(services.SyncAPIKey, func(w http.ResponseWriter, r *http.Request) {
 		sinceRaw := r.URL.Query().Get("since")
 		since, err := time.Parse(time.RFC3339, sinceRaw)
 		if err != nil {
@@ -570,21 +583,24 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			Since:    result.Since,
 			Products: catalogProductResponses(result.Products),
 		})
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:          http.MethodGet,
 		Path:            "/v1/stores/{storeId}/payments",
 		OperationID:     "listStorePayments",
 		Summary:         "List synchronized payments for a store",
+		Description:     sessionProtectedDescription("Lists synchronized payments projected from Store Edge events."),
 		Tags:            []string{"sync"},
 		QueryParameters: paginationQueryParams(),
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Synchronized payments", Schema: paginatedSyncedPaymentsResponseSchema()},
-			"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
-			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Synchronized payments", paginatedSyncedPaymentsResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
+				"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
 		result, err := services.Payments.ListPayments(r.Context(), r.PathValue("storeId"), params)
 		if err != nil {
@@ -595,40 +611,46 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			Items:      syncedPaymentResponses(result.Items),
 			TotalCount: result.TotalCount,
 		})
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
 		Path:        "/v1/stores/{storeId}/payments/{paymentId}",
 		OperationID: "getStorePayment",
 		Summary:     "Get a synchronized payment",
+		Description: sessionProtectedDescription("Returns a synchronized payment projected from Store Edge events."),
 		Tags:        []string{"sync"},
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Synchronized payment", Schema: syncedPaymentResponseSchema()},
-			"404": {Description: "Store or payment not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Synchronized payment", syncedPaymentResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"404": {Description: "Store or payment not found", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		payment, err := services.Payments.GetPayment(r.Context(), r.PathValue("storeId"), r.PathValue("paymentId"))
 		if err != nil {
 			writeAppError(w, err)
 			return
 		}
 		httpapi.WriteJSON(w, http.StatusOK, syncedPaymentResponse(payment))
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:          http.MethodGet,
 		Path:            "/v1/stores/{storeId}/cash-movements",
 		OperationID:     "listStoreCashMovements",
 		Summary:         "List synchronized cash movements for a store",
+		Description:     sessionProtectedDescription("Lists synchronized cash movements projected from Store Edge events."),
 		Tags:            []string{"sync"},
 		QueryParameters: paginationQueryParams(),
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Synchronized cash movements", Schema: paginatedSyncedCashMovementsResponseSchema()},
-			"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
-			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Synchronized cash movements", paginatedSyncedCashMovementsResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
+				"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
 		result, err := services.CashMovements.ListCashMovements(r.Context(), r.PathValue("storeId"), params)
 		if err != nil {
@@ -639,40 +661,46 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			Items:      syncedCashMovementResponses(result.Items),
 			TotalCount: result.TotalCount,
 		})
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
 		Path:        "/v1/stores/{storeId}/cash-movements/{cashMovementId}",
 		OperationID: "getStoreCashMovement",
 		Summary:     "Get a synchronized cash movement",
+		Description: sessionProtectedDescription("Returns a synchronized cash movement projected from Store Edge events."),
 		Tags:        []string{"sync"},
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Synchronized cash movement", Schema: syncedCashMovementResponseSchema()},
-			"404": {Description: "Store or cash movement not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Synchronized cash movement", syncedCashMovementResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"404": {Description: "Store or cash movement not found", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		movement, err := services.CashMovements.GetCashMovement(r.Context(), r.PathValue("storeId"), r.PathValue("cashMovementId"))
 		if err != nil {
 			writeAppError(w, err)
 			return
 		}
 		httpapi.WriteJSON(w, http.StatusOK, syncedCashMovementResponse(movement))
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:          http.MethodGet,
 		Path:            "/v1/stores/{storeId}/fiscal-documents",
 		OperationID:     "listStoreFiscalDocuments",
 		Summary:         "List synchronized fiscal documents for a store",
+		Description:     sessionProtectedDescription("Lists synchronized fiscal documents projected from Store Edge events."),
 		Tags:            []string{"sync"},
 		QueryParameters: paginationQueryParams(),
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Synchronized fiscal documents", Schema: paginatedSyncedFiscalDocumentsResponseSchema()},
-			"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
-			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Synchronized fiscal documents", paginatedSyncedFiscalDocumentsResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
+				"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
 		result, err := services.FiscalDocuments.ListFiscalDocuments(r.Context(), r.PathValue("storeId"), params)
 		if err != nil {
@@ -683,40 +711,46 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			Items:      syncedFiscalDocumentResponses(result.Items),
 			TotalCount: result.TotalCount,
 		})
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
 		Path:        "/v1/stores/{storeId}/fiscal-documents/{fiscalDocumentId}",
 		OperationID: "getStoreFiscalDocument",
 		Summary:     "Get a synchronized fiscal document",
+		Description: sessionProtectedDescription("Returns a synchronized fiscal document projected from Store Edge events."),
 		Tags:        []string{"sync"},
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Synchronized fiscal document", Schema: syncedFiscalDocumentResponseSchema()},
-			"404": {Description: "Store or fiscal document not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Synchronized fiscal document", syncedFiscalDocumentResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"404": {Description: "Store or fiscal document not found", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		document, err := services.FiscalDocuments.GetFiscalDocument(r.Context(), r.PathValue("storeId"), r.PathValue("fiscalDocumentId"))
 		if err != nil {
 			writeAppError(w, err)
 			return
 		}
 		httpapi.WriteJSON(w, http.StatusOK, syncedFiscalDocumentResponse(document))
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:          http.MethodGet,
 		Path:            "/v1/stores/{storeId}/returns",
 		OperationID:     "listStoreReturns",
 		Summary:         "List synchronized returns for a store",
+		Description:     sessionProtectedDescription("Lists synchronized returns projected from Store Edge events."),
 		Tags:            []string{"sync"},
 		QueryParameters: paginationQueryParams(),
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Synchronized returns", Schema: paginatedSyncedReturnsResponseSchema()},
-			"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
-			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Synchronized returns", paginatedSyncedReturnsResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
+				"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
 		result, err := services.Returns.ListReturns(r.Context(), r.PathValue("storeId"), params)
 		if err != nil {
@@ -727,40 +761,46 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			Items:      syncedReturnResponses(result.Items),
 			TotalCount: result.TotalCount,
 		})
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
 		Path:        "/v1/stores/{storeId}/returns/{returnId}",
 		OperationID: "getStoreReturn",
 		Summary:     "Get a synchronized return",
+		Description: sessionProtectedDescription("Returns a synchronized return projected from Store Edge events."),
 		Tags:        []string{"sync"},
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Synchronized return", Schema: syncedReturnResponseSchema()},
-			"404": {Description: "Store or return not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Synchronized return", syncedReturnResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"404": {Description: "Store or return not found", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		ret, err := services.Returns.GetReturn(r.Context(), r.PathValue("storeId"), r.PathValue("returnId"))
 		if err != nil {
 			writeAppError(w, err)
 			return
 		}
 		httpapi.WriteJSON(w, http.StatusOK, syncedReturnResponse(ret))
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:          http.MethodGet,
 		Path:            "/v1/stores/{storeId}/operational-days",
 		OperationID:     "listStoreOperationalDays",
 		Summary:         "List synchronized closed operational days for a store",
+		Description:     sessionProtectedDescription("Lists synchronized closed operational days projected from Store Edge events."),
 		Tags:            []string{"sync"},
 		QueryParameters: paginationQueryParams(),
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Synchronized operational days", Schema: paginatedSyncedOperationalDaysResponseSchema()},
-			"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
-			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Synchronized operational days", paginatedSyncedOperationalDaysResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
+				"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
 		result, err := services.OperationalDays.ListOperationalDays(r.Context(), r.PathValue("storeId"), params)
 		if err != nil {
@@ -771,26 +811,29 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			Items:      syncedOperationalDayResponses(result.Items),
 			TotalCount: result.TotalCount,
 		})
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
 		Path:        "/v1/stores/{storeId}/operational-days/{operationalDayId}",
 		OperationID: "getStoreOperationalDay",
 		Summary:     "Get a synchronized closed operational day",
+		Description: sessionProtectedDescription("Returns a synchronized closed operational day projected from Store Edge events."),
 		Tags:        []string{"sync"},
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Synchronized operational day", Schema: syncedOperationalDayResponseSchema()},
-			"404": {Description: "Store or operational day not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Synchronized operational day", syncedOperationalDayResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"404": {Description: "Store or operational day not found", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		day, err := services.OperationalDays.GetOperationalDay(r.Context(), r.PathValue("storeId"), r.PathValue("operationalDayId"))
 		if err != nil {
 			writeAppError(w, err)
 			return
 		}
 		httpapi.WriteJSON(w, http.StatusOK, syncedOperationalDayResponse(day))
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:          http.MethodGet,
