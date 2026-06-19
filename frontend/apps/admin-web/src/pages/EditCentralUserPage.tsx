@@ -9,6 +9,7 @@ import {
 } from '@mercadia/api-clients-central';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
@@ -20,6 +21,7 @@ type EditCentralUserFormProps = {
 };
 
 function EditCentralUserForm({ user, userId }: EditCentralUserFormProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState(user.displayName);
@@ -32,7 +34,7 @@ function EditCentralUserForm({ user, userId }: EditCentralUserFormProps) {
     mutation: {
       onSuccess: async (response) => {
         if (response.status !== 200) {
-          setErrorMessage('User update failed');
+          setErrorMessage(t('common.unexpectedError'));
           return;
         }
         await Promise.all([
@@ -52,7 +54,7 @@ function EditCentralUserForm({ user, userId }: EditCentralUserFormProps) {
     setErrorMessage(null);
 
     if (roles.length === 0) {
-      setErrorMessage('Select at least one role');
+      setErrorMessage(t('users.roles'));
       return;
     }
 
@@ -68,19 +70,19 @@ function EditCentralUserForm({ user, userId }: EditCentralUserFormProps) {
 
   return (
     <div className="panel login-panel">
-      <h2>Edit Central User</h2>
-      <p className="muted">Update roles, active state, or password for {user.email}.</p>
+      <h2>{t('users.editTitle')}</h2>
+      <p className="muted">{user.email}</p>
       <form className="stack" onSubmit={handleSubmit}>
         <label className="field">
-          <span>User ID</span>
+          <span>{t('users.userId')}</span>
           <p className="readonly-field">{user.id}</p>
         </label>
         <label className="field">
-          <span>Email</span>
+          <span>{t('users.email')}</span>
           <p className="readonly-field">{user.email}</p>
         </label>
         <label className="field">
-          <span>Display name</span>
+          <span>{t('users.displayName')}</span>
           <input
             required
             value={displayName}
@@ -88,8 +90,9 @@ function EditCentralUserForm({ user, userId }: EditCentralUserFormProps) {
           />
         </label>
         <label className="field">
-          <span>New password (optional)</span>
+          <span>{t('users.newPassword')}</span>
           <input
+            placeholder={t('users.passwordOptional')}
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -102,12 +105,12 @@ function EditCentralUserForm({ user, userId }: EditCentralUserFormProps) {
             type="checkbox"
             onChange={(event) => setActive(event.target.checked)}
           />
-          <span>Active</span>
+          <span>{t('users.active')}</span>
         </label>
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
         <div className="form-actions">
           <button disabled={mutation.isPending} type="submit">
-            {mutation.isPending ? 'Saving…' : 'Save changes'}
+            {mutation.isPending ? t('users.saving') : t('common.save')}
           </button>
         </div>
       </form>
@@ -116,6 +119,7 @@ function EditCentralUserForm({ user, userId }: EditCentralUserFormProps) {
 }
 
 export function EditCentralUserPage() {
+  const { t } = useTranslation();
   const { userId = '' } = useParams();
   const userQuery = useGetCentralUser(userId, { query: { enabled: userId.length > 0 } });
 
@@ -125,7 +129,7 @@ export function EditCentralUserPage() {
   if (!userId) {
     return (
       <section className="panel">
-        <p className="error">Missing user ID.</p>
+        <p className="error">{t('common.unexpectedError')}</p>
         <PageBackLink />
       </section>
     );
@@ -134,7 +138,7 @@ export function EditCentralUserPage() {
   if (userQuery.isLoading && !user && !notFound) {
     return (
       <section className="panel">
-        <p className="muted">Loading user…</p>
+        <p className="muted">{t('users.loadingUsers')}</p>
       </section>
     );
   }
@@ -142,10 +146,10 @@ export function EditCentralUserPage() {
   if (notFound || (userQuery.error instanceof ApiError && userQuery.error.status === 404)) {
     return (
       <section className="panel">
-        <h2>User not found</h2>
-        <p className="muted">No central user exists with ID {userId}.</p>
+        <h2>{t('users.noUsers')}</h2>
+        <p className="muted">{userId}</p>
         <p>
-          <Link to="/central/users">Back to users</Link>
+          <Link to="/central/users">{t('users.backToUsers')}</Link>
         </p>
       </section>
     );
@@ -163,7 +167,7 @@ export function EditCentralUserPage() {
   if (!user) {
     return (
       <section className="panel">
-        <p className="muted">No user data.</p>
+        <p className="muted">{t('common.noData')}</p>
         <PageBackLink />
       </section>
     );

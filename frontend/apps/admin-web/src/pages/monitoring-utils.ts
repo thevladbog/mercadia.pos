@@ -1,17 +1,19 @@
-export const MONITORING_REFRESH_INTERVAL_MS = 5000;
+import { i18n } from '@/i18n/index.js';
+
+export { MONITORING_REFRESH_INTERVAL_MS, STORE_POLL_INTERVAL_MS } from './store-polling.js';
 
 export type StreamConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error';
 
 export function streamConnectionStatusLabel(status: StreamConnectionStatus): string {
   switch (status) {
     case 'connecting':
-      return 'Connecting';
+      return i18n.t('monitoring.stream.connecting');
     case 'connected':
-      return 'Connected';
+      return i18n.t('monitoring.stream.connected');
     case 'error':
-      return 'Error';
+      return i18n.t('monitoring.stream.error');
     default:
-      return 'Disconnected';
+      return i18n.t('monitoring.stream.disconnected');
   }
 }
 

@@ -1,10 +1,12 @@
 import { useListCentralUsers } from '@mercadia/api-clients-central';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { formatTimestamp } from './reporting-utils.js';
 
 export function CentralUsersPage() {
+  const { t } = useTranslation();
   const usersQuery = useListCentralUsers();
   const users = usersQuery.data?.status === 200 ? usersQuery.data.data.users : null;
   const errorMessage = usersQuery.error != null ? getApiErrorMessage(usersQuery.error) : null;
@@ -14,8 +16,8 @@ export function CentralUsersPage() {
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Central Users</h2>
-            <p className="muted">Manage central admin accounts and roles.</p>
+            <h2>{t('users.title')}</h2>
+            <p className="muted">{t('users.subtitle')}</p>
           </div>
           <div className="header-actions-inline">
             <button
@@ -24,10 +26,10 @@ export function CentralUsersPage() {
               onClick={() => void usersQuery.refetch()}
               type="button"
             >
-              {usersQuery.isFetching ? 'Refreshing…' : 'Refresh'}
+              {usersQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
             </button>
             <Link className="button-link" to="/central/users/new">
-              Create user
+              {t('users.createUser')}
             </Link>
           </div>
         </div>
@@ -35,18 +37,18 @@ export function CentralUsersPage() {
         {errorMessage ? (
           <p className="error">{errorMessage}</p>
         ) : usersQuery.isLoading && !users ? (
-          <p className="muted">Loading users…</p>
+          <p className="muted">{t('users.loadingUsers')}</p>
         ) : users && users.length > 0 ? (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>User ID</th>
-                  <th>Email</th>
-                  <th>Display name</th>
-                  <th>Roles</th>
-                  <th>Active</th>
-                  <th>Created</th>
+                  <th>{t('users.userId')}</th>
+                  <th>{t('users.email')}</th>
+                  <th>{t('users.displayName')}</th>
+                  <th>{t('users.roles')}</th>
+                  <th>{t('users.active')}</th>
+                  <th>{t('users.created')}</th>
                   <th />
                 </tr>
               </thead>
@@ -57,10 +59,10 @@ export function CentralUsersPage() {
                     <td>{user.email}</td>
                     <td>{user.displayName}</td>
                     <td>{user.roles.join(', ')}</td>
-                    <td>{user.active ? 'Yes' : 'No'}</td>
+                    <td>{user.active ? t('common.yes') : t('common.no')}</td>
                     <td>{formatTimestamp(user.createdAt)}</td>
                     <td>
-                      <Link to={`/central/users/${user.id}`}>Edit</Link>
+                      <Link to={`/central/users/${user.id}`}>{t('common.edit')}</Link>
                     </td>
                   </tr>
                 ))}
@@ -68,7 +70,7 @@ export function CentralUsersPage() {
             </table>
           </div>
         ) : (
-          <p className="muted">No central users found.</p>
+          <p className="muted">{t('users.noUsers')}</p>
         )}
       </div>
     </section>

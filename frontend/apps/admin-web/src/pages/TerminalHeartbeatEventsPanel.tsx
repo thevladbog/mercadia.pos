@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 import { terminalMonitoringHref } from './monitoring-routes.js';
@@ -16,19 +17,22 @@ function TerminalHeartbeatEventsPanelContent({
   storeId,
   terminalId,
   maxEvents,
-  title = 'Terminal events',
+  title,
 }: TerminalHeartbeatEventsPanelProps) {
+  const { t } = useTranslation();
   const { events, connectionStatus } = useTerminalHeartbeatStream(storeId, {
     terminalId,
     maxEvents,
   });
 
+  const panelTitle = title ?? t('monitoring.eventsTitle');
+
   return (
     <div className="panel">
       <div className="panel-heading">
         <div>
-          <h3>{title}</h3>
-          <p className="muted">Showing terminal_heartbeat events only.</p>
+          <h3>{panelTitle}</h3>
+          <p className="muted">{t('monitoring.eventsNote')}</p>
         </div>
         <span className={streamConnectionStatusClass(connectionStatus)}>
           {streamConnectionStatusLabel(connectionStatus)}
@@ -36,19 +40,19 @@ function TerminalHeartbeatEventsPanelContent({
       </div>
 
       {storeId.length === 0 ? (
-        <p className="muted">Select a store to subscribe to terminal events.</p>
+        <p className="muted">{t('monitoring.subscribeStore')}</p>
       ) : connectionStatus === 'connected' && events.length === 0 ? (
-        <p className="muted">Waiting for terminal heartbeats…</p>
+        <p className="muted">{t('monitoring.waitingHeartbeats')}</p>
       ) : events.length > 0 ? (
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Received</th>
-                <th>Terminal</th>
-                <th>Kind</th>
-                <th>Status</th>
-                <th>Last seen</th>
+                <th>{t('monitoring.eventReceived')}</th>
+                <th>{t('monitoring.terminal')}</th>
+                <th>{t('monitoring.kind')}</th>
+                <th>{t('monitoring.status')}</th>
+                <th>{t('monitoring.lastSeen')}</th>
               </tr>
             </thead>
             <tbody>
@@ -69,9 +73,9 @@ function TerminalHeartbeatEventsPanelContent({
           </table>
         </div>
       ) : connectionStatus === 'error' ? (
-        <p className="muted">Unable to connect to the terminal event stream.</p>
+        <p className="muted">{t('monitoring.streamError')}</p>
       ) : (
-        <p className="muted">Connecting to terminal event stream…</p>
+        <p className="muted">{t('monitoring.connectingStream')}</p>
       )}
     </div>
   );

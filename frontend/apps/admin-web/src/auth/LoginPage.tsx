@@ -1,11 +1,13 @@
 import { useCreateCentralAuthSession } from '@mercadia/api-clients-central';
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { getApiErrorMessage, isUnauthorizedError } from './api-errors.js';
 import { useAuth } from './useAuth.js';
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const { isAuthenticated, login } = useAuth();
   const location = useLocation();
   const [email, setEmail] = useState('');
@@ -16,7 +18,7 @@ export function LoginPage() {
     mutation: {
       onSuccess: (response) => {
         if (response.status !== 201) {
-          setErrorMessage('Login failed');
+          setErrorMessage(t('auth.loginFailed'));
           return;
         }
 
@@ -25,7 +27,7 @@ export function LoginPage() {
       },
       onError: (error) => {
         if (isUnauthorizedError(error)) {
-          setErrorMessage('Invalid email or password');
+          setErrorMessage(t('auth.invalidCredentials'));
           return;
         }
         setErrorMessage(getApiErrorMessage(error));
@@ -46,11 +48,11 @@ export function LoginPage() {
 
   return (
     <section className="panel login-panel">
-      <h1>Central Admin Login</h1>
-      <p className="muted">Sign in with your central administrator credentials.</p>
+      <h1>{t('auth.loginTitle')}</h1>
+      <p className="muted">{t('auth.loginSubtitle')}</p>
       <form className="stack" onSubmit={handleSubmit}>
         <label className="field">
-          <span>Email</span>
+          <span>{t('auth.email')}</span>
           <input
             autoComplete="username"
             name="email"
@@ -61,7 +63,7 @@ export function LoginPage() {
           />
         </label>
         <label className="field">
-          <span>Password</span>
+          <span>{t('auth.password')}</span>
           <input
             autoComplete="current-password"
             name="password"
@@ -73,7 +75,7 @@ export function LoginPage() {
         </label>
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
         <button disabled={mutation.isPending} type="submit">
-          {mutation.isPending ? 'Signing in…' : 'Sign in'}
+          {mutation.isPending ? t('auth.signingIn') : t('auth.signIn')}
         </button>
       </form>
     </section>

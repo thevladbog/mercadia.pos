@@ -6,6 +6,7 @@ import {
 } from '@mercadia/api-clients-central';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
@@ -13,6 +14,7 @@ import { CENTRAL_ROLE_VIEWER } from '@/auth/permissions.js';
 import { CentralRoleFields, PageBackLink } from './users-shared.js';
 
 export function CreateCentralUserPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [userId, setUserId] = useState('');
@@ -26,7 +28,7 @@ export function CreateCentralUserPage() {
     mutation: {
       onSuccess: async (response) => {
         if (response.status !== 201) {
-          setErrorMessage('User creation failed');
+          setErrorMessage(t('common.unexpectedError'));
           return;
         }
         await queryClient.invalidateQueries({ queryKey: getListCentralUsersQueryKey() });
@@ -34,7 +36,7 @@ export function CreateCentralUserPage() {
       },
       onError: (error) => {
         if (error instanceof ApiError && error.status === 409) {
-          setErrorMessage('A user with this email already exists');
+          setErrorMessage(getApiErrorMessage(error));
           return;
         }
         setErrorMessage(getApiErrorMessage(error));
@@ -47,7 +49,7 @@ export function CreateCentralUserPage() {
     setErrorMessage(null);
 
     if (roles.length === 0) {
-      setErrorMessage('Select at least one role');
+      setErrorMessage(t('users.roles'));
       return;
     }
 
@@ -66,15 +68,15 @@ export function CreateCentralUserPage() {
     <section className="stack users-page">
       <PageBackLink />
       <div className="panel login-panel">
-        <h2>Create Central User</h2>
-        <p className="muted">Add a new central admin or viewer account.</p>
+        <h2>{t('users.createTitle')}</h2>
+        <p className="muted">{t('users.subtitle')}</p>
         <form className="stack" onSubmit={handleSubmit}>
           <label className="field">
-            <span>User ID</span>
+            <span>{t('users.userId')}</span>
             <input required value={userId} onChange={(event) => setUserId(event.target.value)} />
           </label>
           <label className="field">
-            <span>Email</span>
+            <span>{t('users.email')}</span>
             <input
               required
               type="email"
@@ -83,11 +85,11 @@ export function CreateCentralUserPage() {
             />
           </label>
           <label className="field">
-            <span>Display name (optional)</span>
+            <span>{t('users.displayName')}</span>
             <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
           </label>
           <label className="field">
-            <span>Password</span>
+            <span>{t('users.password')}</span>
             <input
               required
               type="password"
@@ -99,7 +101,7 @@ export function CreateCentralUserPage() {
           {errorMessage ? <p className="error">{errorMessage}</p> : null}
           <div className="form-actions">
             <button disabled={mutation.isPending} type="submit">
-              {mutation.isPending ? 'Creating…' : 'Create user'}
+              {mutation.isPending ? t('users.creating') : t('users.createUser')}
             </button>
           </div>
         </form>

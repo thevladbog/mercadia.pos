@@ -6,11 +6,13 @@ import {
 } from '@mercadia/api-clients-central';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 
 export function RegisterStorePage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [storeId, setStoreId] = useState('');
@@ -30,22 +32,22 @@ export function RegisterStorePage() {
         return;
       }
       if (response.status === 409) {
-        setErrorMessage('Store already registered or idempotency conflict');
+        setErrorMessage(t('common.unexpectedError'));
         return;
       }
       if (response.status === 403) {
-        setErrorMessage('Central admin role is required to register stores');
+        setErrorMessage(t('auth.adminRequiredNotice'));
         return;
       }
-      setErrorMessage('Store registration failed');
+      setErrorMessage(t('common.unexpectedError'));
     },
     onError: (error) => {
       if (error instanceof ApiError && error.status === 409) {
-        setErrorMessage('Store already registered or idempotency conflict');
+        setErrorMessage(getApiErrorMessage(error));
         return;
       }
       if (error instanceof ApiError && error.status === 403) {
-        setErrorMessage('Central admin role is required to register stores');
+        setErrorMessage(t('auth.adminRequiredNotice'));
         return;
       }
       setErrorMessage(getApiErrorMessage(error));
@@ -68,28 +70,28 @@ export function RegisterStorePage() {
   return (
     <section className="stack users-page">
       <p className="page-back">
-        <Link to="/central/stores">Back to stores</Link>
+        <Link to="/central/stores">{t('nav.stores')}</Link>
       </p>
       <div className="panel login-panel">
-        <h2>Register Store</h2>
-        <p className="muted">Add a store to the central registry for sync and monitoring.</p>
+        <h2>{t('stores.registerTitle')}</h2>
+        <p className="muted">{t('stores.registerSubtitle')}</p>
         <form className="stack" onSubmit={handleSubmit}>
           <label className="field">
-            <span>Store ID</span>
+            <span>{t('stores.storeIdField')}</span>
             <input required value={storeId} onChange={(event) => setStoreId(event.target.value)} />
           </label>
           <label className="field">
-            <span>Name</span>
+            <span>{t('stores.storeName')}</span>
             <input required value={name} onChange={(event) => setName(event.target.value)} />
           </label>
           <label className="field">
-            <span>Region (optional)</span>
+            <span>{t('stores.regionField')}</span>
             <input value={region} onChange={(event) => setRegion(event.target.value)} />
           </label>
           {errorMessage ? <p className="error">{errorMessage}</p> : null}
           <div className="form-actions">
             <button disabled={mutation.isPending} type="submit">
-              {mutation.isPending ? 'Registering…' : 'Register store'}
+              {mutation.isPending ? t('stores.registering') : t('stores.submitRegister')}
             </button>
           </div>
         </form>

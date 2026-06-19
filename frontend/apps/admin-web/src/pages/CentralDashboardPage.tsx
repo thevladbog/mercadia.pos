@@ -1,4 +1,6 @@
 import { useGetCentralStatus } from '@mercadia/api-clients-central';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
@@ -6,39 +8,73 @@ import { useAuth } from '@/auth/useAuth.js';
 import { canManageCentralUsers } from '@/auth/permissions.js';
 import { formatTimestamp } from './reporting-utils.js';
 
-const QUICK_LINKS = [
-  {
-    label: 'Reporting',
-    description: 'Cross-store KPIs and per-store breakdown',
-    to: '/central/reporting',
-  },
-  { label: 'Stores', description: 'Registered store registry', to: '/central/stores' },
-  { label: 'Sync', description: 'Synchronized read-model explorer', to: '/central/sync' },
-  {
-    label: 'Monitoring',
-    description: 'Live store-edge terminal monitoring',
-    to: '/store/monitoring',
-  },
-] as const;
+type QuickLink = {
+  titleKey: string;
+  descKey: string;
+  to: string;
+};
 
 export function CentralDashboardPage() {
+  const { t } = useTranslation();
   const { roles } = useAuth();
   const statusQuery = useGetCentralStatus({
     query: { refetchOnWindowFocus: false },
   });
 
+  const quickLinks = useMemo((): QuickLink[] => {
+    const links: QuickLink[] = [
+      {
+        titleKey: 'dashboard.reportingTitle',
+        descKey: 'dashboard.reportingDesc',
+        to: '/central/reporting',
+      },
+      {
+        titleKey: 'dashboard.storesTitle',
+        descKey: 'dashboard.storesDesc',
+        to: '/central/stores',
+      },
+      {
+        titleKey: 'dashboard.syncTitle',
+        descKey: 'dashboard.syncDesc',
+        to: '/central/sync',
+      },
+      {
+        titleKey: 'dashboard.monitoringTitle',
+        descKey: 'dashboard.monitoringDesc',
+        to: '/store/monitoring',
+      },
+      {
+        titleKey: 'dashboard.safeTitle',
+        descKey: 'dashboard.safeDesc',
+        to: '/store/safe',
+      },
+      {
+        titleKey: 'dashboard.eodTitle',
+        descKey: 'dashboard.eodDesc',
+        to: '/store/eod',
+      },
+    ];
+    if (canManageCentralUsers(roles)) {
+      links.push({
+        titleKey: 'dashboard.usersTitle',
+        descKey: 'dashboard.usersDesc',
+        to: '/central/users',
+      });
+    }
+    return links;
+  }, [roles]);
+
   const status = statusQuery.data?.status === 200 ? statusQuery.data.data : null;
   const isLoading = statusQuery.isFetching;
   const errorMessage = statusQuery.error != null ? getApiErrorMessage(statusQuery.error) : null;
-  const showUsersLink = canManageCentralUsers(roles);
 
   return (
     <section className="stack reporting-page">
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Central Dashboard</h2>
-            <p className="muted">Operational status for the central backend region.</p>
+            <h2>{t('dashboard.title')}</h2>
+            <p className="muted">{t('dashboard.subtitle')}</p>
           </div>
           <button
             className="secondary"
@@ -46,7 +82,7 @@ export function CentralDashboardPage() {
             onClick={() => void statusQuery.refetch()}
             type="button"
           >
-            {isLoading ? 'Refreshing…' : 'Refresh'}
+            {isLoading ? t('common.refreshing') : t('common.refresh')}
           </button>
         </div>
       </div>
@@ -58,48 +94,42 @@ export function CentralDashboardPage() {
       ) : null}
 
       <div className="panel">
-        <h3>Central status</h3>
+        <h3>{t('dashboard.centralStatus')}</h3>
         {statusQuery.isLoading && !status ? (
-          <p className="muted">Loading status…</p>
+          <p className="muted">{t('dashboard.loadingStatus')}</p>
         ) : status ? (
           <dl className="kpi-grid">
             <div>
-              <dt>Region</dt>
+              <dt>{t('dashboard.region')}</dt>
               <dd>{status.region}</dd>
             </div>
             <div>
-              <dt>Status</dt>
+              <dt>{t('dashboard.status')}</dt>
               <dd>{status.status}</dd>
             </div>
             <div>
-              <dt>Registered stores</dt>
+              <dt>{t('dashboard.registeredStores')}</dt>
               <dd>{status.storeCount}</dd>
             </div>
             <div>
-              <dt>Last updated</dt>
+              <dt>{t('dashboard.lastUpdated')}</dt>
               <dd>{formatTimestamp(status.generatedAt)}</dd>
             </div>
           </dl>
         ) : (
-          <p className="muted">No status data.</p>
+          <p className="muted">{t('dashboard.noStatus')}</p>
         )}
       </div>
 
       <div className="panel">
-        <h3>Quick links</h3>
+        <h3>{t('dashboard.quickLinks')}</h3>
         <div className="stack">
-          {QUICK_LINKS.map((link) => (
+          {quickLinks.map((link) => (
             <div key={link.to}>
-              <Link to={link.to}>{link.label}</Link>
-              <p className="muted">{link.description}</p>
+              <Link to={link.to}>{t(link.titleKey)}</Link>
+              <p className="muted">{t(link.descKey)}</p>
             </div>
           ))}
-          {showUsersLink ? (
-            <div>
-              <Link to="/central/users">Users</Link>
-              <p className="muted">Central user and role management</p>
-            </div>
-          ) : null}
         </div>
       </div>
     </section>

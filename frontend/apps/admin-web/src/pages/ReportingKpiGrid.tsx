@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 import { formatMinorAmount } from './reporting-utils.js';
 
 export type ReportingKpiData = {
@@ -20,50 +22,52 @@ type ReportingKpiGridProps = {
 };
 
 export function ReportingKpiGrid({ data }: ReportingKpiGridProps) {
+  const { t } = useTranslation();
+
   return (
     <dl className="kpi-grid">
       {data.storeCount != null ? (
         <div>
-          <dt>Stores</dt>
+          <dt>{t('reporting.stores')}</dt>
           <dd>{data.storeCount}</dd>
         </div>
       ) : null}
       <div>
-        <dt>Fiscal receipts</dt>
+        <dt>{t('reporting.fiscalReceipts')}</dt>
         <dd>
           {data.fiscalReceiptCount} / {formatMinorAmount(data.fiscalReceiptAmountMinor)}
         </dd>
       </div>
       <div>
-        <dt>Fiscal returns</dt>
+        <dt>{t('reporting.fiscalReturns')}</dt>
         <dd>
           {data.fiscalReturnCount} / {formatMinorAmount(data.fiscalReturnAmountMinor)}
         </dd>
       </div>
       <div>
-        <dt>Payments captured</dt>
+        <dt>{t('reporting.paymentsCaptured')}</dt>
         <dd>{formatMinorAmount(data.paymentsCapturedAmountMinor)}</dd>
       </div>
       <div>
-        <dt>Payments cancelled</dt>
+        <dt>{t('reporting.paymentsCancelled')}</dt>
         <dd>{data.paymentsCancelledCount}</dd>
       </div>
       <div>
-        <dt>Payments refunded</dt>
+        <dt>{t('reporting.paymentsRefunded')}</dt>
         <dd>{formatMinorAmount(data.paymentsRefundedAmountMinor)}</dd>
       </div>
       <div>
-        <dt>Returns settled</dt>
+        <dt>{t('reporting.returnsSettled')}</dt>
         <dd>
           {data.returnsSettledCount} / {formatMinorAmount(data.returnsSettledAmountMinor)}
         </dd>
       </div>
       <div>
-        <dt>Cash movements posted</dt>
+        <dt>{t('reporting.cashMovementsPosted')}</dt>
         <dd>{data.cashMovementsPostedCount}</dd>
       </div>
       <div>
-        <dt>Operational days closed</dt>
+        <dt>{t('reporting.operationalDaysClosed')}</dt>
         <dd>{data.operationalDaysClosedCount}</dd>
       </div>
     </dl>

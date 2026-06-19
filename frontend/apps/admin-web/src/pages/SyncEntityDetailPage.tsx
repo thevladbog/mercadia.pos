@@ -7,14 +7,15 @@ import {
   useListStores,
 } from '@mercadia/api-clients-central';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
 
+import { i18n } from '@/i18n/index.js';
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { PageBackLink } from './users-shared.js';
 import { formatMinorAmount, formatTimestamp } from './reporting-utils.js';
 import {
   entityTypeFromPathname,
-  SYNC_ENTITY_LABEL,
   SYNC_ENTITY_PARAM,
   syncExplorerHref,
   type SyncEntityType,
@@ -25,12 +26,20 @@ type DetailField = {
   value: string;
 };
 
+const SYNC_ENTITY_LABEL_KEY: Record<SyncEntityType, string> = {
+  payments: 'sync.tabs.payments',
+  'cash-movements': 'sync.tabs.cashMovements',
+  'fiscal-documents': 'sync.tabs.fiscalDocuments',
+  returns: 'sync.tabs.returns',
+  'operational-days': 'sync.tabs.operationalDays',
+};
+
 function formatFieldValue(key: string, value: string | number | string[] | undefined): string {
   if (value == null || value === '') {
-    return '—';
+    return i18n.t('common.emDash');
   }
   if (Array.isArray(value)) {
-    return value.length > 0 ? value.join(', ') : '—';
+    return value.length > 0 ? value.join(', ') : i18n.t('common.emDash');
   }
   if (typeof value === 'number' && key.toLowerCase().includes('minor')) {
     return formatMinorAmount(value);
@@ -100,6 +109,7 @@ function useEntityDetailQuery(
 }
 
 export function SyncEntityDetailPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const location = useLocation();
   const entityType = entityTypeFromPathname(location.pathname);
@@ -116,7 +126,7 @@ export function SyncEntityDetailPage() {
   const isLoading = detailQuery.isFetching;
   const errorMessage = detailQuery.error != null ? getApiErrorMessage(detailQuery.error) : null;
 
-  const entityLabel = entityType ? SYNC_ENTITY_LABEL[entityType] : 'Entity';
+  const entityLabel = entityType ? t(SYNC_ENTITY_LABEL_KEY[entityType]) : t('sync.details');
   const title = storeName ? `${storeName} (${storeId})` : storeId;
   const backHref = syncExplorerHref({
     tab: entityType ?? undefined,
@@ -127,14 +137,15 @@ export function SyncEntityDetailPage() {
 
   return (
     <section className="stack reporting-page">
-      <PageBackLink label="Back to sync explorer" to={backHref} />
+      <PageBackLink label={t('sync.backToSync')} to={backHref} />
 
       <div className="panel">
         <div className="panel-heading">
           <div>
             <h2>{entityLabel}</h2>
             <p className="muted">
-              {entityId || 'Unknown entity'} — {title || 'Unknown store'}
+              {entityId || t('common.noData')} {t('common.emDash')}{' '}
+              {title || t('reporting.unknownStore')}
             </p>
           </div>
           <button
@@ -143,7 +154,7 @@ export function SyncEntityDetailPage() {
             onClick={() => void detailQuery.refetch()}
             type="button"
           >
-            {isLoading ? 'Refreshing…' : 'Refresh'}
+            {isLoading ? t('common.refreshing') : t('common.refresh')}
           </button>
         </div>
       </div>
@@ -155,9 +166,9 @@ export function SyncEntityDetailPage() {
       ) : null}
 
       <div className="panel">
-        <h3>Details</h3>
+        <h3>{t('sync.details')}</h3>
         {detailQuery.isLoading && !detail ? (
-          <p className="muted">Loading…</p>
+          <p className="muted">{t('sync.loadingDetail')}</p>
         ) : detail ? (
           <dl className="kpi-grid">
             {fields.map((field) => (
@@ -168,7 +179,7 @@ export function SyncEntityDetailPage() {
             ))}
           </dl>
         ) : (
-          <p className="muted">No detail data.</p>
+          <p className="muted">{t('sync.noDetail')}</p>
         )}
       </div>
     </section>
