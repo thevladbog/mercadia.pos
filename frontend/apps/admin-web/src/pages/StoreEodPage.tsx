@@ -11,8 +11,12 @@ import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
+import { canWriteStoreOperations } from '@/auth/permissions.js';
+import { useAuth } from '@/auth/useAuth.js';
+import { EodActionsPanel } from '@/components/eod/EodActionsPanel.js';
 import { PaginationControls } from '@/components/PaginationControls.js';
 import { StorePicker } from '@/components/StorePicker.js';
+import { formatBlockerMessage, formatBlockerSeverity } from './eod-mutation-utils.js';
 import { formatMinorAmount, formatTimestamp, PAGE_SIZE } from './reporting-utils.js';
 import { readStoreFromSearchParams } from './store-routes.js';
 import { STORE_POLL_INTERVAL_MS } from './store-polling.js';
@@ -28,6 +32,8 @@ function formatElapsed(openedAt: string): string {
 
 export function StoreEodPage() {
   const { t } = useTranslation();
+  const { roles } = useAuth();
+  const canWrite = canWriteStoreOperations(roles);
   const [searchParams] = useSearchParams();
   const initialStoreId = readStoreFromSearchParams(searchParams);
 
@@ -224,6 +230,15 @@ export function StoreEodPage() {
                 </dl>
               </div>
 
+              {summary ? (
+                <EodActionsPanel
+                  blockers={summary.blockers}
+                  canWrite={canWrite}
+                  operationalDayId={operationalDayId}
+                  storeId={activeStoreId}
+                />
+              ) : null}
+
               <div className="panel">
                 <h3>{t('eod.blockers')}</h3>
                 <p className="muted">{t('eod.blockerDisclaimer')}</p>
@@ -243,9 +258,9 @@ export function StoreEodPage() {
                       <tbody>
                         {summary.blockers.map((blocker) => (
                           <tr key={`${blocker.code}-${blocker.referenceId ?? blocker.message}`}>
-                            <td>{blocker.severity}</td>
+                            <td>{formatBlockerSeverity(blocker.severity, t)}</td>
                             <td>{blocker.code}</td>
-                            <td>{blocker.message}</td>
+                            <td>{formatBlockerMessage(blocker, t)}</td>
                             <td>{blocker.referenceId ?? t('common.emDash')}</td>
                           </tr>
                         ))}

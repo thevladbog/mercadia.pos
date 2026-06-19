@@ -76,7 +76,7 @@ await createCashMovement(storeId, body, { headers: createIdempotencyHeaders() })
 
 Pattern reference: [`RegisterStorePage.tsx`](../../frontend/apps/admin-web/src/pages/RegisterStorePage.tsx).
 
-After a successful `202`, invalidate affected React Query keys (see `invalidateSafeQueries()` in [`cash-mutation-utils.ts`](../../frontend/apps/admin-web/src/pages/cash-mutation-utils.ts)).
+After a successful `202`, invalidate affected React Query keys (see `invalidateSafeQueries()` in [`cash-mutation-utils.ts`](../../frontend/apps/admin-web/src/pages/cash-mutation-utils.ts) and `invalidateEodQueries()` in [`eod-mutation-utils.ts`](../../frontend/apps/admin-web/src/pages/eod-mutation-utils.ts)).
 
 ### Cash operations UI
 
@@ -84,6 +84,29 @@ After a successful `202`, invalidate affected React Query keys (see `invalidateS
 - Forms collect store-edge `actorId` and `approvedById` explicitly — there is no actors list API yet. Demo seed actors: `admin-1`, `senior-1`, `cashier-1`.
 - **Separation of duties:** `actorId` must differ from `approvedById` when both are required. Enforced server-side; validate client-side too.
 - Write UI is gated to `central_admin` in the frontend; store-edge enforces business rules independently.
+
+### EoD close command
+
+Close operational day from [`StoreEodPage.tsx`](../../frontend/apps/admin-web/src/pages/StoreEodPage.tsx) via `closeOperationalDay()`:
+
+```typescript
+import { createIdempotencyHeaders } from '@/pages/cash-mutation-utils.js';
+import { invalidateEodQueries } from '@/pages/eod-mutation-utils.js';
+
+await closeOperationalDay(
+  operationalDayId,
+  {
+    closedById: userId,
+    overrideNoSales: true,
+    overrideActorId: 'admin-1',
+  },
+  { headers: createIdempotencyHeaders() },
+);
+
+await invalidateEodQueries(queryClient, storeId, operationalDayId);
+```
+
+When the only blocker is `no_sales_receipts` (`requires_admin_override`), send `overrideNoSales: true` and a distinct `overrideActorId`. Hard blockers (`open_cashier_shift`, etc.) must be resolved before close succeeds.
 
 ## Checklist for admin-web PRs
 

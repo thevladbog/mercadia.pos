@@ -290,11 +290,11 @@
   },
   "eod": {
     "title": "End of Day",
-    "subtitle": "Operational day overview and close readiness (read-only).",
+    "subtitle": "Operational day overview, close readiness, and day closure for central admins.",
     "selectStore": "Select a store to view the operational day.",
     "noOpenDay": "No open operational day for this store.",
     "loadingDay": "Loading operational day…",
-    "blockerDisclaimer": "Blocker list reflects store-edge rules; full EoD spec is not yet implemented.",
+    "blockerDisclaimer": "Blocker list reflects store-edge close rules.",
     "tabs": {
       "overview": "Overview",
       "openShifts": "Open shifts",
@@ -336,7 +336,40 @@
     "noJournal": "No journal entries.",
     "operationType": "Operation",
     "summary": "Summary",
-    "created": "Created"
+    "created": "Created",
+    "actions": {
+      "title": "Day actions",
+      "closeDay": "Close operational day",
+      "closeDayHintBlocked": "Resolve all blocking checks before closing the day.",
+      "closeDayHintOverride": "No fiscalized sales were found. Admin override is required to close."
+    },
+    "forms": {
+      "confirmTitle": "Close operational day",
+      "confirmBody": "Review blockers below and confirm closure. This action cannot be undone.",
+      "closedById": "Closed by",
+      "overrideNoSales": "Override no-sales requirement",
+      "overrideActorId": "Override approver ID",
+      "validation": {
+        "closedByRequired": "Signed-in user ID is required.",
+        "overrideRequired": "Confirm the no-sales override to proceed.",
+        "overrideActorRequired": "Override approver ID is required.",
+        "selfOverride": "Closed-by and override approver must be different people."
+      }
+    },
+    "notices": {
+      "closeSuccess": "Operational day closed successfully."
+    },
+    "severityLabels": {
+      "blocker": "Blocker",
+      "requires_admin_override": "Requires admin override"
+    },
+    "blockerCodes": {
+      "open_cashier_shift": "Cashier shift is still open",
+      "unresolved_cash_recount_discrepancy": "Cash recount discrepancy is not resolved",
+      "nonzero_drawer_balance": "Cash drawer balance is not zero",
+      "unresolved_receipt": "Receipt is not completed or cancelled",
+      "no_sales_receipts": "No fiscalized sales receipts were found for the operational day"
+    }
   },
   "users": {
     "title": "Central Users",
