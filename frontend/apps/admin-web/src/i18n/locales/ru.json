@@ -26,6 +26,8 @@
     "previous": "Назад",
     "next": "Далее",
     "apply": "Применить",
+    "cancel": "Отмена",
+    "submitting": "Отправка…",
     "yes": "Да",
     "no": "Нет",
     "edit": "Изменить",
@@ -206,12 +208,18 @@
   },
   "safe": {
     "title": "Сейф магазина",
-    "subtitle": "Остатки и журнал движений наличных (только просмотр).",
+    "subtitle": "Остатки и журнал движений наличных.",
     "selectStore": "Выберите магазин для просмотра сейфа.",
     "balances": "Остатки наличных",
     "loadingBalances": "Загрузка остатков…",
     "noBalances": "Нет данных об остатках.",
     "container": "Контейнер",
+    "containerLabel": "{{containerId}} ({{containerType}})",
+    "containerTypes": {
+      "safe": "Сейф",
+      "drawer": "Касса",
+      "bank": "Банк"
+    },
     "containerType": "Тип",
     "balance": "Остаток",
     "lastMovement": "Последнее движение",
@@ -232,7 +240,53 @@
     "expected": "Ожидалось",
     "counted": "Посчитано",
     "variance": "Расхождение",
-    "resolution": "Резолюция"
+    "resolution": "Резолюция",
+    "actions": {
+      "title": "Операции с наличными",
+      "column": "Действия",
+      "noContainers": "Нет контейнеров. Сначала проведите движения на store-edge.",
+      "issueChangeFund": "Выдать разменный фонд",
+      "receiveFromCashier": "Принять от кассира",
+      "bankCollection": "Инкассация в банк",
+      "businessExpense": "Хозрасход",
+      "recountSafe": "Пересчёт сейфа",
+      "resolveRecount": "Закрыть"
+    },
+    "forms": {
+      "submit": "Провести операцию",
+      "resolveSubmit": "Закрыть пересчёт",
+      "fromContainer": "Контейнер-источник",
+      "toContainer": "Контейнер-получатель",
+      "safeContainer": "Сейф",
+      "bankContainer": "Банковский контейнер",
+      "container": "Контейнер",
+      "amountRub": "Сумма (RUB)",
+      "reason": "Причина",
+      "payeeId": "ID получателя",
+      "actorId": "ID исполнителя",
+      "approvedById": "ID подтверждающего",
+      "actorHint": "ID акторов store-edge (например senior-1, admin-1). Подтверждающий должен отличаться от исполнителя.",
+      "noContainers": "Нет контейнеров",
+      "expectedBalance": "Ожидаемый остаток",
+      "resolutionNote": "Комментарий к резолюции",
+      "recountSummary": "Пересчёт {{id}} — расхождение {{variance}}",
+      "validation": {
+        "amount": "Укажите положительную сумму.",
+        "containers": "Выберите корректные контейнеры источника и получателя.",
+        "selfApproval": "Исполнитель и подтверждающий должны быть разными пользователями.",
+        "payee": "Укажите ID получателя.",
+        "reasonRequired": "Для хозрасхода нужна причина.",
+        "resolutionNote": "Укажите комментарий к резолюции."
+      }
+    },
+    "notices": {
+      "changeFundSuccess": "Разменный фонд проведён.",
+      "receiveCashSuccess": "Приём наличных проведён.",
+      "bankCollectionSuccess": "Инкассация проведена.",
+      "expenseSuccess": "Хозрасход проведён.",
+      "recountSuccess": "Пересчёт зафиксирован.",
+      "resolveRecountSuccess": "Расхождение по пересчёту закрыто."
+    }
   },
   "eod": {
     "title": "Закрытие операционного дня",

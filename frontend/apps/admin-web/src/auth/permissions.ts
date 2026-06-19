@@ -10,3 +10,7 @@ export const CENTRAL_ROLE_OPTIONS = [CENTRAL_ROLE_VIEWER, CENTRAL_ROLE_ADMIN] as
 export function canManageCentralUsers(roles: string[]): boolean {
   return roles.includes(CENTRAL_ROLE_ADMIN);
 }
+
+export function canWriteStoreOperations(roles: string[]): boolean {
+  return roles.includes(CENTRAL_ROLE_ADMIN);
+}

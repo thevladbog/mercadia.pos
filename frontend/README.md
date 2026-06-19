@@ -74,9 +74,10 @@ pnpm orval:store-edge
 
 3. Start the admin UI (Vite dev server proxies most `/v1` traffic to central `:8082`; store-edge
    paths under `/v1/stores/{storeId}/monitoring/*`, `/v1/stores/{storeId}/terminals/*`,
-   `/v1/stores/{storeId}/cash-*`, `/v1/stores/{storeId}/operation-journal`,
-   `/v1/stores/{storeId}/operational-days`, `/v1/stores/{storeId}/shifts`, `/v1/operational-days/*`,
-   `/v1/shifts/*`, and `/v1/terminals/*` go to store-edge `:8081`):
+   `/v1/stores/{storeId}/cash-*`, `/v1/stores/{storeId}/bank-*`, `/v1/stores/{storeId}/business-*`,
+   `/v1/stores/{storeId}/operation-journal`, `/v1/stores/{storeId}/operational-days`,
+   `/v1/stores/{storeId}/shifts`, `/v1/operational-days/*`, `/v1/shifts/*`, and `/v1/terminals/*`
+   go to store-edge `:8081`):
 
    ```bash
    cd frontend
@@ -87,7 +88,8 @@ pnpm orval:store-edge
    **EoD**, or **Users**.
 
 The admin UI defaults to **Russian** (`ru`); use the language switcher in the header to switch to
-**English** (`en`). Locale files live in `apps/admin-web/src/i18n/locales/`.
+**English** (`en`). Locale files live in `apps/admin-web/src/i18n/locales/`. Agent i18n rules:
+[`docs/development/admin-web-i18n.md`](../docs/development/admin-web-i18n.md).
 
 ### Central users smoke test
 
@@ -114,11 +116,14 @@ Requires central-backend (store list) and store-edge (monitoring KPIs/terminals)
 
 ### Store Safe smoke test
 
-Requires central-backend (store list) and store-edge (cash-office APIs):
+Requires central-backend (store list) and store-edge (cash-office APIs). Write operations require
+`central_admin` role.
 
-1. Sign in and open **Safe** in the header.
+1. Sign in as seeded `central_admin` and open **Safe** in the header.
 2. Select a store — balance KPI cards, cash movements table, and recounts table should load.
 3. Confirm data refreshes automatically (every 5 seconds) or via **Refresh**.
+4. Post **Issue change fund** with actor `senior-1` and approver `admin-1` — balances and movements refresh.
+5. Sign in as `central_viewer` — action buttons on Safe are hidden (read-only).
 
 ### Store EoD smoke test
 

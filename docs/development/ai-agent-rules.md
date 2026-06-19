@@ -47,6 +47,10 @@ Before implementing a feature, read:
 - Senior cashier touch terminal may use Hardware Agent for MSR, iButton, and local signing.
 - UIs must be dense and operational, not marketing-like.
 - Critical actions require explicit confirmation and clear reason capture.
+- **Admin-web (`frontend/apps/admin-web`):** all user-facing strings must go through i18n. See [`admin-web-i18n.md`](admin-web-i18n.md). Never add hardcoded UI labels in TSX.
+- **Admin-web store-edge commands:** send `Idempotency-Key` on every POST command; invalidate React Query caches after `202`. See [`admin-web-i18n.md`](admin-web-i18n.md) §Store-edge integration.
+- **Admin-web dev proxy:** route store-edge `/v1` prefixes to `:8081` before the central catch-all. Document new prefixes when adding store-edge API usage.
+- **Cash UI:** collect `actorId` and `approvedById` for separation-of-duties; permissions are enforced server-side, not UI-only.
 
 ## Backend Rules
 
