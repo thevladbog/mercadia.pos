@@ -153,6 +153,43 @@ func ValidateReceiptReturn(receipt Receipt, lines []ReturnLineInput) error {
 	return nil
 }
 
+func ValidateReceiptReturnCumulative(receipt Receipt, lines []ReturnLineInput, priorReturns []Return) error {
+	if err := ValidateReceiptReturn(receipt, lines); err != nil {
+		return err
+	}
+
+	receiptLines := map[string]ReceiptLine{}
+	for _, line := range receipt.Lines {
+		receiptLines[line.ID] = line
+	}
+
+	newQuantities := map[string]int64{}
+	for _, lineInput := range lines {
+		newQuantities[lineInput.LineID] += lineInput.Quantity
+	}
+
+	priorQuantities := map[string]int64{}
+	for _, priorReturn := range priorReturns {
+		if priorReturn.Kind != ReturnKindWithReceipt {
+			continue
+		}
+		if priorReturn.Status != ReturnStatusCompleted && priorReturn.Status != ReturnStatusSettled {
+			continue
+		}
+		for _, line := range priorReturn.Lines {
+			priorQuantities[line.LineID] += line.Quantity
+		}
+	}
+
+	for lineID, newQuantity := range newQuantities {
+		receiptLine := receiptLines[lineID]
+		if priorQuantities[lineID]+newQuantity > receiptLine.Quantity {
+			return ErrReturnQuantityExceeded
+		}
+	}
+	return nil
+}
+
 func (r *Return) MarkSettled(now time.Time) error {
 	if r.Status == ReturnStatusSettled {
 		return ErrReturnAlreadySettled

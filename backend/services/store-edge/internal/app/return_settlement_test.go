@@ -257,23 +257,101 @@ func TestSettleReturnBlocksCumulativeTotalExceeded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("find receipt: %v", err)
 	}
-	second, err := returns.CreateReceiptReturn(context.Background(), app.CreateReceiptReturnCommand{
+	_, err = returns.CreateReceiptReturn(context.Background(), app.CreateReceiptReturnCommand{
 		IdempotencyKey: "return-second",
 		ReceiptID:      receiptID,
 		Lines:          []app.ReturnLineCommand{{LineID: receipt.Lines[0].ID, Quantity: 2}},
 		Reason:         "Second return exceeds cumulative cap",
 		ActorID:        "senior-1",
 	})
+	if !errors.Is(err, app.ErrInvalidReturnCommand) {
+		t.Fatalf("expected invalid return command, got %v", err)
+	}
+}
+
+func TestCreateReceiptReturnBlocksCumulativeLineQuantity(t *testing.T) {
+	store, checkout, payments, fiscalization, returns, _, _ := newReturnSettlementServices(t)
+	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
+
+	if _, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-1",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCash,
+		AmountMinor:    39998,
+	}); err != nil {
+		t.Fatalf("create payment: %v", err)
+	}
+	if _, err := fiscalization.CreateFiscalDocument(context.Background(), app.CreateFiscalDocumentCommand{
+		IdempotencyKey: "fiscal-1",
+		ReceiptID:      receiptID,
+		DeviceID:       "mock-atol-1",
+	}); err != nil {
+		t.Fatalf("create fiscal document: %v", err)
+	}
+
+	createPartialReceiptReturn(t, store, returns, receiptID, 1)
+
+	receipt, err := store.FindReceipt(context.Background(), receiptID)
 	if err != nil {
+		t.Fatalf("find receipt: %v", err)
+	}
+	if _, err := returns.CreateReceiptReturn(context.Background(), app.CreateReceiptReturnCommand{
+		IdempotencyKey: "return-second",
+		ReceiptID:      receiptID,
+		Lines:          []app.ReturnLineCommand{{LineID: receipt.Lines[0].ID, Quantity: 1}},
+		Reason:         "Second partial return",
+		ActorID:        "senior-1",
+	}); err != nil {
 		t.Fatalf("create second return: %v", err)
 	}
 
-	_, err = settlement.SettleReturn(context.Background(), app.SettleReturnCommand{
-		IdempotencyKey: "settle-2",
-		ReturnID:       second.Return.ID,
+	_, err = returns.CreateReceiptReturn(context.Background(), app.CreateReceiptReturnCommand{
+		IdempotencyKey: "return-third",
+		ReceiptID:      receiptID,
+		Lines:          []app.ReturnLineCommand{{LineID: receipt.Lines[0].ID, Quantity: 1}},
+		Reason:         "Third return exceeds line cap",
+		ActorID:        "senior-1",
 	})
-	if !errors.Is(err, app.ErrReturnSettlementCumulativeTotalExceeded) {
-		t.Fatalf("expected cumulative total exceeded, got %v", err)
+	if !errors.Is(err, app.ErrInvalidReturnCommand) {
+		t.Fatalf("expected invalid return command, got %v", err)
+	}
+}
+
+func TestCreateReceiptReturnCountsCompletedNotSettledReturn(t *testing.T) {
+	store, checkout, payments, fiscalization, returns, _, _ := newReturnSettlementServices(t)
+	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
+
+	if _, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-1",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCash,
+		AmountMinor:    39998,
+	}); err != nil {
+		t.Fatalf("create payment: %v", err)
+	}
+	if _, err := fiscalization.CreateFiscalDocument(context.Background(), app.CreateFiscalDocumentCommand{
+		IdempotencyKey: "fiscal-1",
+		ReceiptID:      receiptID,
+		DeviceID:       "mock-atol-1",
+	}); err != nil {
+		t.Fatalf("create fiscal document: %v", err)
+	}
+
+	createPartialReceiptReturn(t, store, returns, receiptID, 1)
+
+	receipt, err := store.FindReceipt(context.Background(), receiptID)
+	if err != nil {
+		t.Fatalf("find receipt: %v", err)
+	}
+	_, err = returns.CreateReceiptReturn(context.Background(), app.CreateReceiptReturnCommand{
+		IdempotencyKey: "return-second",
+		ReceiptID:      receiptID,
+		Lines:          []app.ReturnLineCommand{{LineID: receipt.Lines[0].ID, Quantity: 2}},
+		Reason:         "Second return exceeds reserved line quantity",
+		ActorID:        "senior-1",
+	})
+	if !errors.Is(err, app.ErrInvalidReturnCommand) {
+		t.Fatalf("expected invalid return command, got %v", err)
 	}
 }
 
@@ -481,7 +559,7 @@ func newReturnSettlementServices(t *testing.T) (*memory.Store, *app.CheckoutServ
 		app.WithPaymentClock(now),
 		app.WithPaymentIDGenerator(newID),
 	)
-	fiscalization := app.NewFiscalizationService(store, store, store, store,
+	fiscalization := app.NewFiscalizationService(store, store, store, store, store,
 		app.WithFiscalizationClock(now),
 		app.WithFiscalizationIDGenerator(newID),
 	)

@@ -965,6 +965,149 @@ func TestSettleReturnWorkflow(t *testing.T) {
 	}
 }
 
+func TestCreateReturnFiscalDocumentWorkflow(t *testing.T) {
+	server := NewServer()
+	openStoreDayAndShiftForDate(t, server, "return-fiscal", time.Now().UTC().Format("2006-01-02"))
+
+	openReceiptResponse := httptest.NewRecorder()
+	openReceiptRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts", bytes.NewBufferString(`{
+		"storeId": "store-1",
+		"terminalId": "pos-1",
+		"cashierId": "cashier-1",
+		"channel": "pos"
+	}`))
+	openReceiptRequest.Header.Set("Content-Type", "application/json")
+	openReceiptRequest.Header.Set("Idempotency-Key", "return-fiscal-receipt-open-1")
+	server.ServeHTTP(openReceiptResponse, openReceiptRequest)
+	if openReceiptResponse.Code != http.StatusAccepted {
+		t.Fatalf("open receipt status = %d body = %s", openReceiptResponse.Code, openReceiptResponse.Body.String())
+	}
+
+	var openedReceipt ReceiptAcceptedResponse
+	if err := json.Unmarshal(openReceiptResponse.Body.Bytes(), &openedReceipt); err != nil {
+		t.Fatalf("decode open receipt response: %v", err)
+	}
+
+	addLineResponse := httptest.NewRecorder()
+	addLineRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/lines", bytes.NewBufferString(`{
+		"productId": "sku-1",
+		"name": "Milk",
+		"quantity": 1,
+		"unitPriceMinor": 50000
+	}`))
+	addLineRequest.Header.Set("Content-Type", "application/json")
+	addLineRequest.Header.Set("Idempotency-Key", "return-fiscal-line-1")
+	server.ServeHTTP(addLineResponse, addLineRequest)
+	if addLineResponse.Code != http.StatusAccepted {
+		t.Fatalf("add line status = %d body = %s", addLineResponse.Code, addLineResponse.Body.String())
+	}
+
+	paymentResponse := httptest.NewRecorder()
+	paymentRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/payments", bytes.NewBufferString(`{
+		"method": "cash",
+		"amountMinor": 50000
+	}`))
+	paymentRequest.Header.Set("Content-Type", "application/json")
+	paymentRequest.Header.Set("Idempotency-Key", "return-fiscal-payment-1")
+	server.ServeHTTP(paymentResponse, paymentRequest)
+	if paymentResponse.Code != http.StatusAccepted {
+		t.Fatalf("create payment status = %d body = %s", paymentResponse.Code, paymentResponse.Body.String())
+	}
+
+	fiscalResponse := httptest.NewRecorder()
+	fiscalRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/fiscal-documents", bytes.NewBufferString(`{
+		"deviceId": "mock-atol-1"
+	}`))
+	fiscalRequest.Header.Set("Content-Type", "application/json")
+	fiscalRequest.Header.Set("Idempotency-Key", "return-fiscal-fiscal-1")
+	server.ServeHTTP(fiscalResponse, fiscalRequest)
+	if fiscalResponse.Code != http.StatusAccepted {
+		t.Fatalf("fiscal status = %d body = %s", fiscalResponse.Code, fiscalResponse.Body.String())
+	}
+
+	getReceiptResponse := httptest.NewRecorder()
+	getReceiptRequest := httptest.NewRequest(http.MethodGet, "/v1/receipts/"+openedReceipt.Receipt.ID, nil)
+	server.ServeHTTP(getReceiptResponse, getReceiptRequest)
+	if getReceiptResponse.Code != http.StatusOK {
+		t.Fatalf("get receipt status = %d body = %s", getReceiptResponse.Code, getReceiptResponse.Body.String())
+	}
+
+	var receipt ReceiptResponse
+	if err := json.Unmarshal(getReceiptResponse.Body.Bytes(), &receipt); err != nil {
+		t.Fatalf("decode receipt response: %v", err)
+	}
+
+	returnResponseRecorder := httptest.NewRecorder()
+	returnRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/returns", bytes.NewBufferString(fmt.Sprintf(`{
+		"lines": [{"lineId": %q, "quantity": 1}],
+		"reason": "Customer return",
+		"actorId": "senior-1"
+	}`, receipt.Lines[0].ID)))
+	returnRequest.Header.Set("Content-Type", "application/json")
+	returnRequest.Header.Set("Idempotency-Key", "return-fiscal-return-1")
+	server.ServeHTTP(returnResponseRecorder, returnRequest)
+	if returnResponseRecorder.Code != http.StatusAccepted {
+		t.Fatalf("create return status = %d body = %s", returnResponseRecorder.Code, returnResponseRecorder.Body.String())
+	}
+
+	var acceptedReturn ReturnAcceptedResponse
+	if err := json.Unmarshal(returnResponseRecorder.Body.Bytes(), &acceptedReturn); err != nil {
+		t.Fatalf("decode return response: %v", err)
+	}
+
+	settleResponse := httptest.NewRecorder()
+	settleRequest := httptest.NewRequest(http.MethodPost, "/v1/returns/"+acceptedReturn.Return.ID+"/settle", bytes.NewBufferString(`{
+		"actorId": "senior-1",
+		"reason": "Customer return"
+	}`))
+	settleRequest.Header.Set("Content-Type", "application/json")
+	settleRequest.Header.Set("Idempotency-Key", "return-fiscal-settle-1")
+	server.ServeHTTP(settleResponse, settleRequest)
+	if settleResponse.Code != http.StatusAccepted {
+		t.Fatalf("settle return status = %d body = %s", settleResponse.Code, settleResponse.Body.String())
+	}
+
+	returnFiscalResponse := httptest.NewRecorder()
+	returnFiscalRequest := httptest.NewRequest(http.MethodPost, "/v1/returns/"+acceptedReturn.Return.ID+"/fiscal-documents", bytes.NewBufferString(`{
+		"deviceId": "mock-atol-1"
+	}`))
+	returnFiscalRequest.Header.Set("Content-Type", "application/json")
+	returnFiscalRequest.Header.Set("Idempotency-Key", "return-fiscal-doc-1")
+	server.ServeHTTP(returnFiscalResponse, returnFiscalRequest)
+	if returnFiscalResponse.Code != http.StatusAccepted {
+		t.Fatalf("create return fiscal status = %d body = %s", returnFiscalResponse.Code, returnFiscalResponse.Body.String())
+	}
+
+	var returnFiscal FiscalDocumentAcceptedResponse
+	if err := json.Unmarshal(returnFiscalResponse.Body.Bytes(), &returnFiscal); err != nil {
+		t.Fatalf("decode return fiscal response: %v", err)
+	}
+	if returnFiscal.Document.Kind != "return" {
+		t.Fatalf("document kind = %s", returnFiscal.Document.Kind)
+	}
+	if returnFiscal.Document.ReturnID != acceptedReturn.Return.ID {
+		t.Fatalf("return id = %s", returnFiscal.Document.ReturnID)
+	}
+	if returnFiscal.Document.AmountMinor != acceptedReturn.Return.TotalMinor {
+		t.Fatalf("amount = %d", returnFiscal.Document.AmountMinor)
+	}
+
+	returnFiscalListResponse := httptest.NewRecorder()
+	returnFiscalListRequest := httptest.NewRequest(http.MethodGet, "/v1/returns/"+acceptedReturn.Return.ID+"/fiscal-documents", nil)
+	server.ServeHTTP(returnFiscalListResponse, returnFiscalListRequest)
+	if returnFiscalListResponse.Code != http.StatusOK {
+		t.Fatalf("list return fiscal status = %d body = %s", returnFiscalListResponse.Code, returnFiscalListResponse.Body.String())
+	}
+
+	var returnFiscalDocuments FiscalDocumentsResponse
+	if err := json.Unmarshal(returnFiscalListResponse.Body.Bytes(), &returnFiscalDocuments); err != nil {
+		t.Fatalf("decode return fiscal list response: %v", err)
+	}
+	if len(returnFiscalDocuments.Documents) != 1 {
+		t.Fatalf("return fiscal documents count = %d", len(returnFiscalDocuments.Documents))
+	}
+}
+
 func TestSettlePartialReturnWorkflow(t *testing.T) {
 	server := NewServer()
 	openStoreDayAndShiftForDate(t, server, "return-settle-partial", time.Now().UTC().Format("2006-01-02"))
@@ -1079,6 +1222,122 @@ func TestSettlePartialReturnWorkflow(t *testing.T) {
 	}
 	if settled.Payments[0].RefundedAmountMinor != 50000 {
 		t.Fatalf("refunded amount = %d", settled.Payments[0].RefundedAmountMinor)
+	}
+}
+
+func TestCreateReceiptReturnBlocksCumulativeLineQuantityWorkflow(t *testing.T) {
+	server := NewServer()
+	openStoreDayAndShiftForDate(t, server, "return-cumulative-line", time.Now().UTC().Format("2006-01-02"))
+
+	openReceiptResponse := httptest.NewRecorder()
+	openReceiptRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts", bytes.NewBufferString(`{
+		"storeId": "store-1",
+		"terminalId": "pos-1",
+		"cashierId": "cashier-1",
+		"channel": "pos"
+	}`))
+	openReceiptRequest.Header.Set("Content-Type", "application/json")
+	openReceiptRequest.Header.Set("Idempotency-Key", "return-cumulative-line-receipt-open-1")
+	server.ServeHTTP(openReceiptResponse, openReceiptRequest)
+	if openReceiptResponse.Code != http.StatusAccepted {
+		t.Fatalf("open receipt status = %d body = %s", openReceiptResponse.Code, openReceiptResponse.Body.String())
+	}
+
+	var openedReceipt ReceiptAcceptedResponse
+	if err := json.Unmarshal(openReceiptResponse.Body.Bytes(), &openedReceipt); err != nil {
+		t.Fatalf("decode open receipt response: %v", err)
+	}
+
+	addLineResponse := httptest.NewRecorder()
+	addLineRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/lines", bytes.NewBufferString(`{
+		"productId": "sku-1",
+		"name": "Milk",
+		"quantity": 2,
+		"unitPriceMinor": 50000
+	}`))
+	addLineRequest.Header.Set("Content-Type", "application/json")
+	addLineRequest.Header.Set("Idempotency-Key", "return-cumulative-line-line-1")
+	server.ServeHTTP(addLineResponse, addLineRequest)
+	if addLineResponse.Code != http.StatusAccepted {
+		t.Fatalf("add line status = %d body = %s", addLineResponse.Code, addLineResponse.Body.String())
+	}
+
+	paymentResponse := httptest.NewRecorder()
+	paymentRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/payments", bytes.NewBufferString(`{
+		"method": "cash",
+		"amountMinor": 100000
+	}`))
+	paymentRequest.Header.Set("Content-Type", "application/json")
+	paymentRequest.Header.Set("Idempotency-Key", "return-cumulative-line-payment-1")
+	server.ServeHTTP(paymentResponse, paymentRequest)
+	if paymentResponse.Code != http.StatusAccepted {
+		t.Fatalf("create payment status = %d body = %s", paymentResponse.Code, paymentResponse.Body.String())
+	}
+
+	fiscalResponse := httptest.NewRecorder()
+	fiscalRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/fiscal-documents", bytes.NewBufferString(`{
+		"deviceId": "mock-atol-1"
+	}`))
+	fiscalRequest.Header.Set("Content-Type", "application/json")
+	fiscalRequest.Header.Set("Idempotency-Key", "return-cumulative-line-fiscal-1")
+	server.ServeHTTP(fiscalResponse, fiscalRequest)
+	if fiscalResponse.Code != http.StatusAccepted {
+		t.Fatalf("fiscal status = %d body = %s", fiscalResponse.Code, fiscalResponse.Body.String())
+	}
+
+	getReceiptResponse := httptest.NewRecorder()
+	getReceiptRequest := httptest.NewRequest(http.MethodGet, "/v1/receipts/"+openedReceipt.Receipt.ID, nil)
+	server.ServeHTTP(getReceiptResponse, getReceiptRequest)
+	if getReceiptResponse.Code != http.StatusOK {
+		t.Fatalf("get receipt status = %d body = %s", getReceiptResponse.Code, getReceiptResponse.Body.String())
+	}
+
+	var receipt ReceiptResponse
+	if err := json.Unmarshal(getReceiptResponse.Body.Bytes(), &receipt); err != nil {
+		t.Fatalf("decode receipt response: %v", err)
+	}
+
+	firstReturnResponse := httptest.NewRecorder()
+	firstReturnRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/returns", bytes.NewBufferString(fmt.Sprintf(`{
+		"lines": [{"lineId": %q, "quantity": 1}],
+		"reason": "First partial return",
+		"actorId": "senior-1"
+	}`, receipt.Lines[0].ID)))
+	firstReturnRequest.Header.Set("Content-Type", "application/json")
+	firstReturnRequest.Header.Set("Idempotency-Key", "return-cumulative-line-return-1")
+	server.ServeHTTP(firstReturnResponse, firstReturnRequest)
+	if firstReturnResponse.Code != http.StatusAccepted {
+		t.Fatalf("create first return status = %d body = %s", firstReturnResponse.Code, firstReturnResponse.Body.String())
+	}
+
+	var firstReturn ReturnAcceptedResponse
+	if err := json.Unmarshal(firstReturnResponse.Body.Bytes(), &firstReturn); err != nil {
+		t.Fatalf("decode first return response: %v", err)
+	}
+
+	settleResponse := httptest.NewRecorder()
+	settleRequest := httptest.NewRequest(http.MethodPost, "/v1/returns/"+firstReturn.Return.ID+"/settle", bytes.NewBufferString(`{
+		"actorId": "senior-1",
+		"reason": "First partial return"
+	}`))
+	settleRequest.Header.Set("Content-Type", "application/json")
+	settleRequest.Header.Set("Idempotency-Key", "return-cumulative-line-settle-1")
+	server.ServeHTTP(settleResponse, settleRequest)
+	if settleResponse.Code != http.StatusAccepted {
+		t.Fatalf("settle return status = %d body = %s", settleResponse.Code, settleResponse.Body.String())
+	}
+
+	secondReturnResponse := httptest.NewRecorder()
+	secondReturnRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/returns", bytes.NewBufferString(fmt.Sprintf(`{
+		"lines": [{"lineId": %q, "quantity": 2}],
+		"reason": "Second return exceeds line cap",
+		"actorId": "senior-1"
+	}`, receipt.Lines[0].ID)))
+	secondReturnRequest.Header.Set("Content-Type", "application/json")
+	secondReturnRequest.Header.Set("Idempotency-Key", "return-cumulative-line-return-2")
+	server.ServeHTTP(secondReturnResponse, secondReturnRequest)
+	if secondReturnResponse.Code != http.StatusBadRequest {
+		t.Fatalf("create second return status = %d body = %s", secondReturnResponse.Code, secondReturnResponse.Body.String())
 	}
 }
 

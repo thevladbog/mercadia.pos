@@ -109,7 +109,11 @@ func (s *ReturnsService) CreateReceiptReturn(ctx context.Context, command Create
 		return ReturnResult{}, err
 	}
 	lineInputs := toReturnLineInputs(command.Lines, receipt)
-	if err := domain.ValidateReceiptReturn(receipt, lineInputs); err != nil {
+	priorReturns, err := s.returns.ListReturnsByReceipt(ctx, command.ReceiptID)
+	if err != nil {
+		return ReturnResult{}, err
+	}
+	if err := domain.ValidateReceiptReturnCumulative(receipt, lineInputs, priorReturns); err != nil {
 		if errors.Is(err, domain.ErrReceiptNotReturnable) {
 			return ReturnResult{}, ErrReceiptNotReturnable
 		}
