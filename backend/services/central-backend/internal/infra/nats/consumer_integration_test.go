@@ -29,7 +29,7 @@ func TestConsumerProcessesPublishedMessageWhenNatsAvailable(t *testing.T) {
 		t.Fatalf("register store: %v", err)
 	}
 
-	syncService := app.NewSyncService(store, store, store, store)
+	syncService := app.NewSyncService(store, store, store, store, store)
 	consumer, err := centralnats.NewConsumer(natsURL, syncService)
 	if err != nil {
 		t.Fatalf("new consumer: %v", err)

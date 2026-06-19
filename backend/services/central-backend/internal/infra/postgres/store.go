@@ -229,6 +229,57 @@ func (s *Store) ListProductsSince(ctx context.Context, storeID string, since tim
 	return scanProducts(rows)
 }
 
+func (s *Store) SavePayment(ctx context.Context, payment domain.SyncedPayment) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO synced_payments (
+			store_id, id, receipt_id, method, amount_minor, captured_at, source_event_id, synced_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (store_id, id) DO UPDATE SET
+			receipt_id = EXCLUDED.receipt_id,
+			method = EXCLUDED.method,
+			amount_minor = EXCLUDED.amount_minor,
+			captured_at = EXCLUDED.captured_at,
+			source_event_id = EXCLUDED.source_event_id,
+			synced_at = EXCLUDED.synced_at
+	`, payment.StoreID, payment.ID, payment.ReceiptID, payment.Method, payment.AmountMinor,
+		payment.CapturedAt, payment.SourceEventID, payment.SyncedAt)
+	return err
+}
+
+func (s *Store) FindPayment(ctx context.Context, storeID string, paymentID string) (domain.SyncedPayment, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT store_id, id, receipt_id, method, amount_minor, captured_at, source_event_id, synced_at
+		FROM synced_payments
+		WHERE store_id = $1 AND id = $2
+	`, storeID, paymentID)
+	return scanSyncedPayment(row)
+}
+
+func (s *Store) ListPayments(ctx context.Context, storeID string, limit, offset int) ([]domain.SyncedPayment, int, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM synced_payments
+		WHERE store_id = $1
+	`, storeID)
+	var total int
+	if err := row.Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT store_id, id, receipt_id, method, amount_minor, captured_at, source_event_id, synced_at
+		FROM synced_payments
+		WHERE store_id = $1
+		ORDER BY captured_at DESC, id DESC
+		LIMIT $2 OFFSET $3
+	`, storeID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	return scanSyncedPayments(rows, total)
+}
+
 func (s *Store) Find(ctx context.Context, operation string, key string) (app.IdempotencyRecord, bool, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT operation, key, target_id, fingerprint, result, created_at
@@ -353,6 +404,34 @@ func scanProducts(rows pgx.Rows) ([]domain.CatalogProduct, error) {
 		return products[i].ID < products[j].ID
 	})
 	return products, nil
+}
+
+func scanSyncedPayment(row rowScanner) (domain.SyncedPayment, error) {
+	var payment domain.SyncedPayment
+	if err := row.Scan(&payment.StoreID, &payment.ID, &payment.ReceiptID, &payment.Method, &payment.AmountMinor,
+		&payment.CapturedAt, &payment.SourceEventID, &payment.SyncedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.SyncedPayment{}, app.ErrPaymentNotFound
+		}
+		return domain.SyncedPayment{}, err
+	}
+	return payment, nil
+}
+
+func scanSyncedPayments(rows pgx.Rows, total int) ([]domain.SyncedPayment, int, error) {
+	payments := make([]domain.SyncedPayment, 0)
+	for rows.Next() {
+		var payment domain.SyncedPayment
+		if err := rows.Scan(&payment.StoreID, &payment.ID, &payment.ReceiptID, &payment.Method, &payment.AmountMinor,
+			&payment.CapturedAt, &payment.SourceEventID, &payment.SyncedAt); err != nil {
+			return nil, 0, err
+		}
+		payments = append(payments, payment)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return payments, total, nil
 }
 
 func isUniqueViolation(err error) bool {

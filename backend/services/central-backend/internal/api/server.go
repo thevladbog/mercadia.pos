@@ -21,6 +21,7 @@ type Services struct {
 	StoreRegistry *app.StoreRegistryService
 	Sync          *app.SyncService
 	Catalog       *app.CatalogService
+	Payments      *app.PaymentsService
 }
 
 type StatusResponse struct {
@@ -104,6 +105,22 @@ type CatalogDeltaResponse struct {
 	Products []CatalogProductResponse `json:"products"`
 }
 
+type SyncedPaymentResponse struct {
+	ID            string    `json:"id"`
+	StoreID       string    `json:"storeId"`
+	ReceiptID     string    `json:"receiptId"`
+	Method        string    `json:"method"`
+	AmountMinor   int64     `json:"amountMinor"`
+	CapturedAt    time.Time `json:"capturedAt"`
+	SourceEventID string    `json:"sourceEventId"`
+	SyncedAt      time.Time `json:"syncedAt"`
+}
+
+type PaginatedSyncedPaymentsResponse struct {
+	Items      []SyncedPaymentResponse `json:"items"`
+	TotalCount int                     `json:"totalCount"`
+}
+
 type ServerOptions struct {
 	ReadinessChecks []func(context.Context) error
 }
@@ -139,8 +156,9 @@ func NewServerBundle(opts ServerOptions) (*ServerBundle, error) {
 func newServices(repo infra.Repository) Services {
 	return Services{
 		StoreRegistry: app.NewStoreRegistryService(repo, repo),
-		Sync:          app.NewSyncService(repo, repo, repo, repo),
+		Sync:          app.NewSyncService(repo, repo, repo, repo, repo),
 		Catalog:       app.NewCatalogService(repo, repo),
+		Payments:      app.NewPaymentsService(repo, repo),
 	}
 }
 
@@ -408,6 +426,50 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			Products: catalogProductResponses(result.Products),
 		})
 	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:          http.MethodGet,
+		Path:            "/v1/stores/{storeId}/payments",
+		OperationID:     "listStorePayments",
+		Summary:         "List synchronized payments for a store",
+		Tags:            []string{"sync"},
+		QueryParameters: paginationQueryParams(),
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Synchronized payments", Schema: paginatedSyncedPaymentsResponseSchema()},
+			"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := services.Payments.ListPayments(r.Context(), r.PathValue("storeId"), params)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedSyncedPaymentsResponse{
+			Items:      syncedPaymentResponses(result.Items),
+			TotalCount: result.TotalCount,
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:      http.MethodGet,
+		Path:        "/v1/stores/{storeId}/payments/{paymentId}",
+		OperationID: "getStorePayment",
+		Summary:     "Get a synchronized payment",
+		Tags:        []string{"sync"},
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Synchronized payment", Schema: syncedPaymentResponseSchema()},
+			"404": {Description: "Store or payment not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		payment, err := services.Payments.GetPayment(r.Context(), r.PathValue("storeId"), r.PathValue("paymentId"))
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, syncedPaymentResponse(payment))
+	})
 }
 
 func writeAppError(w http.ResponseWriter, err error) {
@@ -416,6 +478,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusNotFound, "store_not_found", "Store was not found", err.Error())
 	case errors.Is(err, app.ErrCatalogProductNotFound):
 		httpapi.WriteProblem(w, http.StatusNotFound, "catalog_product_not_found", "Catalog product was not found", err.Error())
+	case errors.Is(err, app.ErrPaymentNotFound):
+		httpapi.WriteProblem(w, http.StatusNotFound, "payment_not_found", "Payment was not found", err.Error())
 	case errors.Is(err, app.ErrIdempotencyKeyRequired):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 	case errors.Is(err, app.ErrIdempotencyKeyReused):
@@ -426,6 +490,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_sync_command", "Invalid sync batch", err.Error())
 	case errors.Is(err, app.ErrInvalidCatalogQuery), errors.Is(err, domain.ErrInvalidCatalogProductInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_catalog_query", "Invalid catalog query", err.Error())
+	case errors.Is(err, app.ErrInvalidPaymentQuery), errors.Is(err, domain.ErrInvalidSyncedPaymentInput):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_payment_query", "Invalid payment query", err.Error())
 	default:
 		httpapi.WriteProblem(w, http.StatusInternalServerError, "internal_error", "Unexpected server error", err.Error())
 	}
@@ -491,6 +557,27 @@ func syncEventResponse(event domain.SyncEvent) SyncEventResponse {
 		ReceivedAt:    event.ReceivedAt,
 		Payload:       append(json.RawMessage(nil), payload...),
 	}
+}
+
+func syncedPaymentResponse(payment domain.SyncedPayment) SyncedPaymentResponse {
+	return SyncedPaymentResponse{
+		ID:            payment.ID,
+		StoreID:       payment.StoreID,
+		ReceiptID:     payment.ReceiptID,
+		Method:        payment.Method,
+		AmountMinor:   payment.AmountMinor,
+		CapturedAt:    payment.CapturedAt,
+		SourceEventID: payment.SourceEventID,
+		SyncedAt:      payment.SyncedAt,
+	}
+}
+
+func syncedPaymentResponses(payments []domain.SyncedPayment) []SyncedPaymentResponse {
+	responses := make([]SyncedPaymentResponse, 0, len(payments))
+	for _, payment := range payments {
+		responses = append(responses, syncedPaymentResponse(payment))
+	}
+	return responses
 }
 
 func paginationQueryParams() []httpapi.QueryParamSpec {
@@ -605,4 +692,24 @@ func catalogDeltaResponseSchema() httpapi.Schema {
 		"since":    httpapi.DateTimeSchema(),
 		"products": httpapi.ArraySchema(catalogProductResponseSchema()),
 	}, "since", "products")
+}
+
+func syncedPaymentResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"id":            httpapi.StringSchema(),
+		"storeId":       httpapi.StringSchema(),
+		"receiptId":     httpapi.StringSchema(),
+		"method":        httpapi.StringSchema(),
+		"amountMinor":   {"type": "integer"},
+		"capturedAt":    httpapi.DateTimeSchema(),
+		"sourceEventId": httpapi.StringSchema(),
+		"syncedAt":      httpapi.DateTimeSchema(),
+	}, "id", "storeId", "receiptId", "method", "amountMinor", "capturedAt", "sourceEventId", "syncedAt")
+}
+
+func paginatedSyncedPaymentsResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"items":      httpapi.ArraySchema(syncedPaymentResponseSchema()),
+		"totalCount": {"type": "integer"},
+	}, "items", "totalCount")
 }
