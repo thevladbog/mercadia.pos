@@ -18,6 +18,7 @@ var (
 	ErrShiftCashCollectionRequired = errors.New("shift cash collection details are required")
 	ErrShiftOpeningSafeRequired    = errors.New("shift opening safe is required when opening cash is positive")
 	ErrShiftCloseBlocked           = errors.New("shift close blocked")
+	ErrShiftNotOpen                = errors.New("shift is not open")
 )
 
 type ShiftRepository interface {
@@ -121,6 +122,33 @@ type CloseShiftCommand struct {
 	SafeID           string
 	ActorID          string
 	ApprovedByID     string
+}
+
+type ShiftCashInCommand struct {
+	IdempotencyKey    string
+	ShiftID           string
+	AmountMinor       int64
+	Currency          string
+	Reason            string
+	ActorID           string
+	ApprovedByID      string
+	FromContainerID   string
+	FromContainerType domain.CashContainerType
+}
+
+type ShiftCashOutCommand struct {
+	IdempotencyKey string
+	ShiftID        string
+	AmountMinor    int64
+	Currency       string
+	Reason         string
+	SafeID         string
+	ActorID        string
+	ApprovedByID   string
+}
+
+type ShiftCashMovementResult struct {
+	Movement domain.CashMovement
 }
 
 type ShiftResult struct {
@@ -341,6 +369,198 @@ func (s *ShiftService) CloseShift(ctx context.Context, command CloseShiftCommand
 	}
 
 	return result, nil
+}
+
+func (s *ShiftService) CashIn(ctx context.Context, command ShiftCashInCommand) (ShiftCashMovementResult, error) {
+	if command.IdempotencyKey == "" {
+		return ShiftCashMovementResult{}, ErrIdempotencyKeyRequired
+	}
+	if command.ShiftID == "" || command.AmountMinor <= 0 || command.ActorID == "" {
+		return ShiftCashMovementResult{}, ErrInvalidShiftCommand
+	}
+	if command.ApprovedByID != "" && command.ApprovedByID == command.ActorID {
+		return ShiftCashMovementResult{}, ErrSeparationOfDutiesViolation
+	}
+	if s.cash == nil {
+		return ShiftCashMovementResult{}, ErrInvalidShiftCommand
+	}
+
+	fromContainerID := command.FromContainerID
+	fromContainerType := command.FromContainerType
+	if fromContainerID == "" {
+		fromContainerID = "external-customer"
+		fromContainerType = domain.CashContainerTypeExternal
+	}
+	if fromContainerType == "" {
+		return ShiftCashMovementResult{}, ErrInvalidShiftCommand
+	}
+	if fromContainerType == domain.CashContainerTypeSafe && command.ApprovedByID == "" {
+		return ShiftCashMovementResult{}, ErrSeparationOfDutiesViolation
+	}
+
+	const operation = "shifts.cash_in"
+	fingerprint := fmt.Sprintf("%s|%d|%s|%s|%s|%s|%s|%s",
+		command.ShiftID, command.AmountMinor, command.Currency, command.Reason,
+		command.ActorID, command.ApprovedByID, fromContainerID, fromContainerType,
+	)
+	if result, found, err := s.findShiftCashIdempotency(ctx, operation, command.IdempotencyKey, command.ShiftID, fingerprint); err != nil || found {
+		return result, err
+	}
+
+	shift, err := s.requireOpenShift(ctx, command.ShiftID)
+	if err != nil {
+		return ShiftCashMovementResult{}, err
+	}
+
+	reason := command.Reason
+	if reason == "" {
+		reason = "Cash in for shift " + shift.ID
+	}
+
+	var result ShiftCashMovementResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
+			ID:                s.newID("cash"),
+			StoreID:           shift.StoreID,
+			Type:              domain.CashMovementTypeCashIn,
+			FromContainerID:   fromContainerID,
+			FromContainerType: fromContainerType,
+			ToContainerID:     shift.DrawerID,
+			ToContainerType:   domain.CashContainerTypeDrawer,
+			AmountMinor:       command.AmountMinor,
+			Currency:          command.Currency,
+			Reason:            reason,
+			ActorID:           command.ActorID,
+			ApprovedByID:      command.ApprovedByID,
+			Now:               s.now(),
+		})
+		if err != nil {
+			return err
+		}
+		if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+			return err
+		}
+		if err := s.recordCashMovementJournal(ctx, movement); err != nil {
+			return err
+		}
+
+		result = ShiftCashMovementResult{Movement: movement}
+		return s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.ShiftID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		})
+	}); err != nil {
+		return ShiftCashMovementResult{}, err
+	}
+
+	return result, nil
+}
+
+func (s *ShiftService) CashOut(ctx context.Context, command ShiftCashOutCommand) (ShiftCashMovementResult, error) {
+	if command.IdempotencyKey == "" {
+		return ShiftCashMovementResult{}, ErrIdempotencyKeyRequired
+	}
+	if command.ShiftID == "" || command.AmountMinor <= 0 || command.SafeID == "" ||
+		command.ActorID == "" || command.ApprovedByID == "" {
+		return ShiftCashMovementResult{}, ErrInvalidShiftCommand
+	}
+	if command.ActorID == command.ApprovedByID {
+		return ShiftCashMovementResult{}, ErrSeparationOfDutiesViolation
+	}
+	if s.cash == nil {
+		return ShiftCashMovementResult{}, ErrInvalidShiftCommand
+	}
+
+	const operation = "shifts.cash_out"
+	fingerprint := fmt.Sprintf("%s|%d|%s|%s|%s|%s|%s",
+		command.ShiftID, command.AmountMinor, command.Currency, command.Reason,
+		command.SafeID, command.ActorID, command.ApprovedByID,
+	)
+	if result, found, err := s.findShiftCashIdempotency(ctx, operation, command.IdempotencyKey, command.ShiftID, fingerprint); err != nil || found {
+		return result, err
+	}
+
+	shift, err := s.requireOpenShift(ctx, command.ShiftID)
+	if err != nil {
+		return ShiftCashMovementResult{}, err
+	}
+
+	reason := command.Reason
+	if reason == "" {
+		reason = "Cash out for shift " + shift.ID
+	}
+
+	var result ShiftCashMovementResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
+			ID:                s.newID("cash"),
+			StoreID:           shift.StoreID,
+			Type:              domain.CashMovementTypeCashOut,
+			FromContainerID:   shift.DrawerID,
+			FromContainerType: domain.CashContainerTypeDrawer,
+			ToContainerID:     command.SafeID,
+			ToContainerType:   domain.CashContainerTypeSafe,
+			AmountMinor:       command.AmountMinor,
+			Currency:          command.Currency,
+			Reason:            reason,
+			ActorID:           command.ActorID,
+			ApprovedByID:      command.ApprovedByID,
+			Now:               s.now(),
+		})
+		if err != nil {
+			return err
+		}
+		if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+			return err
+		}
+		if err := s.recordCashMovementJournal(ctx, movement); err != nil {
+			return err
+		}
+
+		result = ShiftCashMovementResult{Movement: movement}
+		return s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.ShiftID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		})
+	}); err != nil {
+		return ShiftCashMovementResult{}, err
+	}
+
+	return result, nil
+}
+
+func (s *ShiftService) requireOpenShift(ctx context.Context, shiftID string) (domain.Shift, error) {
+	shift, err := s.shifts.FindShift(ctx, shiftID)
+	if err != nil {
+		return domain.Shift{}, err
+	}
+	if shift.Status != domain.ShiftStatusOpen {
+		return domain.Shift{}, ErrShiftNotOpen
+	}
+	return shift, nil
+}
+
+func (s *ShiftService) findShiftCashIdempotency(ctx context.Context, operation string, key string, targetID string, fingerprint string) (ShiftCashMovementResult, bool, error) {
+	record, found, err := s.idempotency.Find(ctx, operation, key)
+	if err != nil || !found {
+		return ShiftCashMovementResult{}, found, err
+	}
+	if record.TargetID != targetID || record.Fingerprint != fingerprint {
+		return ShiftCashMovementResult{}, true, ErrIdempotencyKeyReused
+	}
+	result, ok := record.Result.(ShiftCashMovementResult)
+	if !ok {
+		return ShiftCashMovementResult{}, true, ErrIdempotencyResultMissing
+	}
+	return result, true, nil
 }
 
 func (s *ShiftService) GetShift(ctx context.Context, shiftID string) (ShiftResult, error) {

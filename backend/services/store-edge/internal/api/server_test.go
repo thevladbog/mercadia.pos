@@ -92,6 +92,12 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	if _, ok := paths["/v1/shifts/{shiftId}/close"]; !ok {
 		t.Fatal("expected /v1/shifts/{shiftId}/close path")
 	}
+	if _, ok := paths["/v1/shifts/{shiftId}/cash-in"]; !ok {
+		t.Fatal("expected /v1/shifts/{shiftId}/cash-in path")
+	}
+	if _, ok := paths["/v1/shifts/{shiftId}/cash-out"]; !ok {
+		t.Fatal("expected /v1/shifts/{shiftId}/cash-out path")
+	}
 	if _, ok := paths["/v1/shifts/{shiftId}/receipts"]; !ok {
 		t.Fatal("expected /v1/shifts/{shiftId}/receipts path")
 	}
@@ -109,6 +115,9 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	}
 	if _, ok := paths["/v1/stores/{storeId}/returns/no-receipt"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/returns/no-receipt path")
+	}
+	if _, ok := paths["/v1/stores/{storeId}/returns"]; !ok {
+		t.Fatal("expected /v1/stores/{storeId}/returns path")
 	}
 	if _, ok := paths["/v1/receipts/{receiptId}/lines/{lineId}/discount"]; !ok {
 		t.Fatal("expected /v1/receipts/{receiptId}/lines/{lineId}/discount path")
@@ -1087,6 +1096,21 @@ func TestGetReturnAndListReceiptReturnsWorkflow(t *testing.T) {
 	if listed.TotalCount != 1 || len(listed.Items) != 1 || listed.Items[0].ID != createdReturn.Return.ID {
 		t.Fatalf("listed returns = %+v", listed)
 	}
+
+	listStoreReturnsResponse := httptest.NewRecorder()
+	listStoreReturnsRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/returns", nil)
+	server.ServeHTTP(listStoreReturnsResponse, listStoreReturnsRequest)
+	if listStoreReturnsResponse.Code != http.StatusOK {
+		t.Fatalf("list store returns status = %d body = %s", listStoreReturnsResponse.Code, listStoreReturnsResponse.Body.String())
+	}
+
+	var storeListed PaginatedReturnsResponse
+	if err := json.Unmarshal(listStoreReturnsResponse.Body.Bytes(), &storeListed); err != nil {
+		t.Fatalf("decode list store returns response: %v", err)
+	}
+	if storeListed.TotalCount != 1 || len(storeListed.Items) != 1 || storeListed.Items[0].ID != createdReturn.Return.ID {
+		t.Fatalf("store listed returns = %+v", storeListed)
+	}
 }
 
 func TestCreateReturnFiscalDocumentWorkflow(t *testing.T) {
@@ -1845,6 +1869,72 @@ func TestShiftWorkflow(t *testing.T) {
 	}
 	if len(finalOpenShifts.Shifts) != 0 {
 		t.Fatalf("final open shifts count = %d", len(finalOpenShifts.Shifts))
+	}
+}
+
+func TestShiftCashInOutWorkflow(t *testing.T) {
+	server := NewServer()
+	openStoreDayAndShift(t, server, "shift-cash-io")
+
+	openShiftsResponse := httptest.NewRecorder()
+	openShiftsRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/shifts/open", nil)
+	server.ServeHTTP(openShiftsResponse, openShiftsRequest)
+	if openShiftsResponse.Code != http.StatusOK {
+		t.Fatalf("open shifts status = %d, body = %s", openShiftsResponse.Code, openShiftsResponse.Body.String())
+	}
+
+	var openShifts ShiftsResponse
+	if err := json.Unmarshal(openShiftsResponse.Body.Bytes(), &openShifts); err != nil {
+		t.Fatalf("decode open shifts response: %v", err)
+	}
+	if len(openShifts.Shifts) != 1 {
+		t.Fatalf("open shifts count = %d", len(openShifts.Shifts))
+	}
+	shiftID := openShifts.Shifts[0].ID
+
+	cashInResponse := httptest.NewRecorder()
+	cashInRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/cash-in", bytes.NewBufferString(`{
+		"amountMinor": 25000,
+		"reason": "Top-up",
+		"actorId": "cashier-1"
+	}`))
+	cashInRequest.Header.Set("Idempotency-Key", "shift-cash-in-1")
+	server.ServeHTTP(cashInResponse, cashInRequest)
+	if cashInResponse.Code != http.StatusAccepted {
+		t.Fatalf("cash in status = %d, body = %s", cashInResponse.Code, cashInResponse.Body.String())
+	}
+
+	cashOutResponse := httptest.NewRecorder()
+	cashOutRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/cash-out", bytes.NewBufferString(`{
+		"amountMinor": 50000,
+		"safeId": "safe-1",
+		"reason": "Revenue collection",
+		"actorId": "cashier-1",
+		"approvedById": "senior-1"
+	}`))
+	cashOutRequest.Header.Set("Idempotency-Key", "shift-cash-out-1")
+	server.ServeHTTP(cashOutResponse, cashOutRequest)
+	if cashOutResponse.Code != http.StatusAccepted {
+		t.Fatalf("cash out status = %d, body = %s", cashOutResponse.Code, cashOutResponse.Body.String())
+	}
+
+	cashBalanceResponse := httptest.NewRecorder()
+	cashBalanceRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/cash-balances", nil)
+	server.ServeHTTP(cashBalanceResponse, cashBalanceRequest)
+	if cashBalanceResponse.Code != http.StatusOK {
+		t.Fatalf("cash balances status = %d, body = %s", cashBalanceResponse.Code, cashBalanceResponse.Body.String())
+	}
+
+	var cashBalances CashBalancesResponse
+	if err := json.Unmarshal(cashBalanceResponse.Body.Bytes(), &cashBalances); err != nil {
+		t.Fatalf("decode cash balances response: %v", err)
+	}
+	shiftBalances := map[string]int64{}
+	for _, balance := range cashBalances.Balances {
+		shiftBalances[balance.ContainerID] = balance.BalanceMinor
+	}
+	if shiftBalances["drawer-1"] != 75000 || shiftBalances["safe-1"] != -50000 {
+		t.Fatalf("cash balances = %+v", cashBalances.Balances)
 	}
 }
 

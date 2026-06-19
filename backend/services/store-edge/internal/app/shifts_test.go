@@ -397,6 +397,119 @@ func TestCloseShiftWithCashRejectsSelfApproval(t *testing.T) {
 	}
 }
 
+func TestShiftCashInIncreasesDrawerBalance(t *testing.T) {
+	store := memory.NewStore()
+	var counter int
+	service := app.NewShiftService(store, store,
+		app.WithShiftCashLedger(store),
+		app.WithShiftClock(func() time.Time {
+			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+		}),
+		app.WithShiftIDGenerator(func(prefix string) string {
+			counter++
+			return fmt.Sprintf("%s-test-%d", prefix, counter)
+		}),
+	)
+	cash := app.NewCashService(store, store)
+
+	opened, err := service.OpenShift(context.Background(), testOpenShiftCommand())
+	if err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+
+	if _, err := service.CashIn(context.Background(), app.ShiftCashInCommand{
+		IdempotencyKey: "cash-in-1",
+		ShiftID:        opened.Shift.ID,
+		AmountMinor:    25000,
+		ActorID:        "cashier-1",
+		Reason:         "Top-up",
+	}); err != nil {
+		t.Fatalf("cash in: %v", err)
+	}
+
+	balances, err := cash.ListCashBalances(context.Background(), "store-1")
+	if err != nil {
+		t.Fatalf("list balances: %v", err)
+	}
+	byContainer := map[string]int64{}
+	for _, balance := range balances {
+		byContainer[balance.ContainerID] = balance.BalanceMinor
+	}
+	if byContainer["drawer-1"] != 125000 {
+		t.Fatalf("drawer balance = %d", byContainer["drawer-1"])
+	}
+}
+
+func TestShiftCashOutMovesDrawerToSafe(t *testing.T) {
+	store := memory.NewStore()
+	var counter int
+	service := app.NewShiftService(store, store,
+		app.WithShiftCashLedger(store),
+		app.WithShiftClock(func() time.Time {
+			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+		}),
+		app.WithShiftIDGenerator(func(prefix string) string {
+			counter++
+			return fmt.Sprintf("%s-test-%d", prefix, counter)
+		}),
+	)
+	cash := app.NewCashService(store, store)
+
+	opened, err := service.OpenShift(context.Background(), testOpenShiftCommand())
+	if err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+
+	if _, err := service.CashOut(context.Background(), app.ShiftCashOutCommand{
+		IdempotencyKey: "cash-out-1",
+		ShiftID:        opened.Shift.ID,
+		AmountMinor:    50000,
+		SafeID:         "safe-1",
+		ActorID:        "cashier-1",
+		ApprovedByID:   "senior-1",
+		Reason:         "Revenue collection",
+	}); err != nil {
+		t.Fatalf("cash out: %v", err)
+	}
+
+	balances, err := cash.ListCashBalances(context.Background(), "store-1")
+	if err != nil {
+		t.Fatalf("list balances: %v", err)
+	}
+	byContainer := map[string]int64{}
+	for _, balance := range balances {
+		byContainer[balance.ContainerID] = balance.BalanceMinor
+	}
+	if byContainer["drawer-1"] != 50000 {
+		t.Fatalf("drawer balance = %d", byContainer["drawer-1"])
+	}
+	if byContainer["safe-1"] != -50000 {
+		t.Fatalf("safe balance = %d", byContainer["safe-1"])
+	}
+}
+
+func TestShiftCashOutRejectsSelfApproval(t *testing.T) {
+	store := memory.NewStore()
+	service := app.NewShiftService(store, store, app.WithShiftCashLedger(store))
+
+	opened, err := service.OpenShift(context.Background(), testOpenShiftCommand())
+	if err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+
+	_, err = service.CashOut(context.Background(), app.ShiftCashOutCommand{
+		IdempotencyKey: "cash-out-1",
+		ShiftID:        opened.Shift.ID,
+		AmountMinor:    50000,
+		SafeID:         "safe-1",
+		ActorID:        "cashier-1",
+		ApprovedByID:   "cashier-1",
+	})
+	if !errors.Is(err, app.ErrSeparationOfDutiesViolation) {
+		t.Fatalf("expected ErrSeparationOfDutiesViolation, got %v", err)
+	}
+}
+
 func newTestShiftService() *app.ShiftService {
 	store := memory.NewStore()
 	var counter int

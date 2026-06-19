@@ -356,6 +356,23 @@ type CloseShiftRequest struct {
 	ApprovedByID     string `json:"approvedById,omitempty"`
 }
 
+type ShiftCashInRequest struct {
+	AmountMinor       int64  `json:"amountMinor"`
+	Reason            string `json:"reason,omitempty"`
+	ActorID           string `json:"actorId"`
+	ApprovedByID      string `json:"approvedById,omitempty"`
+	FromContainerID   string `json:"fromContainerId,omitempty"`
+	FromContainerType string `json:"fromContainerType,omitempty"`
+}
+
+type ShiftCashOutRequest struct {
+	AmountMinor  int64  `json:"amountMinor"`
+	SafeID       string `json:"safeId"`
+	Reason       string `json:"reason,omitempty"`
+	ActorID      string `json:"actorId"`
+	ApprovedByID string `json:"approvedById"`
+}
+
 type ShiftAcceptedResponse struct {
 	Shift ShiftResponse `json:"shift"`
 }
@@ -1131,6 +1148,99 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 		}
 		httpapi.WriteJSON(w, http.StatusAccepted, ShiftAcceptedResponse{
 			Shift: shiftResponse(result.Shift),
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:              http.MethodPost,
+		Path:                "/v1/shifts/{shiftId}/cash-in",
+		OperationID:         "shiftCashIn",
+		Summary:             "Post cash in to shift drawer",
+		Tags:                []string{"store-operations", "cash-office"},
+		RequiresIdempotency: true,
+		RequestBody: &httpapi.BodySpec{
+			Description: "Shift cash in command",
+			Required:    true,
+			Schema:      shiftCashInRequestSchema(),
+		},
+		Responses: map[string]httpapi.ResponseSpec{
+			"202": {Description: "Cash in posted", Schema: cashMovementAcceptedResponseSchema()},
+			"400": {Description: "Invalid cash in command", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Shift was not found", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Shift or idempotency conflict", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
+			return
+		}
+		var request ShiftCashInRequest
+		if err := httpapi.DecodeJSON(r, &request); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_json", "Invalid JSON", err.Error())
+			return
+		}
+		result, err := shifts.CashIn(r.Context(), app.ShiftCashInCommand{
+			IdempotencyKey:    r.Header.Get("Idempotency-Key"),
+			ShiftID:           r.PathValue("shiftId"),
+			AmountMinor:       request.AmountMinor,
+			Reason:            request.Reason,
+			ActorID:           request.ActorID,
+			ApprovedByID:      request.ApprovedByID,
+			FromContainerID:   request.FromContainerID,
+			FromContainerType: domain.CashContainerType(request.FromContainerType),
+		})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusAccepted, CashMovementAcceptedResponse{
+			Movement: cashMovementResponse(result.Movement),
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:              http.MethodPost,
+		Path:                "/v1/shifts/{shiftId}/cash-out",
+		OperationID:         "shiftCashOut",
+		Summary:             "Post cash out from shift drawer to safe",
+		Tags:                []string{"store-operations", "cash-office"},
+		RequiresIdempotency: true,
+		RequestBody: &httpapi.BodySpec{
+			Description: "Shift cash out command",
+			Required:    true,
+			Schema:      shiftCashOutRequestSchema(),
+		},
+		Responses: map[string]httpapi.ResponseSpec{
+			"202": {Description: "Cash out posted", Schema: cashMovementAcceptedResponseSchema()},
+			"400": {Description: "Invalid cash out command", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Shift was not found", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Shift or idempotency conflict", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
+			return
+		}
+		var request ShiftCashOutRequest
+		if err := httpapi.DecodeJSON(r, &request); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_json", "Invalid JSON", err.Error())
+			return
+		}
+		result, err := shifts.CashOut(r.Context(), app.ShiftCashOutCommand{
+			IdempotencyKey: r.Header.Get("Idempotency-Key"),
+			ShiftID:        r.PathValue("shiftId"),
+			AmountMinor:    request.AmountMinor,
+			Reason:         request.Reason,
+			SafeID:         request.SafeID,
+			ActorID:        request.ActorID,
+			ApprovedByID:   request.ApprovedByID,
+		})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusAccepted, CashMovementAcceptedResponse{
+			Movement: cashMovementResponse(result.Movement),
 		})
 	})
 
@@ -1962,6 +2072,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusConflict, "shift_already_open_for_cashier", "Shift is already open for cashier", err.Error())
 	case errors.Is(err, app.ErrShiftAlreadyClosed):
 		httpapi.WriteProblem(w, http.StatusConflict, "shift_already_closed", "Shift is already closed", err.Error())
+	case errors.Is(err, app.ErrShiftNotOpen):
+		httpapi.WriteProblem(w, http.StatusConflict, "shift_not_open", "Shift is not open", err.Error())
 	case errors.Is(err, app.ErrShiftCashCollectionRequired):
 		httpapi.WriteProblem(w, http.StatusConflict, "shift_cash_collection_required", "Shift cash collection details are required", err.Error())
 	case errors.Is(err, app.ErrShiftOpeningSafeRequired):
@@ -2549,6 +2661,27 @@ func closeShiftRequestSchema() httpapi.Schema {
 		"actorId":          httpapi.StringSchema(),
 		"approvedById":     httpapi.StringSchema(),
 	}, "closingCashMinor")
+}
+
+func shiftCashInRequestSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"amountMinor":       {"type": "integer", "minimum": 1},
+		"reason":            httpapi.StringSchema(),
+		"actorId":           httpapi.StringSchema(),
+		"approvedById":      httpapi.StringSchema(),
+		"fromContainerId":   httpapi.StringSchema(),
+		"fromContainerType": httpapi.StringSchema(),
+	}, "amountMinor", "actorId")
+}
+
+func shiftCashOutRequestSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"amountMinor":  {"type": "integer", "minimum": 1},
+		"safeId":       httpapi.StringSchema(),
+		"reason":       httpapi.StringSchema(),
+		"actorId":      httpapi.StringSchema(),
+		"approvedById": httpapi.StringSchema(),
+	}, "amountMinor", "safeId", "actorId", "approvedById")
 }
 
 func openReceiptRequestSchema() httpapi.Schema {

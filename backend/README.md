@@ -140,6 +140,8 @@ The Store Edge service has the first checkout and terminal monitoring paths:
 - `GET /v1/shifts/{shiftId}` - returns shift state.
 - `GET /v1/shifts/{shiftId}/receipts` - lists receipts opened during the shift.
 - `POST /v1/shifts/{shiftId}/close` - closes an open cashier shift with closing cash amount.
+- `POST /v1/shifts/{shiftId}/cash-in` - posts a shift-scoped `cash_in` movement into the shift drawer (defaults from external customer source).
+- `POST /v1/shifts/{shiftId}/cash-out` - posts a shift-scoped `cash_out` movement from the shift drawer to a safe; requires two-person control via `actorId` and `approvedById`.
 - `GET /v1/stores/{storeId}/shifts/open` - lists currently open shifts for the store.
 - `POST /v1/receipts` - opens a draft receipt.
 - `GET /v1/receipts/{receiptId}` - returns current receipt state.
@@ -157,6 +159,7 @@ The Store Edge service has the first checkout and terminal monitoring paths:
 - `POST /v1/receipts/{receiptId}/returns` - creates a with-receipt return against a fiscalized receipt. Per-line quantities are capped across prior with-receipt returns in `completed` or `settled` status on the same receipt.
 - `GET /v1/receipts/{receiptId}/returns` - lists returns for the receipt (paginated, newest first).
 - `GET /v1/returns/{returnId}` - returns return state.
+- `GET /v1/stores/{storeId}/returns` - lists returns for the store (paginated, newest first).
 - `POST /v1/stores/{storeId}/returns/no-receipt` - creates a no-receipt return with approval.
 - `POST /v1/returns/{returnId}/settle` - settles a with-receipt return by refunding captured payments on the original receipt proportionally across payment methods, or disburses cash for an approved no-receipt return. Supports partial line returns when the return total is less than the receipt total. Optional `drawerId` selects the payout drawer for no-receipt returns (otherwise resolved from the actor's open shift). Cumulative settled return totals for a receipt cannot exceed the receipt total.
 - `POST /v1/returns/{returnId}/fiscal-documents` - creates a mock fiscal return/correction document for a settled with-receipt return. One fiscal document per return; requires the original receipt to be fiscalized.
@@ -217,6 +220,7 @@ unresolved receipts. Closing a shift with `closingCashMinor > 0` requires final 
 and posts a `drawer_to_safe` cash movement from the shift drawer to the selected safe. On PostgreSQL,
 shift open and close persist shift state, cash movements, and idempotency in a single transaction.
 The final collection requires two-person control through separate `actorId` and `approvedById` values.
+Mid-shift cash in and cash out are shift-scoped commands that post `cash_in` and `cash_out` ledger movements with journal entries inside the same PostgreSQL transaction as idempotency when persistence is enabled.
 Cash operations are modeled as an append-only ledger. Posted cash movements are not edited in
 place; corrections must be represented by a new movement. The first control rule is separation
 of duties: the actor posting a cash movement cannot approve the same movement.

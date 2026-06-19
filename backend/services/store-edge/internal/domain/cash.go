@@ -17,6 +17,8 @@ const (
 	CashContainerTypeExternal CashContainerType = "external"
 
 	CashMovementTypeChangeFund   CashMovementType = "change_fund"
+	CashMovementTypeCashIn       CashMovementType = "cash_in"
+	CashMovementTypeCashOut      CashMovementType = "cash_out"
 	CashMovementTypeDrawerToSafe CashMovementType = "drawer_to_safe"
 	CashMovementTypeSafeToBank   CashMovementType = "safe_to_bank"
 	CashMovementTypeExpense      CashMovementType = "expense"
