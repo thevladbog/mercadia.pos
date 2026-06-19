@@ -30,6 +30,10 @@ directory.
 
 See `docs/development/repository-structure.md` for ownership rules.
 
+## Prerequisites
+
+- Go **1.26.2+** (toolchain **1.26.4** pinned in `backend/go.work` for builds)
+
 ## Versions And Security
 
 Use current, actively maintained, and secure versions for runtimes, frameworks, tools, and

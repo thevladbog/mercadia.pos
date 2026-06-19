@@ -1,4 +1,4 @@
-﻿{
+{
   "components": {
     "schemas": {
       "Problem": {
@@ -140,14 +140,22 @@
                       "kind": {
                         "type": "string"
                       },
+                      "model": {
+                        "type": "string"
+                      },
                       "status": {
+                        "type": "string"
+                      },
+                      "updatedAt": {
+                        "format": "date-time",
                         "type": "string"
                       }
                     },
                     "required": [
                       "id",
                       "kind",
-                      "status"
+                      "status",
+                      "updatedAt"
                     ],
                     "type": "object"
                   },
@@ -159,6 +167,96 @@
           }
         },
         "summary": "List local devices",
+        "tags": [
+          "hardware"
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}": {
+      "get": {
+        "operationId": "getDevice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "deviceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "model": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "status",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Local device"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Device was not found"
+          }
+        },
+        "summary": "Get local device",
         "tags": [
           "hardware"
         ]
@@ -187,6 +285,31 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "payload": {
+                    "additionalProperties": false,
+                    "properties": {},
+                    "type": "object"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Device command",
+          "required": true
+        },
         "responses": {
           "202": {
             "content": {
@@ -194,16 +317,60 @@
                 "schema": {
                   "additionalProperties": false,
                   "properties": {
-                    "deviceId": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string"
+                    "command": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "completedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "deviceId": {
+                          "type": "string"
+                        },
+                        "error": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "payload": {
+                          "additionalProperties": false,
+                          "properties": {},
+                          "type": "object"
+                        },
+                        "result": {
+                          "additionalProperties": false,
+                          "properties": {},
+                          "type": "object"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "deviceId",
+                        "type",
+                        "status",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
                     }
                   },
                   "required": [
-                    "deviceId",
-                    "status"
+                    "command"
                   ],
                   "type": "object"
                 }
@@ -244,9 +411,198 @@
               }
             },
             "description": "Invalid device command"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Device was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Device command or idempotency conflict"
           }
         },
         "summary": "Send command to a local device",
+        "tags": [
+          "hardware"
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/commands/{commandId}": {
+      "get": {
+        "operationId": "getDeviceCommand",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "deviceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "commandId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "completedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "deviceId": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "payload": {
+                      "additionalProperties": false,
+                      "properties": {},
+                      "type": "object"
+                    },
+                    "result": {
+                      "additionalProperties": false,
+                      "properties": {},
+                      "type": "object"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "deviceId",
+                    "type",
+                    "status",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Device command"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Device command was not found"
+          }
+        },
+        "summary": "Get device command status",
         "tags": [
           "hardware"
         ]
@@ -262,6 +618,9 @@
                 "schema": {
                   "additionalProperties": false,
                   "properties": {
+                    "deviceCount": {
+                      "type": "integer"
+                    },
                     "generatedAt": {
                       "format": "date-time",
                       "type": "string"
@@ -276,6 +635,7 @@
                   "required": [
                     "terminalId",
                     "status",
+                    "deviceCount",
                     "generatedAt"
                   ],
                   "type": "object"

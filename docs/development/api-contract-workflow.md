@@ -87,6 +87,18 @@ Rules:
   WebSocket/SSE-based.
 - Breaking changes require versioning or coordinated frontend migration.
 
+### SSE Streams (outside OpenAPI)
+
+Store Edge exposes terminal monitoring as Server-Sent Events:
+
+- `GET /v1/stores/{storeId}/terminals/events`
+- Response `Content-Type: text/event-stream`
+- Event type: `terminal_heartbeat`
+- Payload fields: `terminalId`, `storeId`, `kind`, `status`, `softwareVersion`, `lastSeenAt`, `updatedAt`
+
+This stream is intentionally excluded from generated OpenAPI because SSE event contracts differ from
+JSON request/response schemas. Document changes here and in `backend/README.md`.
+
 ## Suggested Repository Layout
 
 ```text

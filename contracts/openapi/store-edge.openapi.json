@@ -1,4 +1,4 @@
-﻿{
+{
   "components": {
     "schemas": {
       "Problem": {
@@ -120,6 +120,153 @@
         "summary": "Get service readiness",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/v1/auth/sessions": {
+      "post": {
+        "operationId": "createAuthSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "pin": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "actorId",
+                  "pin"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Session creation command",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "session": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "actorId": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "roles": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "token": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "token",
+                        "actorId",
+                        "roles",
+                        "expiresAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "session"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Session created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid session command"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid credentials"
+          }
+        },
+        "summary": "Create cashier session",
+        "tags": [
+          "auth"
         ]
       }
     },
@@ -952,6 +1099,27 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Maximum number of items to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -961,7 +1129,7 @@
                 "schema": {
                   "additionalProperties": false,
                   "properties": {
-                    "receipts": {
+                    "items": {
                       "items": {
                         "additionalProperties": false,
                         "properties": {
@@ -1006,6 +1174,15 @@
                                   "type": "string"
                                 },
                                 "barcode": {
+                                  "type": "string"
+                                },
+                                "discountAppliedById": {
+                                  "type": "string"
+                                },
+                                "discountMinor": {
+                                  "type": "integer"
+                                },
+                                "discountReason": {
                                   "type": "string"
                                 },
                                 "id": {
@@ -1078,10 +1255,14 @@
                         "type": "object"
                       },
                       "type": "array"
+                    },
+                    "totalCount": {
+                      "type": "integer"
                     }
                   },
                   "required": [
-                    "receipts"
+                    "items",
+                    "totalCount"
                   ],
                   "type": "object"
                 }
@@ -1176,6 +1357,27 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Maximum number of items to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -1185,7 +1387,7 @@
                 "schema": {
                   "additionalProperties": false,
                   "properties": {
-                    "shifts": {
+                    "items": {
                       "items": {
                         "additionalProperties": false,
                         "properties": {
@@ -1247,10 +1449,14 @@
                         "type": "object"
                       },
                       "type": "array"
+                    },
+                    "totalCount": {
+                      "type": "integer"
                     }
                   },
                   "required": [
-                    "shifts"
+                    "items",
+                    "totalCount"
                   ],
                   "type": "object"
                 }
@@ -1820,6 +2026,15 @@
                               "barcode": {
                                 "type": "string"
                               },
+                              "discountAppliedById": {
+                                "type": "string"
+                              },
+                              "discountMinor": {
+                                "type": "integer"
+                              },
+                              "discountReason": {
+                                "type": "string"
+                              },
                               "id": {
                                 "type": "string"
                               },
@@ -2037,6 +2252,15 @@
                           "barcode": {
                             "type": "string"
                           },
+                          "discountAppliedById": {
+                            "type": "string"
+                          },
+                          "discountMinor": {
+                            "type": "integer"
+                          },
+                          "discountReason": {
+                            "type": "string"
+                          },
                           "id": {
                             "type": "string"
                           },
@@ -2252,6 +2476,15 @@
                                 "type": "string"
                               },
                               "barcode": {
+                                "type": "string"
+                              },
+                              "discountAppliedById": {
+                                "type": "string"
+                              },
+                              "discountMinor": {
+                                "type": "integer"
+                              },
+                              "discountReason": {
                                 "type": "string"
                               },
                               "id": {
@@ -2888,6 +3121,15 @@
                               "barcode": {
                                 "type": "string"
                               },
+                              "discountAppliedById": {
+                                "type": "string"
+                              },
+                              "discountMinor": {
+                                "type": "integer"
+                              },
+                              "discountReason": {
+                                "type": "string"
+                              },
                               "id": {
                                 "type": "string"
                               },
@@ -3073,6 +3315,489 @@
         "summary": "Add line to receipt",
         "tags": [
           "checkout"
+        ]
+      }
+    },
+    "/v1/receipts/{receiptId}/lines/{lineId}/discount": {
+      "post": {
+        "operationId": "applyReceiptLineDiscount",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "lineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "amountMinor": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amountMinor",
+                  "reason",
+                  "actorId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Line discount command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "receipt": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "businessDate": {
+                          "type": "string"
+                        },
+                        "cancelApprovedById": {
+                          "type": "string"
+                        },
+                        "cancelReason": {
+                          "type": "string"
+                        },
+                        "cancelledAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "cancelledById": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string"
+                        },
+                        "channel": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "drawerId": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "addedAt": {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "barcode": {
+                                "type": "string"
+                              },
+                              "discountAppliedById": {
+                                "type": "string"
+                              },
+                              "discountMinor": {
+                                "type": "integer"
+                              },
+                              "discountReason": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "productId": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "totalMinor": {
+                                "type": "integer"
+                              },
+                              "unitPriceMinor": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "productId",
+                              "name",
+                              "quantity",
+                              "unitPriceMinor",
+                              "totalMinor",
+                              "addedAt"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "operationalDayId": {
+                          "type": "string"
+                        },
+                        "shiftId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "terminalId": {
+                          "type": "string"
+                        },
+                        "totalMinor": {
+                          "type": "integer"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "terminalId",
+                        "cashierId",
+                        "channel",
+                        "status",
+                        "lines",
+                        "totalMinor",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "receipt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Discount applied"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid discount command"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Permission denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Discount or idempotency conflict"
+          }
+        },
+        "summary": "Apply line discount with permission and reason",
+        "tags": [
+          "checkout",
+          "discounts"
+        ]
+      }
+    },
+    "/v1/receipts/{receiptId}/marking/validate": {
+      "post": {
+        "operationId": "validateReceiptMarking",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Marking validation command",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "productId": {
+                      "type": "string"
+                    },
+                    "valid": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "valid",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Marking validation result"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid marking command"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt was not found"
+          }
+        },
+        "summary": "Validate DataMatrix marking code",
+        "tags": [
+          "marking"
         ]
       }
     },
@@ -3417,6 +4142,324 @@
         ]
       }
     },
+    "/v1/receipts/{receiptId}/returns": {
+      "post": {
+        "operationId": "createReceiptReturn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "lines": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "lineId": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "productId": {
+                          "type": "string"
+                        },
+                        "quantity": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "unitPriceMinor": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "quantity"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "lines",
+                  "reason",
+                  "actorId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Receipt return command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "return": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "actorId": {
+                          "type": "string"
+                        },
+                        "approvedById": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "lineId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "productId": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "totalMinor": {
+                                "type": "integer"
+                              },
+                              "unitPriceMinor": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "quantity",
+                              "unitPriceMinor",
+                              "totalMinor"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "receiptId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "totalMinor": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "kind",
+                        "lines",
+                        "reason",
+                        "actorId",
+                        "totalMinor",
+                        "status",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "return"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return accepted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid return command"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Permission denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return or idempotency conflict"
+          }
+        },
+        "summary": "Create return against fiscalized receipt",
+        "tags": [
+          "returns"
+        ]
+      }
+    },
     "/v1/receipts/{receiptId}/scan": {
       "post": {
         "operationId": "scanReceiptLine",
@@ -3516,6 +4559,15 @@
                                 "type": "string"
                               },
                               "barcode": {
+                                "type": "string"
+                              },
+                              "discountAppliedById": {
+                                "type": "string"
+                              },
+                              "discountMinor": {
+                                "type": "integer"
+                              },
+                              "discountReason": {
                                 "type": "string"
                               },
                               "id": {
@@ -4338,6 +5390,15 @@
                                 "barcode": {
                                   "type": "string"
                                 },
+                                "discountAppliedById": {
+                                  "type": "string"
+                                },
+                                "discountMinor": {
+                                  "type": "integer"
+                                },
+                                "discountReason": {
+                                  "type": "string"
+                                },
                                 "id": {
                                   "type": "string"
                                 },
@@ -4504,6 +5565,44 @@
         ]
       }
     },
+    "/v1/store-edge/sync/outbox-status": {
+      "get": {
+        "operationId": "getOutboxStatus",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "brokerConnected": {
+                      "type": "boolean"
+                    },
+                    "pendingCount": {
+                      "type": "integer"
+                    },
+                    "publishedCount": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "pendingCount",
+                    "publishedCount",
+                    "brokerConnected"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Outbox status"
+          }
+        },
+        "summary": "Get outbox synchronization status",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
     "/v1/stores/{storeId}/cash-balances": {
       "get": {
         "operationId": "listCashBalances",
@@ -4622,6 +5721,27 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Maximum number of items to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -4631,7 +5751,7 @@
                 "schema": {
                   "additionalProperties": false,
                   "properties": {
-                    "movements": {
+                    "items": {
                       "items": {
                         "additionalProperties": false,
                         "properties": {
@@ -4696,10 +5816,14 @@
                         "type": "object"
                       },
                       "type": "array"
+                    },
+                    "totalCount": {
+                      "type": "integer"
                     }
                   },
                   "required": [
-                    "movements"
+                    "items",
+                    "totalCount"
                   ],
                   "type": "object"
                 }
@@ -4989,6 +6113,27 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Maximum number of items to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -4998,7 +6143,7 @@
                 "schema": {
                   "additionalProperties": false,
                   "properties": {
-                    "recounts": {
+                    "items": {
                       "items": {
                         "additionalProperties": false,
                         "properties": {
@@ -5073,10 +6218,14 @@
                         "type": "object"
                       },
                       "type": "array"
+                    },
+                    "totalCount": {
+                      "type": "integer"
                     }
                   },
                   "required": [
-                    "recounts"
+                    "items",
+                    "totalCount"
                   ],
                   "type": "object"
                 }
@@ -5611,6 +6760,239 @@
         ]
       }
     },
+    "/v1/stores/{storeId}/catalog/sync": {
+      "post": {
+        "description": "Idempotent pull of catalog delta from central backend into the local store cache.",
+        "operationId": "syncStoreCatalog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "productsCount": {
+                      "type": "integer"
+                    },
+                    "since": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "storeId": {
+                      "type": "string"
+                    },
+                    "syncedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "storeId",
+                    "since",
+                    "syncedAt",
+                    "productsCount"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Catalog sync completed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Catalog sync unavailable"
+          }
+        },
+        "summary": "Pull catalog changes from central backend",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/operation-journal": {
+      "get": {
+        "operationId": "listOperationJournal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of items to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "actorId": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "operationType": {
+                            "type": "string"
+                          },
+                          "referenceId": {
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          },
+                          "summary": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storeId",
+                          "operationType",
+                          "actorId",
+                          "createdAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "totalCount": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "totalCount"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operation journal entries"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid journal query"
+          }
+        },
+        "summary": "List store operation journal",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
     "/v1/stores/{storeId}/operational-days/current": {
       "get": {
         "operationId": "getCurrentOperationalDay",
@@ -5715,6 +7097,294 @@
         "summary": "Get current operational day",
         "tags": [
           "store-operations"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/returns/no-receipt": {
+      "post": {
+        "operationId": "createNoReceiptReturn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "approvedById": {
+                    "type": "string"
+                  },
+                  "lines": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "lineId": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "productId": {
+                          "type": "string"
+                        },
+                        "quantity": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "unitPriceMinor": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "quantity"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "lines",
+                  "reason",
+                  "actorId",
+                  "approvedById"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "No-receipt return command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "return": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "actorId": {
+                          "type": "string"
+                        },
+                        "approvedById": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "lineId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "productId": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "totalMinor": {
+                                "type": "integer"
+                              },
+                              "unitPriceMinor": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "quantity",
+                              "unitPriceMinor",
+                              "totalMinor"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "receiptId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "totalMinor": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "kind",
+                        "lines",
+                        "reason",
+                        "actorId",
+                        "totalMinor",
+                        "status",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "return"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return accepted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid return command"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Permission denied"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return or idempotency conflict"
+          }
+        },
+        "summary": "Create no-receipt return with approval",
+        "tags": [
+          "returns"
         ]
       }
     },

@@ -1,4 +1,4 @@
-﻿{
+{
   "components": {
     "schemas": {
       "Problem": {
@@ -142,11 +142,15 @@
                     },
                     "status": {
                       "type": "string"
+                    },
+                    "storeCount": {
+                      "type": "integer"
                     }
                   },
                   "required": [
                     "region",
                     "status",
+                    "storeCount",
                     "generatedAt"
                   ],
                   "type": "object"
@@ -159,6 +163,512 @@
         "summary": "Get central backend status",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/v1/stores": {
+      "get": {
+        "operationId": "listStores",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "stores": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "region": {
+                            "type": "string"
+                          },
+                          "registeredAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "region",
+                          "registeredAt",
+                          "updatedAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "stores"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Registered stores"
+          }
+        },
+        "summary": "List registered stores",
+        "tags": [
+          "stores"
+        ]
+      },
+      "post": {
+        "operationId": "registerStore",
+        "parameters": [
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "region": {
+                    "type": "string"
+                  },
+                  "storeId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "storeId",
+                  "name"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Store registration command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "store": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "region": {
+                          "type": "string"
+                        },
+                        "registeredAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "region",
+                        "registeredAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "store"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store registered"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid store command"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Idempotency conflict"
+          }
+        },
+        "summary": "Register a store",
+        "tags": [
+          "stores"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/catalog/delta": {
+      "get": {
+        "description": "Query parameter `since` must be an RFC3339 timestamp.",
+        "operationId": "getStoreCatalogDelta",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "products": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "barcodes": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          },
+                          "taxCategoryId": {
+                            "type": "string"
+                          },
+                          "unitPriceMinor": {
+                            "type": "integer"
+                          },
+                          "updatedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storeId",
+                          "name",
+                          "barcodes",
+                          "unitPriceMinor",
+                          "taxCategoryId",
+                          "active",
+                          "version",
+                          "updatedAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "since": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "since",
+                    "products"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Catalog delta"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid catalog query"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store not found"
+          }
+        },
+        "summary": "Get catalog changes since a timestamp",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/catalog/products": {
+      "get": {
+        "operationId": "listStoreCatalogProducts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "products": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "barcodes": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          },
+                          "taxCategoryId": {
+                            "type": "string"
+                          },
+                          "unitPriceMinor": {
+                            "type": "integer"
+                          },
+                          "updatedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storeId",
+                          "name",
+                          "barcodes",
+                          "unitPriceMinor",
+                          "taxCategoryId",
+                          "active",
+                          "version",
+                          "updatedAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "products"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Catalog products"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store not found"
+          }
+        },
+        "summary": "List catalog products for a store",
+        "tags": [
+          "catalog"
         ]
       }
     },
@@ -185,6 +695,49 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "events": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventId": {
+                          "type": "string"
+                        },
+                        "eventType": {
+                          "type": "string"
+                        },
+                        "occurredAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "payload": {
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "eventId",
+                        "eventType"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "events"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Synchronized event batch",
+          "required": true
+        },
         "responses": {
           "202": {
             "content": {
@@ -246,6 +799,74 @@
               }
             },
             "description": "Invalid sync batch"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Idempotency conflict"
           }
         },
         "summary": "Accept synchronized Store Edge events",
