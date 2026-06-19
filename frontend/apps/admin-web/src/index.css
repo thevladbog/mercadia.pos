@@ -136,3 +136,90 @@ button.secondary {
   margin: 0 auto;
   padding: 1.5rem;
 }
+
+.reporting-page {
+  gap: 1.5rem;
+}
+
+.panel-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.panel-heading h2,
+.panel-heading h3,
+.panel h3 {
+  margin: 0;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.kpi-grid div {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.875rem;
+  background: #f9fafb;
+}
+
+.kpi-grid dt {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.kpi-grid dd {
+  margin: 0.375rem 0 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+th,
+td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.pagination {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.error-panel {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
