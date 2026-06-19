@@ -27,10 +27,26 @@ frontend/
 ```bash
 cd frontend
 pnpm install
+pnpm verify
+```
+
+`pnpm verify` runs, in order: Orval generation, typecheck, ESLint, Prettier check, and
+admin-web production build.
+
+Individual checks:
+
+```bash
 pnpm orval:central
 pnpm typecheck
+pnpm lint              # ESLint
+pnpm lint:fix          # ESLint with auto-fix
+pnpm format:check      # Prettier
+pnpm format            # Prettier write
 pnpm audit
 ```
+
+Orval-generated files under `packages/api-clients/**/src/generated/` are excluded from ESLint
+and Prettier — regenerate them with `pnpm orval:central` instead of editing manually.
 
 Regenerate the central client after backend OpenAPI changes:
 
@@ -65,6 +81,12 @@ Vite proxy).
 Use stable releases only. Before bumping pins, verify current versions via official docs
 and `npm view <package> version`, then update manifests and lockfile together. See
 [`docs/development/dependency-policy.md`](../docs/development/dependency-policy.md).
+
+## Continuous integration
+
+GitHub Actions workflow [`.github/workflows/frontend.yml`](../.github/workflows/frontend.yml)
+runs on changes to `frontend/**` and `contracts/openapi/**`. It verifies Orval output is
+committed, then runs typecheck, lint, format check, build, and dependency audit.
 
 ## Expected future apps
 
