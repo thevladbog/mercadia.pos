@@ -10,11 +10,12 @@
   "scripts": {
     "typecheck": "pnpm -r typecheck",
     "orval:central": "orval --config packages/api-clients/central/orval.config.ts",
+    "orval:store-edge": "orval --config packages/api-clients/store-edge/orval.config.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "pnpm orval:central && pnpm typecheck && pnpm lint && pnpm format:check && pnpm --filter admin-web build"
+    "verify": "pnpm orval:central && pnpm orval:store-edge && pnpm typecheck && pnpm lint && pnpm format:check && pnpm --filter admin-web build"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
