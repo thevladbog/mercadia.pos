@@ -18,8 +18,9 @@ registry=https://registry.npmjs.org/
 
 ```text
 frontend/
-  apps/admin-web/                 # Central admin UI (Vite + React)
-  packages/api-clients/central/   # Orval client for central-backend OpenAPI
+  apps/admin-web/                      # Central admin UI (Vite + React)
+  packages/api-clients/central/        # Orval client for central-backend OpenAPI
+  packages/api-clients/store-edge/     # Orval client for store-edge OpenAPI
 ```
 
 ## Install and verify
@@ -37,6 +38,7 @@ Individual checks:
 
 ```bash
 pnpm orval:central
+pnpm orval:store-edge
 pnpm typecheck
 pnpm lint              # ESLint
 pnpm lint:fix          # ESLint with auto-fix
@@ -46,12 +48,14 @@ pnpm audit
 ```
 
 Orval-generated files under `packages/api-clients/**/src/generated/` are excluded from ESLint
-and Prettier — regenerate them with `pnpm orval:central` instead of editing manually.
+and Prettier — regenerate them with `pnpm orval:central` or `pnpm orval:store-edge` instead of
+editing manually.
 
-Regenerate the central client after backend OpenAPI changes:
+Regenerate clients after backend OpenAPI changes:
 
 ```bash
 pnpm orval:central
+pnpm orval:store-edge
 ```
 
 ## Local development — admin-web
@@ -64,14 +68,18 @@ pnpm orval:central
    # run central-backend (see backend/README.md)
    ```
 
-2. Start the admin UI (Vite dev server proxies `/v1` → `http://127.0.0.1:8082`):
+2. Start **store-edge** on port `8081` for store monitoring (see `backend/README.md`).
+
+3. Start the admin UI (Vite dev server proxies most `/v1` traffic to central `:8082`; store
+   monitoring paths under `/v1/stores/{storeId}/monitoring/*` go to store-edge `:8081`):
 
    ```bash
    cd frontend
    pnpm --filter admin-web dev
    ```
 
-3. Open `http://localhost:5173`, sign in, and open **Central Reporting** or **Users**.
+4. Open `http://localhost:5173`, sign in, and open **Central Reporting**, **Monitoring**, or
+   **Users**.
 
 ### Central users smoke test
 
@@ -84,8 +92,19 @@ Requires a seeded user with the `central_admin` role (default seed admin):
 5. Sign in as a `central_viewer` user: the **Users** nav link is hidden and direct
    `/central/users` URLs redirect back to reporting.
 
-Optional: set `VITE_CENTRAL_BACKEND_URL` when the API is not same-origin (bypasses the
-Vite proxy).
+### Store monitoring smoke test
+
+Requires central-backend (store list) and store-edge (monitoring KPIs/terminals):
+
+1. Register at least one store in central-backend (or use existing seed data).
+2. Sign in and open **Monitoring** in the header.
+3. Select a store from the dropdown — KPI cards and terminal table should load.
+4. Confirm data refreshes automatically (every 5 seconds) or via **Refresh**.
+
+Optional env vars when APIs are not same-origin (bypass Vite proxy):
+
+- `VITE_CENTRAL_BACKEND_URL` — central-backend base URL
+- `VITE_STORE_EDGE_URL` — store-edge base URL
 
 ## Dependency policy
 
