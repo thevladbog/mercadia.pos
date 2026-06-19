@@ -4359,7 +4359,7 @@
             "description": "Payment cannot be cancelled"
           }
         },
-        "summary": "Cancel same-day card payment for receipt",
+        "summary": "Cancel same-day card or cash payment for receipt",
         "tags": [
           "payments"
         ]

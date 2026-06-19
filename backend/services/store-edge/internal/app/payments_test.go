@@ -363,9 +363,69 @@ func TestCancelPaymentRequiresSameBusinessDate(t *testing.T) {
 	}
 }
 
-func TestCancelPaymentNotSupportedForCash(t *testing.T) {
+func TestCancelCashPaymentReturnsReceiptToDraft(t *testing.T) {
 	store := memory.NewStore(memory.WithProducts(testProduct()))
-	checkout, payments, _ := newTestCheckoutPaymentAndCashServices(store)
+	checkout, payments, cash := newTestCheckoutPaymentAndCashServices(store)
+	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
+
+	balancesBefore, err := cash.ListCashBalances(context.Background(), "store-1")
+	if err != nil {
+		t.Fatalf("list cash balances before payment: %v", err)
+	}
+	drawerBefore := drawerBalanceMinor(balancesBefore, "drawer-1")
+
+	created, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-1",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCash,
+		AmountMinor:    39998,
+	})
+	if err != nil {
+		t.Fatalf("create cash payment: %v", err)
+	}
+
+	balancesAfterPayment, err := cash.ListCashBalances(context.Background(), "store-1")
+	if err != nil {
+		t.Fatalf("list cash balances after payment: %v", err)
+	}
+	if drawerBalanceMinor(balancesAfterPayment, "drawer-1") != drawerBefore+39998 {
+		t.Fatalf("drawer balance after payment = %d", drawerBalanceMinor(balancesAfterPayment, "drawer-1"))
+	}
+
+	cancelled, err := payments.CancelPayment(context.Background(), app.CancelPaymentCommand{
+		IdempotencyKey: "cancel-1",
+		ReceiptID:      receiptID,
+		PaymentID:      created.Payment.ID,
+		ActorID:        "cashier-1",
+		Reason:         "Customer changed mind",
+	})
+	if err != nil {
+		t.Fatalf("cancel cash payment: %v", err)
+	}
+	if cancelled.Payment.Status != domain.PaymentStatusCancelled {
+		t.Fatalf("payment status = %s", cancelled.Payment.Status)
+	}
+
+	receipt, err := store.FindReceipt(context.Background(), receiptID)
+	if err != nil {
+		t.Fatalf("find receipt: %v", err)
+	}
+	if receipt.Status != domain.ReceiptStatusDraft {
+		t.Fatalf("receipt status = %s", receipt.Status)
+	}
+
+	balancesAfterCancel, err := cash.ListCashBalances(context.Background(), "store-1")
+	if err != nil {
+		t.Fatalf("list cash balances after cancel: %v", err)
+	}
+	if drawerBalanceMinor(balancesAfterCancel, "drawer-1") != drawerBefore {
+		t.Fatalf("drawer balance after cancel = %d want %d", drawerBalanceMinor(balancesAfterCancel, "drawer-1"), drawerBefore)
+	}
+}
+
+func TestCancelCashPaymentPostsReversalMovement(t *testing.T) {
+	store := memory.NewStore(memory.WithProducts(testProduct()))
+	checkout, payments, cash := newTestCheckoutPaymentAndCashServices(store)
 	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
 
 	created, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
@@ -378,14 +438,43 @@ func TestCancelPaymentNotSupportedForCash(t *testing.T) {
 		t.Fatalf("create cash payment: %v", err)
 	}
 
-	_, err = payments.CancelPayment(context.Background(), app.CancelPaymentCommand{
+	if _, err := payments.CancelPayment(context.Background(), app.CancelPaymentCommand{
 		IdempotencyKey: "cancel-1",
 		ReceiptID:      receiptID,
 		PaymentID:      created.Payment.ID,
-	})
-	if !errors.Is(err, app.ErrPaymentCancelNotSupported) {
-		t.Fatalf("expected ErrPaymentCancelNotSupported, got %v", err)
+	}); err != nil {
+		t.Fatalf("cancel cash payment: %v", err)
 	}
+
+	movements, err := cash.ListCashMovements(context.Background(), "store-1", app.PageParams{Limit: 50})
+	if err != nil {
+		t.Fatalf("list cash movements: %v", err)
+	}
+
+	var saleCount, reversalCount int
+	for _, movement := range movements.Items {
+		switch movement.Type {
+		case domain.CashMovementTypeCashSale:
+			saleCount++
+		case domain.CashMovementTypeCashSaleReversal:
+			reversalCount++
+			if movement.FromContainerID != "drawer-1" || movement.ToContainerID != "external-customer" {
+				t.Fatalf("reversal movement containers = %+v", movement)
+			}
+		}
+	}
+	if saleCount != 1 || reversalCount != 1 {
+		t.Fatalf("cash_sale=%d cash_sale_reversal=%d", saleCount, reversalCount)
+	}
+}
+
+func drawerBalanceMinor(balances []domain.CashBalance, drawerID string) int64 {
+	for _, balance := range balances {
+		if balance.ContainerID == drawerID && balance.ContainerType == domain.CashContainerTypeDrawer {
+			return balance.BalanceMinor
+		}
+	}
+	return 0
 }
 
 func TestRefundCardPaymentKeepsFiscalizedReceipt(t *testing.T) {

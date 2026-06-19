@@ -1576,7 +1576,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 		Method:              http.MethodPost,
 		Path:                "/v1/receipts/{receiptId}/payments/{paymentId}/cancel",
 		OperationID:         "cancelReceiptPayment",
-		Summary:             "Cancel same-day card payment for receipt",
+		Summary:             "Cancel same-day card or cash payment for receipt",
 		Tags:                []string{"payments"},
 		RequiresIdempotency: true,
 		RequestBody: &httpapi.BodySpec{

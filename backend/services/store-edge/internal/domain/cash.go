@@ -20,8 +20,9 @@ const (
 	CashMovementTypeDrawerToSafe CashMovementType = "drawer_to_safe"
 	CashMovementTypeSafeToBank   CashMovementType = "safe_to_bank"
 	CashMovementTypeExpense      CashMovementType = "expense"
-	CashMovementTypeAdjustment   CashMovementType = "adjustment"
-	CashMovementTypeCashSale     CashMovementType = "cash_sale"
+	CashMovementTypeAdjustment       CashMovementType = "adjustment"
+	CashMovementTypeCashSale         CashMovementType = "cash_sale"
+	CashMovementTypeCashSaleReversal CashMovementType = "cash_sale_reversal"
 
 	CashMovementStatusPosted CashMovementStatus = "posted"
 )

@@ -272,14 +272,17 @@ func (s *PaymentService) CancelPayment(ctx context.Context, command CancelPaymen
 	if payment.ReceiptID != command.ReceiptID {
 		return PaymentResult{}, ErrPaymentNotFound
 	}
-	if payment.Method != domain.PaymentMethodCardMock {
+	switch payment.Method {
+	case domain.PaymentMethodCardMock, domain.PaymentMethodCash:
+	default:
 		return PaymentResult{}, ErrPaymentCancelNotSupported
 	}
 	if payment.Status != domain.PaymentStatusCaptured {
 		return PaymentResult{}, ErrPaymentCannotBeCancelled
 	}
 
-	if s.cardTerminal != nil && s.paymentTerminalID != "" && payment.ProviderReference != "" {
+	if payment.Method == domain.PaymentMethodCardMock &&
+		s.cardTerminal != nil && s.paymentTerminalID != "" && payment.ProviderReference != "" {
 		if err := s.cardTerminal.CancelCardPayment(ctx, s.paymentTerminalID, payment.ProviderReference); err != nil {
 			if !s.hardwareAgentFallback {
 				return PaymentResult{}, err
@@ -288,6 +291,36 @@ func (s *PaymentService) CancelPayment(ctx context.Context, command CancelPaymen
 	}
 
 	now := s.now()
+	if payment.Method == domain.PaymentMethodCash {
+		if receipt.DrawerID == "" || s.cash == nil {
+			return PaymentResult{}, ErrCashDrawerRequired
+		}
+		actorID := command.ActorID
+		if actorID == "" {
+			actorID = receipt.CashierID
+		}
+		movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
+			ID:                s.newID("cash"),
+			StoreID:           receipt.StoreID,
+			Type:              domain.CashMovementTypeCashSaleReversal,
+			FromContainerID:   receipt.DrawerID,
+			FromContainerType: domain.CashContainerTypeDrawer,
+			ToContainerID:     "external-customer",
+			ToContainerType:   domain.CashContainerTypeExternal,
+			AmountMinor:       payment.AmountMinor,
+			Currency:          "RUB",
+			Reason:            "Cash payment cancel for receipt " + receipt.ID,
+			ActorID:           actorID,
+			Now:               now,
+		})
+		if err != nil {
+			return PaymentResult{}, err
+		}
+		if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+			return PaymentResult{}, err
+		}
+	}
+
 	if err := payment.Cancel(now); err != nil {
 		return PaymentResult{}, err
 	}

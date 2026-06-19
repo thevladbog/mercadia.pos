@@ -148,7 +148,7 @@ The Store Edge service has the first checkout and terminal monitoring paths:
 - `POST /v1/stores/{storeId}/catalog/sync` - pulls catalog delta from central backend into the local cache.
 - `POST /v1/receipts/{receiptId}/payments` - creates a captured mock payment.
 - `GET /v1/receipts/{receiptId}/payments` - lists receipt payments.
-- `POST /v1/receipts/{receiptId}/payments/{paymentId}/cancel` - cancels a captured card payment on the receipt business date and rolls receipt payment progress back.
+- `POST /v1/receipts/{receiptId}/payments/{paymentId}/cancel` - cancels a captured same-day payment on the receipt business date and rolls receipt payment progress back. Supports `card_mock` (hardware-agent `cancel` when enabled) and `cash` (posts compensating `cash_sale_reversal` ledger movement).
 - `POST /v1/receipts/{receiptId}/payments/{paymentId}/refund` - refunds a captured card payment after fiscalization or on a later business date; same-day pre-fiscal card payments must use cancel instead.
 - `POST /v1/receipts/{receiptId}/fiscal-documents` - creates a mock fiscal document for a fully paid receipt.
 - `GET /v1/receipts/{receiptId}/fiscal-documents` - lists receipt fiscal documents.
@@ -170,7 +170,8 @@ Use `GET /v1/stores/{storeId}/monitoring/*` for REST polling of terminal tiles a
 When `MERCADIA_STORE_EDGE_USE_HARDWARE_AGENT=true`, card payments and fiscalization send commands to
 the local hardware-agent (`authorize`/`capture`, `cancel`, `refund`, `print_receipt`) with mock fallback enabled by default.
 Same-day card payment cancel uses the hardware-agent `cancel` command when a terminal is configured.
-Post-sale card refunds use the hardware-agent `refund` command with the original provider reference.
+Same-day cash payment cancel posts a compensating `cash_sale_reversal` movement from the receipt drawer back to the external customer container.
+Post-sale card refunds use the hardware-agent `refund` command with the original provider reference. Post-fiscal cash refund is a follow-up slice.
 
 Command endpoints require `Idempotency-Key`. Reusing the same key for the same command returns
 the same result; reusing it with a different command payload returns an idempotency conflict.
