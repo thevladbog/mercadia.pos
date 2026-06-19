@@ -16,6 +16,7 @@ import { CreateCentralUserPage } from '@/pages/CreateCentralUserPage.js';
 import { EditCentralUserPage } from '@/pages/EditCentralUserPage.js';
 import { RegisterStorePage } from '@/pages/RegisterStorePage.js';
 import { StoreMonitoringPage } from '@/pages/StoreMonitoringPage.js';
+import { TerminalMonitoringDetailPage } from '@/pages/TerminalMonitoringDetailPage.js';
 import { StoreReportingPage } from '@/pages/StoreReportingPage.js';
 
 export function App() {
@@ -52,6 +53,10 @@ export function App() {
               path="/central/sync/stores/:storeId/operational-days/:operationalDayId"
             />
             <Route element={<StoreMonitoringPage />} path="/store/monitoring" />
+            <Route
+              element={<TerminalMonitoringDetailPage />}
+              path="/store/monitoring/stores/:storeId/terminals/:terminalId"
+            />
             <Route element={<RequireCentralAdmin />}>
               <Route element={<RegisterStorePage />} path="/central/stores/new" />
               <Route element={<CentralUsersPage />} path="/central/users" />

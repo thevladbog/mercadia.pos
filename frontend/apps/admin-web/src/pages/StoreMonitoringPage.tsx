@@ -2,43 +2,33 @@ import { useListStores } from '@mercadia/api-clients-central';
 import {
   useGetStoreMonitoringSummary,
   useListStoreMonitoringTerminals,
-  type ListStoreMonitoringTerminals200ItemsItem,
 } from '@mercadia/api-clients-store-edge';
 import { useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
+import { terminalMonitoringHref } from './monitoring-routes.js';
+import {
+  MONITORING_REFRESH_INTERVAL_MS,
+  terminalStatusClass,
+  terminalStatusLabel,
+} from './monitoring-utils.js';
 import { formatMinorAmount, formatTimestamp } from './reporting-utils.js';
 
-const REFRESH_INTERVAL_MS = 5000;
-
-function terminalStatusLabel(terminal: ListStoreMonitoringTerminals200ItemsItem): string {
-  if (terminal.attentionNeeded) {
-    return 'attention';
-  }
-  return terminal.status;
-}
-
-function terminalStatusClass(terminal: ListStoreMonitoringTerminals200ItemsItem): string {
-  if (terminal.attentionNeeded) {
-    return 'status-badge status-attention';
-  }
-  if (terminal.status === 'offline') {
-    return 'status-badge status-offline';
-  }
-  return 'status-badge status-online';
-}
-
 export function StoreMonitoringPage() {
+  const [searchParams] = useSearchParams();
+  const initialStoreId = searchParams.get('store');
+
   const storesQuery = useListStores();
   const stores = storesQuery.data?.status === 200 ? storesQuery.data.data.stores : [];
-  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(initialStoreId);
   const activeStoreId = selectedStoreId ?? stores[0]?.id ?? '';
 
   const queryOptions = useMemo(
     () => ({
       query: {
         enabled: activeStoreId.length > 0,
-        refetchInterval: REFRESH_INTERVAL_MS,
+        refetchInterval: MONITORING_REFRESH_INTERVAL_MS,
       },
     }),
     [activeStoreId],
@@ -188,7 +178,11 @@ export function StoreMonitoringPage() {
                   <tbody>
                     {terminals.map((terminal) => (
                       <tr key={terminal.id}>
-                        <td>{terminal.id}</td>
+                        <td>
+                          <Link to={terminalMonitoringHref(activeStoreId, terminal.id)}>
+                            {terminal.id}
+                          </Link>
+                        </td>
                         <td>{terminal.kind}</td>
                         <td>
                           <span className={terminalStatusClass(terminal)}>
