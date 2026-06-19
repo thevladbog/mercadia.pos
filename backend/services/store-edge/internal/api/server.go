@@ -345,6 +345,7 @@ type OpenShiftRequest struct {
 	TerminalID       string `json:"terminalId"`
 	CashierID        string `json:"cashierId"`
 	DrawerID         string `json:"drawerId"`
+	SourceSafeID     string `json:"sourceSafeId,omitempty"`
 	OpeningCashMinor int64  `json:"openingCashMinor"`
 }
 
@@ -674,7 +675,12 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 		app.WithCashJournal(journal),
 		app.WithCashTransactionRunner(store),
 	)
-	shifts := app.NewShiftService(store, store, app.WithShiftCashLedger(store), app.WithShiftReceiptRepository(store), app.WithShiftOperationalDayRepository(store))
+	shifts := app.NewShiftService(store, store,
+		app.WithShiftCashLedger(store),
+		app.WithShiftReceiptRepository(store),
+		app.WithShiftOperationalDayRepository(store),
+		app.WithShiftTransactionRunner(store),
+	)
 	terminalOptions := []app.TerminalOption{app.WithTerminalEventPublisher(terminalEvents)}
 	if config.terminalOfflineAfter > 0 {
 		terminalOptions = append(terminalOptions, app.WithTerminalOfflineAfter(config.terminalOfflineAfter))
@@ -1030,6 +1036,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 			TerminalID:       request.TerminalID,
 			CashierID:        request.CashierID,
 			DrawerID:         request.DrawerID,
+			SourceSafeID:     request.SourceSafeID,
 			OpeningCashMinor: request.OpeningCashMinor,
 		})
 		if err != nil {
@@ -1956,6 +1963,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusConflict, "shift_already_closed", "Shift is already closed", err.Error())
 	case errors.Is(err, app.ErrShiftCashCollectionRequired):
 		httpapi.WriteProblem(w, http.StatusConflict, "shift_cash_collection_required", "Shift cash collection details are required", err.Error())
+	case errors.Is(err, app.ErrShiftOpeningSafeRequired):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "shift_opening_safe_required", "Shift opening safe is required when opening cash is positive", err.Error())
 	case errors.Is(err, app.ErrShiftCloseBlocked):
 		httpapi.WriteProblem(w, http.StatusConflict, "shift_close_blocked", "Shift close is blocked", err.Error())
 	case errors.Is(err, app.ErrOperationalDayAlreadyOpen):
@@ -2527,6 +2536,7 @@ func openShiftRequestSchema() httpapi.Schema {
 		"terminalId":       httpapi.StringSchema(),
 		"cashierId":        httpapi.StringSchema(),
 		"drawerId":         httpapi.StringSchema(),
+		"sourceSafeId":     httpapi.StringSchema(),
 		"openingCashMinor": {"type": "integer", "minimum": 0},
 	}, "storeId", "terminalId", "cashierId", "drawerId", "openingCashMinor")
 }

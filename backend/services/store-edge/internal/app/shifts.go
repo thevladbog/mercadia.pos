@@ -16,6 +16,7 @@ var (
 	ErrShiftAlreadyOpenForCashier  = errors.New("shift already open for cashier")
 	ErrShiftAlreadyClosed          = errors.New("shift already closed")
 	ErrShiftCashCollectionRequired = errors.New("shift cash collection details are required")
+	ErrShiftOpeningSafeRequired    = errors.New("shift opening safe is required when opening cash is positive")
 	ErrShiftCloseBlocked           = errors.New("shift close blocked")
 )
 
@@ -33,13 +34,14 @@ type ShiftReceiptRepository interface {
 }
 
 type ShiftService struct {
-	shifts      ShiftRepository
-	cash        CashRepository
-	receipts    ShiftReceiptRepository
-	days        OperationalDayRepository
-	idempotency IdempotencyStore
-	now         func() time.Time
-	newID       func(prefix string) string
+	shifts       ShiftRepository
+	cash         CashRepository
+	receipts     ShiftReceiptRepository
+	days         OperationalDayRepository
+	idempotency  IdempotencyStore
+	transactions TransactionRunner
+	now          func() time.Time
+	newID        func(prefix string) string
 }
 
 type ShiftOption func(*ShiftService)
@@ -89,12 +91,19 @@ func WithShiftOperationalDayRepository(days OperationalDayRepository) ShiftOptio
 	}
 }
 
+func WithShiftTransactionRunner(runner TransactionRunner) ShiftOption {
+	return func(service *ShiftService) {
+		service.transactions = runner
+	}
+}
+
 type OpenShiftCommand struct {
 	IdempotencyKey   string
 	StoreID          string
 	TerminalID       string
 	CashierID        string
 	DrawerID         string
+	SourceSafeID     string
 	OpeningCashMinor int64
 }
 
@@ -119,9 +128,12 @@ func (s *ShiftService) OpenShift(ctx context.Context, command OpenShiftCommand) 
 		command.DrawerID == "" || command.OpeningCashMinor < 0 {
 		return ShiftResult{}, ErrInvalidShiftCommand
 	}
+	if command.OpeningCashMinor > 0 && command.SourceSafeID == "" {
+		return ShiftResult{}, ErrShiftOpeningSafeRequired
+	}
 
 	const operation = "shifts.open_shift"
-	fingerprint := fmt.Sprintf("%s|%s|%s|%s|%d", command.StoreID, command.TerminalID, command.CashierID, command.DrawerID, command.OpeningCashMinor)
+	fingerprint := fmt.Sprintf("%s|%s|%s|%s|%s|%d", command.StoreID, command.TerminalID, command.CashierID, command.DrawerID, command.SourceSafeID, command.OpeningCashMinor)
 	if result, found, err := s.findShiftIdempotency(ctx, operation, command.IdempotencyKey, "", fingerprint); err != nil || found {
 		return result, err
 	}
@@ -164,18 +176,44 @@ func (s *ShiftService) OpenShift(ctx context.Context, command OpenShiftCommand) 
 		return ShiftResult{}, err
 	}
 
-	if err := s.shifts.SaveShift(ctx, shift); err != nil {
-		return ShiftResult{}, err
-	}
+	var result ShiftResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if command.OpeningCashMinor > 0 && s.cash != nil {
+			movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
+				ID:                s.newID("cash"),
+				StoreID:           command.StoreID,
+				Type:              domain.CashMovementTypeChangeFund,
+				FromContainerID:   command.SourceSafeID,
+				FromContainerType: domain.CashContainerTypeSafe,
+				ToContainerID:     command.DrawerID,
+				ToContainerType:   domain.CashContainerTypeDrawer,
+				AmountMinor:       command.OpeningCashMinor,
+				Currency:          "RUB",
+				Reason:            "Opening change fund for shift " + shift.ID,
+				ActorID:           command.CashierID,
+				Now:               s.now(),
+			})
+			if err != nil {
+				return err
+			}
+			if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+				return err
+			}
+		}
 
-	result := ShiftResult{Shift: shift}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    shift.ID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   s.now(),
+		if err := s.shifts.SaveShift(ctx, shift); err != nil {
+			return err
+		}
+
+		result = ShiftResult{Shift: shift}
+		return s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    shift.ID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		})
 	}); err != nil {
 		return ShiftResult{}, err
 	}
@@ -219,48 +257,52 @@ func (s *ShiftService) CloseShift(ctx context.Context, command CloseShiftCommand
 		}
 		return ShiftResult{}, err
 	}
-	if command.ClosingCashMinor > 0 && s.cash != nil {
-		if command.SafeID == "" || command.ActorID == "" || command.ApprovedByID == "" {
-			return ShiftResult{}, ErrShiftCashCollectionRequired
+
+	var result ShiftResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if command.ClosingCashMinor > 0 && s.cash != nil {
+			if command.SafeID == "" || command.ActorID == "" || command.ApprovedByID == "" {
+				return ErrShiftCashCollectionRequired
+			}
+			if command.ActorID == command.ApprovedByID {
+				return ErrSeparationOfDutiesViolation
+			}
+			movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
+				ID:                s.newID("cash"),
+				StoreID:           shift.StoreID,
+				Type:              domain.CashMovementTypeDrawerToSafe,
+				FromContainerID:   shift.DrawerID,
+				FromContainerType: domain.CashContainerTypeDrawer,
+				ToContainerID:     command.SafeID,
+				ToContainerType:   domain.CashContainerTypeSafe,
+				AmountMinor:       command.ClosingCashMinor,
+				Currency:          "RUB",
+				Reason:            "Final cashier collection for shift " + shift.ID,
+				ActorID:           command.ActorID,
+				ApprovedByID:      command.ApprovedByID,
+				Now:               s.now(),
+			})
+			if err != nil {
+				return err
+			}
+			if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+				return err
+			}
 		}
-		if command.ActorID == command.ApprovedByID {
-			return ShiftResult{}, ErrSeparationOfDutiesViolation
+
+		if err := s.shifts.SaveShift(ctx, shift); err != nil {
+			return err
 		}
-		movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
-			ID:                s.newID("cash"),
-			StoreID:           shift.StoreID,
-			Type:              domain.CashMovementTypeDrawerToSafe,
-			FromContainerID:   shift.DrawerID,
-			FromContainerType: domain.CashContainerTypeDrawer,
-			ToContainerID:     command.SafeID,
-			ToContainerType:   domain.CashContainerTypeSafe,
-			AmountMinor:       command.ClosingCashMinor,
-			Currency:          "RUB",
-			Reason:            "Final cashier collection for shift " + shift.ID,
-			ActorID:           command.ActorID,
-			ApprovedByID:      command.ApprovedByID,
-			Now:               s.now(),
+
+		result = ShiftResult{Shift: shift}
+		return s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.ShiftID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
 		})
-		if err != nil {
-			return ShiftResult{}, err
-		}
-		if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
-			return ShiftResult{}, err
-		}
-	}
-
-	if err := s.shifts.SaveShift(ctx, shift); err != nil {
-		return ShiftResult{}, err
-	}
-
-	result := ShiftResult{Shift: shift}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    command.ShiftID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   s.now(),
 	}); err != nil {
 		return ShiftResult{}, err
 	}

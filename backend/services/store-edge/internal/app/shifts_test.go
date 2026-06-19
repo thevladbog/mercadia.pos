@@ -270,11 +270,58 @@ func TestCloseShiftWithCashPostsFinalCollectionMovement(t *testing.T) {
 	for _, balance := range balances {
 		byContainer[balance.ContainerID] = balance.BalanceMinor
 	}
-	if byContainer["drawer-1"] != -125000 {
+	if byContainer["drawer-1"] != -25000 {
 		t.Fatalf("drawer balance = %d", byContainer["drawer-1"])
 	}
-	if byContainer["safe-1"] != 125000 {
+	if byContainer["safe-1"] != 25000 {
 		t.Fatalf("safe balance = %d", byContainer["safe-1"])
+	}
+}
+
+func TestOpenShiftWithOpeningCashPostsChangeFund(t *testing.T) {
+	store := memory.NewStore()
+	var counter int
+	service := app.NewShiftService(store, store,
+		app.WithShiftCashLedger(store),
+		app.WithShiftClock(func() time.Time {
+			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+		}),
+		app.WithShiftIDGenerator(func(prefix string) string {
+			counter++
+			return fmt.Sprintf("%s-test-%d", prefix, counter)
+		}),
+	)
+	cash := app.NewCashService(store, store)
+
+	command := testOpenShiftCommand()
+	command.SourceSafeID = "safe-1"
+	if _, err := service.OpenShift(context.Background(), command); err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+
+	balances, err := cash.ListCashBalances(context.Background(), "store-1")
+	if err != nil {
+		t.Fatalf("list balances: %v", err)
+	}
+	byContainer := map[string]int64{}
+	for _, balance := range balances {
+		byContainer[balance.ContainerID] = balance.BalanceMinor
+	}
+	if byContainer["drawer-1"] != 100000 {
+		t.Fatalf("drawer balance = %d", byContainer["drawer-1"])
+	}
+	if byContainer["safe-1"] != -100000 {
+		t.Fatalf("safe balance = %d", byContainer["safe-1"])
+	}
+}
+
+func TestOpenShiftRejectsOpeningCashWithoutSafe(t *testing.T) {
+	service := newTestShiftService()
+	command := testOpenShiftCommand()
+	command.SourceSafeID = ""
+	_, err := service.OpenShift(context.Background(), command)
+	if !errors.Is(err, app.ErrShiftOpeningSafeRequired) {
+		t.Fatalf("expected ErrShiftOpeningSafeRequired, got %v", err)
 	}
 }
 
@@ -320,6 +367,7 @@ func testOpenShiftCommand() app.OpenShiftCommand {
 		TerminalID:       "pos-1",
 		CashierID:        "cashier-1",
 		DrawerID:         "drawer-1",
+		SourceSafeID:     "safe-1",
 		OpeningCashMinor: 100000,
 	}
 }
