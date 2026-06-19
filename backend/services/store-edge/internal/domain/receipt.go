@@ -42,14 +42,18 @@ type Receipt struct {
 }
 
 type ReceiptLine struct {
-	ID             string
-	ProductID      string
-	Barcode        string
-	Name           string
-	Quantity       int64
-	UnitPriceMinor int64
-	TotalMinor     int64
-	AddedAt        time.Time
+	ID                  string
+	ProductID           string
+	Barcode             string
+	Name                string
+	Quantity            int64
+	UnitPriceMinor      int64
+	DiscountMinor       int64
+	DiscountReason      string
+	DiscountAppliedByID string
+	DiscountAppliedAt   time.Time
+	TotalMinor          int64
+	AddedAt             time.Time
 }
 
 type NewReceiptInput struct {
@@ -128,9 +132,9 @@ func (r *Receipt) AddLine(input AddReceiptLineInput) error {
 		Name:           input.Name,
 		Quantity:       input.Quantity,
 		UnitPriceMinor: input.UnitPriceMinor,
-		TotalMinor:     input.Quantity * input.UnitPriceMinor,
 		AddedAt:        input.Now,
 	}
+	line.TotalMinor = lineLineTotal(line)
 
 	r.Lines = append(r.Lines, line)
 	r.UpdatedAt = input.Now
@@ -193,10 +197,56 @@ func (r *Receipt) Cancel(input CancelReceiptInput) error {
 	return nil
 }
 
+type ApplyLineDiscountInput struct {
+	AmountMinor int64
+	Reason      string
+	ActorID     string
+	Now         time.Time
+}
+
+func (r *Receipt) ApplyLineDiscount(lineID string, input ApplyLineDiscountInput) error {
+	if r.Status != ReceiptStatusDraft {
+		return ErrReceiptClosed
+	}
+	if lineID == "" || input.Reason == "" || input.ActorID == "" || input.AmountMinor <= 0 {
+		return ErrInvalidReceiptInput
+	}
+	if input.Now.IsZero() {
+		input.Now = time.Now().UTC()
+	}
+
+	for index, line := range r.Lines {
+		if line.ID != lineID {
+			continue
+		}
+		gross := line.Quantity * line.UnitPriceMinor
+		if input.AmountMinor > gross {
+			return ErrInvalidReceiptInput
+		}
+		line.DiscountMinor = input.AmountMinor
+		line.DiscountReason = input.Reason
+		line.DiscountAppliedByID = input.ActorID
+		line.DiscountAppliedAt = input.Now
+		line.TotalMinor = gross - input.AmountMinor
+		r.Lines[index] = line
+		r.UpdatedAt = input.Now
+		return nil
+	}
+	return ErrInvalidReceiptInput
+}
+
 func (r Receipt) TotalMinor() int64 {
 	var total int64
 	for _, line := range r.Lines {
-		total += line.TotalMinor
+		total += lineLineTotal(line)
 	}
 	return total
+}
+
+func lineLineTotal(line ReceiptLine) int64 {
+	gross := line.Quantity * line.UnitPriceMinor
+	if line.DiscountMinor > gross {
+		return 0
+	}
+	return gross - line.DiscountMinor
 }

@@ -227,11 +227,15 @@ func (s *CheckoutService) ListReceiptsByShift(ctx context.Context, shiftID strin
 	return s.receipts.ListReceiptsByShift(ctx, shiftID)
 }
 
-func (s *CheckoutService) ListReceiptsByOperationalDay(ctx context.Context, operationalDayID string) ([]domain.Receipt, error) {
+func (s *CheckoutService) ListReceiptsByOperationalDay(ctx context.Context, operationalDayID string, params PageParams) (PageResult[domain.Receipt], error) {
 	if operationalDayID == "" {
-		return nil, ErrInvalidCheckoutCommand
+		return PageResult[domain.Receipt]{}, ErrInvalidCheckoutCommand
 	}
-	return s.receipts.ListReceiptsByOperationalDay(ctx, operationalDayID)
+	receipts, err := s.receipts.ListReceiptsByOperationalDay(ctx, operationalDayID)
+	if err != nil {
+		return PageResult[domain.Receipt]{}, err
+	}
+	return PaginateSlice(receipts, params), nil
 }
 
 func (s *CheckoutService) AddReceiptLine(ctx context.Context, command AddReceiptLineCommand) (ReceiptResult, error) {

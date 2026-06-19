@@ -2,7 +2,9 @@ package memory
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
+	"time"
 
 	"mercadia.dev/pos/services/store-edge/internal/app"
 	"mercadia.dev/pos/services/store-edge/internal/domain"
@@ -27,6 +29,14 @@ type Store struct {
 	operationalDays   map[string]domain.OperationalDay
 	daysByStore       map[string][]string
 	idempotency       map[string]app.IdempotencyRecord
+	outboxEvents      map[string]domain.OutboxEvent
+	actors            map[string]domain.Actor
+	sessions          map[string]domain.Session
+	returns           map[string]domain.Return
+	returnsByStore    map[string][]string
+	journalEntries    map[string]domain.OperationJournalEntry
+	journalByStore    map[string][]string
+	catalogSyncState  map[string]time.Time
 }
 
 type StoreOption func(*Store)
@@ -50,6 +60,14 @@ func NewStore(options ...StoreOption) *Store {
 		operationalDays:   map[string]domain.OperationalDay{},
 		daysByStore:       map[string][]string{},
 		idempotency:       map[string]app.IdempotencyRecord{},
+		outboxEvents:      map[string]domain.OutboxEvent{},
+		actors:            map[string]domain.Actor{},
+		sessions:          map[string]domain.Session{},
+		returns:           map[string]domain.Return{},
+		returnsByStore:    map[string][]string{},
+		journalEntries:    map[string]domain.OperationJournalEntry{},
+		journalByStore:    map[string][]string{},
+		catalogSyncState:  map[string]time.Time{},
 	}
 	for _, option := range options {
 		option(store)
@@ -142,6 +160,29 @@ func (s *Store) FindProductByBarcode(ctx context.Context, barcode string) (domai
 		return domain.Product{}, app.ErrProductNotFound
 	}
 	return cloneProduct(product), nil
+}
+
+func (s *Store) SaveProduct(_ context.Context, product domain.Product) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.saveProduct(product)
+	return nil
+}
+
+func (s *Store) GetLastSyncedAt(_ context.Context, storeID string) (time.Time, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.catalogSyncState[storeID], nil
+}
+
+func (s *Store) SaveLastSyncedAt(_ context.Context, storeID string, syncedAt time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.catalogSyncState[storeID] = syncedAt.UTC()
+	return nil
 }
 
 func (s *Store) SavePayment(ctx context.Context, payment domain.Payment) error {
@@ -326,7 +367,14 @@ func (s *Store) ListCashRecountsByStoreAndBusinessDate(ctx context.Context, stor
 	recounts := make([]domain.CashRecount, 0, len(recountIDs))
 	for _, recountID := range recountIDs {
 		recount, ok := s.cashRecounts[recountID]
-		if ok && recount.CreatedAt.UTC().Format("2006-01-02") == businessDate {
+		if !ok {
+			continue
+		}
+		recountBusinessDate := recount.BusinessDate
+		if recountBusinessDate == "" {
+			recountBusinessDate = recount.CreatedAt.UTC().Format("2006-01-02")
+		}
+		if recountBusinessDate == businessDate {
 			recounts = append(recounts, recount)
 		}
 	}
@@ -341,10 +389,17 @@ func (s *Store) ListUnresolvedCashRecountDiscrepanciesByStoreAndBusinessDate(ctx
 	recounts := make([]domain.CashRecount, 0, len(recountIDs))
 	for _, recountID := range recountIDs {
 		recount, ok := s.cashRecounts[recountID]
+		if !ok {
+			continue
+		}
+		recountBusinessDate := recount.BusinessDate
+		if recountBusinessDate == "" {
+			recountBusinessDate = recount.CreatedAt.UTC().Format("2006-01-02")
+		}
 		if ok &&
 			recount.Status == domain.CashRecountStatusDiscrepancy &&
 			recount.ResolutionStatus == domain.CashRecountResolutionStatusOpen &&
-			recount.CreatedAt.UTC().Format("2006-01-02") == businessDate {
+			recountBusinessDate == businessDate {
 			recounts = append(recounts, recount)
 		}
 	}
@@ -496,4 +551,75 @@ func (s *Store) saveProduct(product domain.Product) {
 func cloneProduct(product domain.Product) domain.Product {
 	product.Barcodes = append([]string(nil), product.Barcodes...)
 	return product
+}
+
+func (s *Store) SaveOutboxEvent(ctx context.Context, event domain.OutboxEvent) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.outboxEvents[event.ID] = cloneOutboxEvent(event)
+	return nil
+}
+
+func (s *Store) ListPendingOutboxEvents(ctx context.Context, limit int) ([]domain.OutboxEvent, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if limit <= 0 {
+		limit = 100
+	}
+
+	events := make([]domain.OutboxEvent, 0, limit)
+	for _, event := range s.outboxEvents {
+		if event.PublishedAt != nil {
+			continue
+		}
+		events = append(events, cloneOutboxEvent(event))
+		if len(events) >= limit {
+			break
+		}
+	}
+	return events, nil
+}
+
+func (s *Store) MarkOutboxEventPublished(ctx context.Context, eventID string, publishedAt time.Time) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	event, ok := s.outboxEvents[eventID]
+	if !ok {
+		return false, nil
+	}
+	if event.PublishedAt != nil {
+		return false, nil
+	}
+	publishedAt = publishedAt.UTC()
+	event.PublishedAt = &publishedAt
+	s.outboxEvents[eventID] = event
+	return true, nil
+}
+
+func (s *Store) CountOutboxEvents(ctx context.Context) (pending int64, published int64, err error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, event := range s.outboxEvents {
+		if event.PublishedAt == nil {
+			pending++
+		} else {
+			published++
+		}
+	}
+	return pending, published, nil
+}
+
+func cloneOutboxEvent(event domain.OutboxEvent) domain.OutboxEvent {
+	if event.Payload != nil {
+		event.Payload = append(json.RawMessage(nil), event.Payload...)
+	}
+	if event.PublishedAt != nil {
+		publishedAt := *event.PublishedAt
+		event.PublishedAt = &publishedAt
+	}
+	return event
 }

@@ -26,6 +26,7 @@ var (
 type CashRecount struct {
 	ID               string
 	StoreID          string
+	BusinessDate     string
 	ContainerID      string
 	ContainerType    CashContainerType
 	Currency         string
@@ -46,6 +47,7 @@ type CashRecount struct {
 type CreateCashRecountInput struct {
 	ID            string
 	StoreID       string
+	BusinessDate  string
 	ContainerID   string
 	ContainerType CashContainerType
 	Currency      string
@@ -80,6 +82,7 @@ func CreateCashRecount(input CreateCashRecountInput) (CashRecount, error) {
 	return CashRecount{
 		ID:               input.ID,
 		StoreID:          input.StoreID,
+		BusinessDate:     input.BusinessDate,
 		ContainerID:      input.ContainerID,
 		ContainerType:    input.ContainerType,
 		Currency:         input.Currency,

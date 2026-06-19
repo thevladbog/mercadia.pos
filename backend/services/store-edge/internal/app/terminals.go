@@ -19,9 +19,14 @@ type TerminalRepository interface {
 	FindTerminal(ctx context.Context, terminalID string) (domain.Terminal, error)
 }
 
+type TerminalEventPublisher interface {
+	PublishTerminalHeartbeat(terminal domain.Terminal)
+}
+
 type TerminalService struct {
 	terminals   TerminalRepository
 	idempotency IdempotencyStore
+	events      TerminalEventPublisher
 	now         func() time.Time
 }
 
@@ -44,6 +49,12 @@ func NewTerminalService(terminals TerminalRepository, idempotency IdempotencySto
 func WithTerminalClock(now func() time.Time) TerminalOption {
 	return func(service *TerminalService) {
 		service.now = now
+	}
+}
+
+func WithTerminalEventPublisher(events TerminalEventPublisher) TerminalOption {
+	return func(service *TerminalService) {
+		service.events = events
 	}
 }
 
@@ -86,6 +97,9 @@ func (s *TerminalService) RecordHeartbeat(ctx context.Context, command RecordTer
 
 	if err := s.terminals.SaveTerminal(ctx, terminal); err != nil {
 		return TerminalResult{}, err
+	}
+	if s.events != nil {
+		s.events.PublishTerminalHeartbeat(terminal)
 	}
 
 	result := TerminalResult{Terminal: terminal}

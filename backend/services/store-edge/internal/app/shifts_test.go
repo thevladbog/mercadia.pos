@@ -156,12 +156,12 @@ func TestListShiftsByOperationalDay(t *testing.T) {
 		t.Fatalf("save shift: %v", err)
 	}
 
-	shifts, err := service.ListShiftsByOperationalDay(context.Background(), "oday-1")
+	shifts, err := service.ListShiftsByOperationalDay(context.Background(), "oday-1", app.PageParams{Limit: 50})
 	if err != nil {
 		t.Fatalf("list shifts by operational day: %v", err)
 	}
-	if len(shifts) != 1 || shifts[0].ID != "shift-1" {
-		t.Fatalf("shifts = %+v", shifts)
+	if len(shifts.Items) != 1 || shifts.Items[0].ID != "shift-1" {
+		t.Fatalf("shifts = %+v", shifts.Items)
 	}
 }
 

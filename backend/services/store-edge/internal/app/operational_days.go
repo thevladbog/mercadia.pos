@@ -49,6 +49,7 @@ type OperationalDayService struct {
 	receipts    OperationalDayReceiptRepository
 	cash        OperationalDayCashRepository
 	idempotency IdempotencyStore
+	outbox      OutboxRecorder
 	now         func() time.Time
 	newID       func(prefix string) string
 }
@@ -82,6 +83,12 @@ func WithOperationalDayClock(now func() time.Time) OperationalDayOption {
 func WithOperationalDayIDGenerator(newID func(prefix string) string) OperationalDayOption {
 	return func(service *OperationalDayService) {
 		service.newID = newID
+	}
+}
+
+func WithOperationalDayOutboxRecorder(outbox OutboxRecorder) OperationalDayOption {
+	return func(service *OperationalDayService) {
+		service.outbox = outbox
 	}
 }
 
@@ -373,6 +380,11 @@ func (s *OperationalDayService) CloseOperationalDay(ctx context.Context, command
 		Fingerprint: fingerprint,
 		Result:      result,
 		CreatedAt:   s.now(),
+	}); err != nil {
+		return OperationalDayResult{}, err
+	}
+	if err := recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
+		return recorder.RecordOperationalDayClosed(ctx, day)
 	}); err != nil {
 		return OperationalDayResult{}, err
 	}

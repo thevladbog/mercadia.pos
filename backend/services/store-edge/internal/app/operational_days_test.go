@@ -269,6 +269,7 @@ func TestOperationalDaySummaryAggregatesReceiptsAndBlockers(t *testing.T) {
 	recount, err := domain.CreateCashRecount(domain.CreateCashRecountInput{
 		ID:            "recount-1",
 		StoreID:       "store-1",
+		BusinessDate:  "2026-06-18",
 		ContainerID:   "drawer-1",
 		ContainerType: domain.CashContainerTypeDrawer,
 		Currency:      "RUB",

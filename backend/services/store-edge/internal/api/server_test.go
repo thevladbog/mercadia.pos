@@ -54,6 +54,9 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	if _, ok := paths["/v1/stores/{storeId}/cash-recounts/{recountId}/resolve"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/cash-recounts/{recountId}/resolve path")
 	}
+	if _, ok := paths["/v1/store-edge/sync/outbox-status"]; !ok {
+		t.Fatal("expected /v1/store-edge/sync/outbox-status path")
+	}
 	if _, ok := paths["/v1/operational-days"]; !ok {
 		t.Fatal("expected /v1/operational-days path")
 	}
@@ -83,6 +86,27 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	}
 	if _, ok := paths["/v1/stores/{storeId}/shifts/open"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/shifts/open path")
+	}
+	if _, ok := paths["/v1/auth/sessions"]; !ok {
+		t.Fatal("expected /v1/auth/sessions path")
+	}
+	if _, ok := paths["/v1/receipts/{receiptId}/returns"]; !ok {
+		t.Fatal("expected /v1/receipts/{receiptId}/returns path")
+	}
+	if _, ok := paths["/v1/stores/{storeId}/returns/no-receipt"]; !ok {
+		t.Fatal("expected /v1/stores/{storeId}/returns/no-receipt path")
+	}
+	if _, ok := paths["/v1/receipts/{receiptId}/lines/{lineId}/discount"]; !ok {
+		t.Fatal("expected /v1/receipts/{receiptId}/lines/{lineId}/discount path")
+	}
+	if _, ok := paths["/v1/receipts/{receiptId}/marking/validate"]; !ok {
+		t.Fatal("expected /v1/receipts/{receiptId}/marking/validate path")
+	}
+	if _, ok := paths["/v1/stores/{storeId}/operation-journal"]; !ok {
+		t.Fatal("expected /v1/stores/{storeId}/operation-journal path")
+	}
+	if _, ok := paths["/v1/stores/{storeId}/catalog/sync"]; !ok {
+		t.Fatal("expected /v1/stores/{storeId}/catalog/sync path")
 	}
 }
 
@@ -309,12 +333,12 @@ func TestCashMovementWorkflow(t *testing.T) {
 		t.Fatalf("list cash movements status = %d, body = %s", listResponse.Code, listResponse.Body.String())
 	}
 
-	var listed CashMovementsResponse
+	var listed PaginatedCashMovementsResponse
 	if err := json.Unmarshal(listResponse.Body.Bytes(), &listed); err != nil {
 		t.Fatalf("decode cash movements response: %v", err)
 	}
-	if len(listed.Movements) != 1 {
-		t.Fatalf("cash movements count = %d", len(listed.Movements))
+	if len(listed.Items) != 1 {
+		t.Fatalf("cash movements count = %d", len(listed.Items))
 	}
 
 	balancesResponse := httptest.NewRecorder()
@@ -368,12 +392,12 @@ func TestCashMovementWorkflow(t *testing.T) {
 		t.Fatalf("list cash recounts status = %d, body = %s", recountsResponse.Code, recountsResponse.Body.String())
 	}
 
-	var recounts CashRecountsResponse
+	var recounts PaginatedCashRecountsResponse
 	if err := json.Unmarshal(recountsResponse.Body.Bytes(), &recounts); err != nil {
 		t.Fatalf("decode cash recounts response: %v", err)
 	}
-	if len(recounts.Recounts) != 1 {
-		t.Fatalf("cash recounts count = %d", len(recounts.Recounts))
+	if len(recounts.Items) != 1 {
+		t.Fatalf("cash recounts count = %d", len(recounts.Items))
 	}
 }
 
@@ -1022,14 +1046,14 @@ func TestListOperationalDayReceipts(t *testing.T) {
 		t.Fatalf("list operational day receipts status = %d, body = %s", listResponse.Code, listResponse.Body.String())
 	}
 
-	var listed ReceiptsResponse
+	var listed PaginatedReceiptsResponse
 	if err := json.Unmarshal(listResponse.Body.Bytes(), &listed); err != nil {
 		t.Fatalf("decode operational day receipts response: %v", err)
 	}
-	if len(listed.Receipts) != 1 ||
-		listed.Receipts[0].ID != openedReceipt.Receipt.ID ||
-		listed.Receipts[0].OperationalDayID != day.ID {
-		t.Fatalf("listed receipts = %+v", listed.Receipts)
+	if len(listed.Items) != 1 ||
+		listed.Items[0].ID != openedReceipt.Receipt.ID ||
+		listed.Items[0].OperationalDayID != day.ID {
+		t.Fatalf("listed receipts = %+v", listed.Items)
 	}
 }
 
@@ -1058,14 +1082,14 @@ func TestListOperationalDayShifts(t *testing.T) {
 		t.Fatalf("list operational day shifts status = %d, body = %s", listResponse.Code, listResponse.Body.String())
 	}
 
-	var listed ShiftsResponse
+	var listed PaginatedShiftsResponse
 	if err := json.Unmarshal(listResponse.Body.Bytes(), &listed); err != nil {
 		t.Fatalf("decode operational day shifts response: %v", err)
 	}
-	if len(listed.Shifts) != 1 ||
-		listed.Shifts[0].OperationalDayID != day.ID ||
-		listed.Shifts[0].BusinessDate != "2026-06-18" {
-		t.Fatalf("listed shifts = %+v", listed.Shifts)
+	if len(listed.Items) != 1 ||
+		listed.Items[0].OperationalDayID != day.ID ||
+		listed.Items[0].BusinessDate != "2026-06-18" {
+		t.Fatalf("listed shifts = %+v", listed.Items)
 	}
 }
 

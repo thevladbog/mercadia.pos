@@ -47,12 +47,12 @@ func TestListCashMovements(t *testing.T) {
 		t.Fatalf("create cash movement: %v", err)
 	}
 
-	movements, err := service.ListCashMovements(context.Background(), "store-1")
+	movements, err := service.ListCashMovements(context.Background(), "store-1", app.PageParams{Limit: 50})
 	if err != nil {
 		t.Fatalf("list cash movements: %v", err)
 	}
-	if len(movements) != 1 {
-		t.Fatalf("cash movements count = %d", len(movements))
+	if len(movements.Items) != 1 {
+		t.Fatalf("cash movements count = %d", len(movements.Items))
 	}
 }
 
@@ -171,12 +171,12 @@ func TestListCashRecounts(t *testing.T) {
 		t.Fatalf("create cash recount: %v", err)
 	}
 
-	recounts, err := service.ListCashRecounts(context.Background(), "store-1")
+	recounts, err := service.ListCashRecounts(context.Background(), "store-1", app.PageParams{Limit: 50})
 	if err != nil {
 		t.Fatalf("list cash recounts: %v", err)
 	}
-	if len(recounts) != 1 {
-		t.Fatalf("cash recounts count = %d", len(recounts))
+	if len(recounts.Items) != 1 {
+		t.Fatalf("cash recounts count = %d", len(recounts.Items))
 	}
 }
 

@@ -21,13 +21,20 @@ type FiscalRepository interface {
 	FindFiscalDocumentsByReceipt(ctx context.Context, receiptID string) ([]domain.FiscalDocument, error)
 }
 
+type FiscalReceiptPrinter interface {
+	PrintReceipt(ctx context.Context, deviceID string, totalMinor int64) (string, error)
+}
+
 type FiscalizationService struct {
-	receipts    ReceiptRepository
-	payments    PaymentRepository
-	fiscal      FiscalRepository
-	idempotency IdempotencyStore
-	now         func() time.Time
-	newID       func(prefix string) string
+	receipts              ReceiptRepository
+	payments              PaymentRepository
+	fiscal                FiscalRepository
+	idempotency           IdempotencyStore
+	outbox                OutboxRecorder
+	fiscalPrinter         FiscalReceiptPrinter
+	hardwareAgentFallback bool
+	now                   func() time.Time
+	newID                 func(prefix string) string
 }
 
 type FiscalizationOption func(*FiscalizationService)
@@ -58,6 +65,19 @@ func WithFiscalizationClock(now func() time.Time) FiscalizationOption {
 func WithFiscalizationIDGenerator(newID func(prefix string) string) FiscalizationOption {
 	return func(service *FiscalizationService) {
 		service.newID = newID
+	}
+}
+
+func WithFiscalizationOutboxRecorder(outbox OutboxRecorder) FiscalizationOption {
+	return func(service *FiscalizationService) {
+		service.outbox = outbox
+	}
+}
+
+func WithFiscalReceiptPrinter(printer FiscalReceiptPrinter, fallback bool) FiscalizationOption {
+	return func(service *FiscalizationService) {
+		service.fiscalPrinter = printer
+		service.hardwareAgentFallback = fallback
 	}
 }
 
@@ -107,13 +127,25 @@ func (s *FiscalizationService) CreateFiscalDocument(ctx context.Context, command
 		return FiscalDocumentResult{}, ErrReceiptNotFullyPaid
 	}
 
+	fiscalSign := s.newID("fs")
+	if s.fiscalPrinter != nil {
+		printedSign, err := s.fiscalPrinter.PrintReceipt(ctx, command.DeviceID, receipt.TotalMinor())
+		if err != nil {
+			if !s.hardwareAgentFallback {
+				return FiscalDocumentResult{}, err
+			}
+		} else {
+			fiscalSign = printedSign
+		}
+	}
+
 	document, err := domain.CreateFiscalizedDocument(domain.CreateFiscalizedDocumentInput{
 		ID:          s.newID("fis"),
 		ReceiptID:   command.ReceiptID,
 		Kind:        domain.FiscalDocumentKindReceipt,
 		AmountMinor: receipt.TotalMinor(),
 		DeviceID:    command.DeviceID,
-		FiscalSign:  s.newID("fs"),
+		FiscalSign:  fiscalSign,
 		Now:         s.now(),
 	})
 	if err != nil {
@@ -137,6 +169,11 @@ func (s *FiscalizationService) CreateFiscalDocument(ctx context.Context, command
 		Fingerprint: fingerprint,
 		Result:      result,
 		CreatedAt:   s.now(),
+	}); err != nil {
+		return FiscalDocumentResult{}, err
+	}
+	if err := recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
+		return recorder.RecordFiscalDocumentCreated(ctx, document, receipt.StoreID)
 	}); err != nil {
 		return FiscalDocumentResult{}, err
 	}

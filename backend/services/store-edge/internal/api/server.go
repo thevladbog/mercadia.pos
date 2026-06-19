@@ -1,14 +1,20 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"os"
 	"time"
 
 	"mercadia.dev/pos/platform/httpapi"
+	platformmigrate "mercadia.dev/pos/platform/migrate"
 	"mercadia.dev/pos/services/store-edge/internal/app"
 	"mercadia.dev/pos/services/store-edge/internal/domain"
+	centralclient "mercadia.dev/pos/services/store-edge/internal/infra/central"
+	haclient "mercadia.dev/pos/services/store-edge/internal/infra/hardwareagent"
 	"mercadia.dev/pos/services/store-edge/internal/infra/memory"
+	"mercadia.dev/pos/services/store-edge/internal/infra/postgres"
 )
 
 const version = "0.1.0"
@@ -303,6 +309,7 @@ type CashBalanceResponse struct {
 type CashRecountResponse struct {
 	ID               string                             `json:"id"`
 	StoreID          string                             `json:"storeId"`
+	BusinessDate     string                             `json:"businessDate,omitempty"`
 	ContainerID      string                             `json:"containerId"`
 	ContainerType    domain.CashContainerType           `json:"containerType"`
 	Currency         string                             `json:"currency"`
@@ -381,14 +388,17 @@ type ReceiptResponse struct {
 }
 
 type ReceiptLineResponse struct {
-	ID             string    `json:"id"`
-	ProductID      string    `json:"productId"`
-	Barcode        string    `json:"barcode,omitempty"`
-	Name           string    `json:"name"`
-	Quantity       int64     `json:"quantity"`
-	UnitPriceMinor int64     `json:"unitPriceMinor"`
-	TotalMinor     int64     `json:"totalMinor"`
-	AddedAt        time.Time `json:"addedAt"`
+	ID                  string    `json:"id"`
+	ProductID           string    `json:"productId"`
+	Barcode             string    `json:"barcode,omitempty"`
+	Name                string    `json:"name"`
+	Quantity            int64     `json:"quantity"`
+	UnitPriceMinor      int64     `json:"unitPriceMinor"`
+	DiscountMinor       int64     `json:"discountMinor,omitempty"`
+	DiscountReason      string    `json:"discountReason,omitempty"`
+	DiscountAppliedByID string    `json:"discountAppliedById,omitempty"`
+	TotalMinor          int64     `json:"totalMinor"`
+	AddedAt             time.Time `json:"addedAt"`
 }
 
 type TerminalResponse struct {
@@ -401,26 +411,237 @@ type TerminalResponse struct {
 	UpdatedAt       time.Time             `json:"updatedAt"`
 }
 
+type ServerOptions struct {
+	DatabaseURL           string
+	MigrationsDir         string
+	CentralBackendURL     string
+	HardwareAgentURL      string
+	UseHardwareAgent      bool
+	HardwareAgentFallback bool
+	ReadinessChecks       []func(context.Context) error
+	BrokerConnected       func() bool
+	DefaultStoreID        string
+}
+
+type ServerBundle struct {
+	Handler     http.Handler
+	Outbox      app.OutboxRepository
+	CatalogSync *app.CatalogSyncService
+	DefaultStoreID string
+}
+
 func NewServer() http.Handler {
-	mux, _ := newMuxAndSpec()
+	mux, _, _, _, _, err := buildServer(ServerOptions{})
+	if err != nil {
+		panic(err)
+	}
 	return mux
 }
 
+func NewServerWithOptions(opts ServerOptions) (http.Handler, error) {
+	bundle, err := NewServerBundle(opts)
+	if err != nil {
+		return nil, err
+	}
+	return bundle.Handler, nil
+}
+
+func NewServerBundle(opts ServerOptions) (*ServerBundle, error) {
+	mux, _, outbox, catalogSync, defaultStoreID, err := buildServer(opts)
+	if err != nil {
+		return nil, err
+	}
+	return &ServerBundle{
+		Handler:        mux,
+		Outbox:         outbox,
+		CatalogSync:    catalogSync,
+		DefaultStoreID: defaultStoreID,
+	}, nil
+}
+
 func OpenAPI() map[string]any {
-	_, spec := newMuxAndSpec()
+	_, spec, _, _, _, err := buildServer(ServerOptions{})
+	if err != nil {
+		panic(err)
+	}
 	return spec.OpenAPI()
 }
 
-func newMuxAndSpec() (*http.ServeMux, *httpapi.Spec) {
-	store := memory.NewStore(memory.WithProducts(demoProducts()...))
-	operationalDays := app.NewOperationalDayService(store, store, store, store, store)
+func buildServer(opts ServerOptions) (*http.ServeMux, *httpapi.Spec, app.OutboxRepository, *app.CatalogSyncService, string, error) {
+	databaseURL := opts.DatabaseURL
+	if databaseURL == "" {
+		databaseURL = os.Getenv("MERCADIA_STORE_EDGE_DATABASE_URL")
+	}
+
+	migrationsDir := opts.MigrationsDir
+	if migrationsDir == "" {
+		migrationsDir = postgres.DefaultMigrationsDir()
+	}
+
+	centralBackendURL := opts.CentralBackendURL
+	if centralBackendURL == "" {
+		centralBackendURL = os.Getenv("MERCADIA_CENTRAL_BACKEND_URL")
+	}
+	if centralBackendURL == "" {
+		centralBackendURL = centralclient.DefaultBaseURL()
+	}
+
+	hardwareAgentURL := opts.HardwareAgentURL
+	if hardwareAgentURL == "" {
+		hardwareAgentURL = os.Getenv("MERCADIA_HARDWARE_AGENT_URL")
+	}
+	if hardwareAgentURL == "" {
+		hardwareAgentURL = haclient.DefaultBaseURL()
+	}
+
+	useHardwareAgent := opts.UseHardwareAgent
+	if !useHardwareAgent {
+		useHardwareAgent = os.Getenv("MERCADIA_STORE_EDGE_USE_HARDWARE_AGENT") == "true"
+	}
+
+	hardwareAgentFallback := opts.HardwareAgentFallback
+	if !hardwareAgentFallback {
+		hardwareAgentFallback = os.Getenv("MERCADIA_STORE_EDGE_HARDWARE_AGENT_FALLBACK") != "false"
+	}
+
+	defaultStoreID := opts.DefaultStoreID
+	if defaultStoreID == "" {
+		defaultStoreID = os.Getenv("MERCADIA_STORE_EDGE_DEFAULT_STORE_ID")
+	}
+	if defaultStoreID == "" {
+		defaultStoreID = "store-1"
+	}
+
+	readinessChecks := append([]func(context.Context) error(nil), opts.ReadinessChecks...)
+
+	var store storeRepositories
+
+	if databaseURL != "" {
+		ctx := context.Background()
+		pgStore, err := postgres.NewStore(ctx, databaseURL, postgres.WithProducts(demoProducts()...))
+		if err != nil {
+			return nil, nil, nil, nil, "", err
+		}
+		migrationResult, err := postgres.RunMigrations(ctx, pgStore.Pool(), migrationsDir)
+		if err != nil {
+			platformmigrate.LogError("store-edge", migrationsDir, err)
+			pgStore.Close()
+			return nil, nil, nil, nil, "", err
+		}
+		platformmigrate.LogResult(migrationResult)
+		if err := pgStore.SeedDemoActors(ctx); err != nil {
+			pgStore.Close()
+			return nil, nil, nil, nil, "", err
+		}
+		readinessChecks = append(readinessChecks, pgStore.Ping)
+		store = pgStore
+	} else {
+		store = memory.NewStore(memory.WithProducts(demoProducts()...), memory.WithDemoActors())
+	}
+
+	var catalogSync *app.CatalogSyncService
+	if centralBackendURL != "" {
+		centralClient := centralclient.NewClient(centralBackendURL, nil)
+		catalogSync = app.NewCatalogSyncService(store, store, centralClient)
+	}
+
+	var hardwareAgent *haclient.Client
+	if useHardwareAgent {
+		hardwareAgent = haclient.NewClient(hardwareAgentURL, nil)
+	}
+
+	var systemOptions []httpapi.SystemRoutesOption
+	if len(readinessChecks) > 0 {
+		systemOptions = append(systemOptions, httpapi.WithReadinessCheck(combineReadinessChecks(readinessChecks)))
+	}
+
+	mux, spec := wireServer(wireConfig{
+		store:                 store,
+		brokerConnected:       opts.BrokerConnected,
+		catalogSync:           catalogSync,
+		hardwareAgent:         hardwareAgent,
+		useHardwareAgent:      useHardwareAgent,
+		hardwareAgentFallback: hardwareAgentFallback,
+	}, systemOptions...)
+	return mux, spec, store, catalogSync, defaultStoreID, nil
+}
+
+func combineReadinessChecks(checks []func(context.Context) error) func(context.Context) error {
+	return func(ctx context.Context) error {
+		for _, check := range checks {
+			if check == nil {
+				continue
+			}
+			if err := check(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+type storeRepositories interface {
+	app.ReceiptRepository
+	app.IdempotencyStore
+	app.ProductRepository
+	app.CatalogSyncStateRepository
+	app.PaymentRepository
+	app.FiscalRepository
+	app.CashRepository
+	app.ShiftRepository
+	app.OperationalDayRepository
+	app.TerminalRepository
+	app.ShiftReceiptRepository
+	app.OperationalDayShiftRepository
+	app.OperationalDayReceiptRepository
+	app.OperationalDayCashRepository
+	app.OutboxRepository
+	app.ActorRepository
+	app.SessionRepository
+	app.ReturnRepository
+	app.OperationJournalRepository
+}
+
+type wireConfig struct {
+	store                 storeRepositories
+	brokerConnected       func() bool
+	catalogSync           *app.CatalogSyncService
+	hardwareAgent         *haclient.Client
+	useHardwareAgent      bool
+	hardwareAgentFallback bool
+}
+
+func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) (*http.ServeMux, *httpapi.Spec) {
+	store := config.store
+	outbox := app.NewOutboxService(store)
+	journal := app.NewOperationJournalService(store)
+	auth := app.NewAuthService(store, store)
+	terminalEvents := app.NewTerminalEventHub()
+
+	operationalDays := app.NewOperationalDayService(store, store, store, store, store, app.WithOperationalDayOutboxRecorder(outbox))
 	checkout := app.NewCheckoutService(store, store, app.WithProductRepository(store), app.WithStoreOperations(store, store))
 	catalog := app.NewCatalogService(store)
-	payments := app.NewPaymentService(store, store, store, app.WithPaymentCashLedger(store))
-	fiscalization := app.NewFiscalizationService(store, store, store, store)
-	cash := app.NewCashService(store, store)
+
+	paymentOptions := []app.PaymentOption{
+		app.WithPaymentCashLedger(store),
+		app.WithPaymentOutboxRecorder(outbox),
+	}
+	fiscalOptions := []app.FiscalizationOption{
+		app.WithFiscalizationOutboxRecorder(outbox),
+	}
+	if config.useHardwareAgent && config.hardwareAgent != nil {
+		paymentOptions = append(paymentOptions, app.WithCardPaymentTerminal(config.hardwareAgent, "sim-payment-1", config.hardwareAgentFallback))
+		fiscalOptions = append(fiscalOptions, app.WithFiscalReceiptPrinter(config.hardwareAgent, config.hardwareAgentFallback))
+	}
+
+	payments := app.NewPaymentService(store, store, store, paymentOptions...)
+	fiscalization := app.NewFiscalizationService(store, store, store, store, fiscalOptions...)
+	cash := app.NewCashService(store, store, app.WithCashOutboxRecorder(outbox), app.WithCashJournal(journal))
 	shifts := app.NewShiftService(store, store, app.WithShiftCashLedger(store), app.WithShiftReceiptRepository(store), app.WithShiftOperationalDayRepository(store))
-	terminals := app.NewTerminalService(store, store)
+	terminals := app.NewTerminalService(store, store, app.WithTerminalEventPublisher(terminalEvents))
+	returns := app.NewReturnsService(store, store, store, auth, app.WithReturnsJournal(journal))
+	discounts := app.NewDiscountService(store, store, auth, app.WithDiscountJournal(journal))
+	marking := app.NewMarkingService(store)
 
 	info := httpapi.ServiceInfo{
 		Name:        "store-edge",
@@ -431,13 +652,48 @@ func newMuxAndSpec() (*http.ServeMux, *httpapi.Spec) {
 
 	mux := http.NewServeMux()
 	spec := httpapi.NewSpec(info)
-	httpapi.MountSystemRoutes(mux, spec, info)
-	mountRoutes(mux, spec, operationalDays, checkout, catalog, payments, fiscalization, cash, shifts, terminals)
+	httpapi.MountSystemRoutes(mux, spec, info, systemOptions...)
+	mountRoutes(mux, spec, outbox, config.brokerConnected, operationalDays, checkout, catalog, payments, fiscalization, cash, shifts, terminals)
+	mountDomainRoutes(mux, spec, auth, returns, discounts, marking, journal)
+	mountCatalogSyncRoute(mux, spec, config.catalogSync)
+	mountTerminalEventsRoute(mux, terminalEvents)
 
 	return mux, spec
 }
 
-func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, operationalDays *app.OperationalDayService, checkout *app.CheckoutService, catalog *app.CatalogService, payments *app.PaymentService, fiscalization *app.FiscalizationService, cash *app.CashService, shifts *app.ShiftService, terminals *app.TerminalService) {
+type OutboxStatusResponse struct {
+	PendingCount    int64 `json:"pendingCount"`
+	PublishedCount  int64 `json:"publishedCount"`
+	BrokerConnected bool  `json:"brokerConnected"`
+}
+
+func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxService, brokerConnected func() bool, operationalDays *app.OperationalDayService, checkout *app.CheckoutService, catalog *app.CatalogService, payments *app.PaymentService, fiscalization *app.FiscalizationService, cash *app.CashService, shifts *app.ShiftService, terminals *app.TerminalService) {
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:      http.MethodGet,
+		Path:        "/v1/store-edge/sync/outbox-status",
+		OperationID: "getOutboxStatus",
+		Summary:     "Get outbox synchronization status",
+		Tags:        []string{"sync"},
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Outbox status", Schema: outboxStatusResponseSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		connected := false
+		if brokerConnected != nil {
+			connected = brokerConnected()
+		}
+		status, err := outbox.Status(r.Context(), connected)
+		if err != nil {
+			httpapi.WriteProblem(w, http.StatusInternalServerError, "outbox_status_failed", "Failed to read outbox status", err.Error())
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, OutboxStatusResponse{
+			PendingCount:    status.PendingCount,
+			PublishedCount:  status.PublishedCount,
+			BrokerConnected: status.BrokerConnected,
+		})
+	})
+
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
 		Path:        "/v1/store-edge/status",
@@ -538,13 +794,14 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, operationalDays *app.Op
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
-		Method:      http.MethodGet,
-		Path:        "/v1/operational-days/{operationalDayId}/receipts",
-		OperationID: "listOperationalDayReceipts",
-		Summary:     "List receipts for operational day",
-		Tags:        []string{"checkout", "store-operations"},
+		Method:          http.MethodGet,
+		Path:            "/v1/operational-days/{operationalDayId}/receipts",
+		OperationID:     "listOperationalDayReceipts",
+		Summary:         "List receipts for operational day",
+		Tags:            []string{"checkout", "store-operations"},
+		QueryParameters: paginationQueryParams(),
 		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Operational day receipts", Schema: receiptsResponseSchema()},
+			"200": {Description: "Operational day receipts", Schema: paginatedReceiptsResponseSchema()},
 			"400": {Description: "Invalid operational day receipt query", Schema: httpapi.ProblemSchema()},
 			"404": {Description: "Operational day was not found", Schema: httpapi.ProblemSchema()},
 		},
@@ -554,24 +811,27 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, operationalDays *app.Op
 			writeAppError(w, err)
 			return
 		}
-		receipts, err := checkout.ListReceiptsByOperationalDay(r.Context(), operationalDayID)
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := checkout.ListReceiptsByOperationalDay(r.Context(), operationalDayID, params)
 		if err != nil {
 			writeAppError(w, err)
 			return
 		}
-		httpapi.WriteJSON(w, http.StatusOK, ReceiptsResponse{
-			Receipts: receiptResponses(receipts),
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedReceiptsResponse{
+			Items:      receiptResponses(result.Items),
+			TotalCount: result.TotalCount,
 		})
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
-		Method:      http.MethodGet,
-		Path:        "/v1/operational-days/{operationalDayId}/shifts",
-		OperationID: "listOperationalDayShifts",
-		Summary:     "List shifts for operational day",
-		Tags:        []string{"store-operations"},
+		Method:          http.MethodGet,
+		Path:            "/v1/operational-days/{operationalDayId}/shifts",
+		OperationID:     "listOperationalDayShifts",
+		Summary:         "List shifts for operational day",
+		Tags:            []string{"store-operations"},
+		QueryParameters: paginationQueryParams(),
 		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Operational day shifts", Schema: shiftsResponseSchema()},
+			"200": {Description: "Operational day shifts", Schema: paginatedShiftsResponseSchema()},
 			"400": {Description: "Invalid operational day shift query", Schema: httpapi.ProblemSchema()},
 			"404": {Description: "Operational day was not found", Schema: httpapi.ProblemSchema()},
 		},
@@ -581,13 +841,15 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, operationalDays *app.Op
 			writeAppError(w, err)
 			return
 		}
-		result, err := shifts.ListShiftsByOperationalDay(r.Context(), operationalDayID)
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := shifts.ListShiftsByOperationalDay(r.Context(), operationalDayID, params)
 		if err != nil {
 			writeAppError(w, err)
 			return
 		}
-		httpapi.WriteJSON(w, http.StatusOK, ShiftsResponse{
-			Shifts: shiftResponses(result),
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedShiftsResponse{
+			Items:      shiftResponses(result.Items),
+			TotalCount: result.TotalCount,
 		})
 	})
 
@@ -982,23 +1244,26 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, operationalDays *app.Op
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
-		Method:      http.MethodGet,
-		Path:        "/v1/stores/{storeId}/cash-movements",
-		OperationID: "listCashMovements",
-		Summary:     "List immutable cash movements",
-		Tags:        []string{"cash-office"},
+		Method:          http.MethodGet,
+		Path:            "/v1/stores/{storeId}/cash-movements",
+		OperationID:     "listCashMovements",
+		Summary:         "List immutable cash movements",
+		Tags:            []string{"cash-office"},
+		QueryParameters: paginationQueryParams(),
 		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Cash movements", Schema: cashMovementsResponseSchema()},
+			"200": {Description: "Cash movements", Schema: paginatedCashMovementsResponseSchema()},
 			"400": {Description: "Invalid cash movement query", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
-		result, err := cash.ListCashMovements(r.Context(), r.PathValue("storeId"))
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := cash.ListCashMovements(r.Context(), r.PathValue("storeId"), params)
 		if err != nil {
 			writeAppError(w, err)
 			return
 		}
-		httpapi.WriteJSON(w, http.StatusOK, CashMovementsResponse{
-			Movements: cashMovementResponses(result),
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedCashMovementsResponse{
+			Items:      cashMovementResponses(result.Items),
+			TotalCount: result.TotalCount,
 		})
 	})
 
@@ -1050,9 +1315,15 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, operationalDays *app.Op
 			httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_json", "Invalid JSON", err.Error())
 			return
 		}
+		storeID := r.PathValue("storeId")
+		businessDate := ""
+		if currentDay, err := operationalDays.GetCurrentOperationalDay(r.Context(), storeID); err == nil {
+			businessDate = currentDay.Day.BusinessDate
+		}
 		result, err := cash.CreateCashRecount(r.Context(), app.CreateCashRecountCommand{
 			IdempotencyKey: r.Header.Get("Idempotency-Key"),
-			StoreID:        r.PathValue("storeId"),
+			StoreID:        storeID,
+			BusinessDate:   businessDate,
 			ContainerID:    request.ContainerID,
 			ContainerType:  request.ContainerType,
 			Currency:       request.Currency,
@@ -1071,23 +1342,26 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, operationalDays *app.Op
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
-		Method:      http.MethodGet,
-		Path:        "/v1/stores/{storeId}/cash-recounts",
-		OperationID: "listCashRecounts",
-		Summary:     "List cash recounts",
-		Tags:        []string{"cash-office"},
+		Method:          http.MethodGet,
+		Path:            "/v1/stores/{storeId}/cash-recounts",
+		OperationID:     "listCashRecounts",
+		Summary:         "List cash recounts",
+		Tags:            []string{"cash-office"},
+		QueryParameters: paginationQueryParams(),
 		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Cash recounts", Schema: cashRecountsResponseSchema()},
+			"200": {Description: "Cash recounts", Schema: paginatedCashRecountsResponseSchema()},
 			"400": {Description: "Invalid cash recount query", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
-		result, err := cash.ListCashRecounts(r.Context(), r.PathValue("storeId"))
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := cash.ListCashRecounts(r.Context(), r.PathValue("storeId"), params)
 		if err != nil {
 			writeAppError(w, err)
 			return
 		}
-		httpapi.WriteJSON(w, http.StatusOK, CashRecountsResponse{
-			Recounts: cashRecountResponses(result),
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedCashRecountsResponse{
+			Items:      cashRecountResponses(result.Items),
+			TotalCount: result.TotalCount,
 		})
 	})
 
@@ -1513,6 +1787,20 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_shift_command", "Invalid shift command", err.Error())
 	case errors.Is(err, app.ErrInvalidOperationalDayCommand), errors.Is(err, domain.ErrInvalidOperationalDayInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_operational_day_command", "Invalid operational day command", err.Error())
+	case errors.Is(err, app.ErrInvalidCredentials):
+		httpapi.WriteProblem(w, http.StatusUnauthorized, "invalid_credentials", "Invalid credentials", err.Error())
+	case errors.Is(err, app.ErrInvalidAuthCommand):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_auth_command", "Invalid auth command", err.Error())
+	case errors.Is(err, app.ErrSessionNotFound), errors.Is(err, app.ErrSessionExpired):
+		httpapi.WriteProblem(w, http.StatusUnauthorized, "session_invalid", "Session is invalid or expired", err.Error())
+	case errors.Is(err, app.ErrPermissionDenied):
+		httpapi.WriteProblem(w, http.StatusForbidden, "permission_denied", "Permission denied", err.Error())
+	case errors.Is(err, app.ErrInvalidReturnCommand), errors.Is(err, app.ErrReceiptNotReturnable):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_return_command", "Invalid return command", err.Error())
+	case errors.Is(err, app.ErrInvalidDiscountCommand):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_discount_command", "Invalid discount command", err.Error())
+	case errors.Is(err, app.ErrInvalidMarkingCommand):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_marking_command", "Invalid marking command", err.Error())
 	default:
 		httpapi.WriteProblem(w, http.StatusInternalServerError, "internal_error", "Internal error", err.Error())
 	}
@@ -1746,6 +2034,7 @@ func cashRecountResponse(recount domain.CashRecount) CashRecountResponse {
 	return CashRecountResponse{
 		ID:               recount.ID,
 		StoreID:          recount.StoreID,
+		BusinessDate:     recount.BusinessDate,
 		ContainerID:      recount.ContainerID,
 		ContainerType:    recount.ContainerType,
 		Currency:         recount.Currency,
@@ -1818,14 +2107,17 @@ func receiptResponse(receipt domain.Receipt) ReceiptResponse {
 	lines := make([]ReceiptLineResponse, 0, len(receipt.Lines))
 	for _, line := range receipt.Lines {
 		lines = append(lines, ReceiptLineResponse{
-			ID:             line.ID,
-			ProductID:      line.ProductID,
-			Barcode:        line.Barcode,
-			Name:           line.Name,
-			Quantity:       line.Quantity,
-			UnitPriceMinor: line.UnitPriceMinor,
-			TotalMinor:     line.TotalMinor,
-			AddedAt:        line.AddedAt,
+			ID:                  line.ID,
+			ProductID:           line.ProductID,
+			Barcode:             line.Barcode,
+			Name:                line.Name,
+			Quantity:            line.Quantity,
+			UnitPriceMinor:      line.UnitPriceMinor,
+			DiscountMinor:       line.DiscountMinor,
+			DiscountReason:      line.DiscountReason,
+			DiscountAppliedByID: line.DiscountAppliedByID,
+			TotalMinor:          line.TotalMinor,
+			AddedAt:             line.AddedAt,
 		})
 	}
 
@@ -1858,6 +2150,14 @@ func statusResponseSchema() httpapi.Schema {
 		"businessDate": httpapi.StringSchema(),
 		"generatedAt":  httpapi.DateTimeSchema(),
 	}, "storeId", "mode", "businessDate", "generatedAt")
+}
+
+func outboxStatusResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"pendingCount":    {"type": "integer"},
+		"publishedCount":  {"type": "integer"},
+		"brokerConnected": {"type": "boolean"},
+	}, "pendingCount", "publishedCount", "brokerConnected")
 }
 
 func openOperationalDayRequestSchema() httpapi.Schema {
@@ -2143,14 +2443,17 @@ func receiptResponseSchema() httpapi.Schema {
 
 func receiptLineResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"id":             httpapi.StringSchema(),
-		"productId":      httpapi.StringSchema(),
-		"barcode":        httpapi.StringSchema(),
-		"name":           httpapi.StringSchema(),
-		"quantity":       {"type": "integer"},
-		"unitPriceMinor": {"type": "integer"},
-		"totalMinor":     {"type": "integer"},
-		"addedAt":        httpapi.DateTimeSchema(),
+		"id":                  httpapi.StringSchema(),
+		"productId":           httpapi.StringSchema(),
+		"barcode":             httpapi.StringSchema(),
+		"name":                httpapi.StringSchema(),
+		"quantity":            {"type": "integer"},
+		"unitPriceMinor":      {"type": "integer"},
+		"discountMinor":       {"type": "integer"},
+		"discountReason":      httpapi.StringSchema(),
+		"discountAppliedById": httpapi.StringSchema(),
+		"totalMinor":          {"type": "integer"},
+		"addedAt":             httpapi.DateTimeSchema(),
 	}, "id", "productId", "name", "quantity", "unitPriceMinor", "totalMinor", "addedAt")
 }
 

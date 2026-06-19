@@ -32,6 +32,8 @@ type CashRepository interface {
 type CashService struct {
 	cash        CashRepository
 	idempotency IdempotencyStore
+	outbox      OutboxRecorder
+	journal     OperationJournalRecorder
 	now         func() time.Time
 	newID       func(prefix string) string
 }
@@ -65,6 +67,18 @@ func WithCashIDGenerator(newID func(prefix string) string) CashOption {
 	}
 }
 
+func WithCashOutboxRecorder(outbox OutboxRecorder) CashOption {
+	return func(service *CashService) {
+		service.outbox = outbox
+	}
+}
+
+func WithCashJournal(journal OperationJournalRecorder) CashOption {
+	return func(service *CashService) {
+		service.journal = journal
+	}
+}
+
 type CreateCashMovementCommand struct {
 	IdempotencyKey    string
 	StoreID           string
@@ -87,6 +101,7 @@ type CashMovementResult struct {
 type CreateCashRecountCommand struct {
 	IdempotencyKey string
 	StoreID        string
+	BusinessDate   string
 	ContainerID    string
 	ContainerType  domain.CashContainerType
 	Currency       string
@@ -162,6 +177,9 @@ func (s *CashService) CreateCashMovement(ctx context.Context, command CreateCash
 		return CashMovementResult{}, err
 	}
 
+	s.recordCashJournal(ctx, movement.StoreID, "cash.movement.created", movement.ActorID, movement.ID,
+		fmt.Sprintf("%s %d from %s to %s", movement.Type, movement.AmountMinor, movement.FromContainerID, movement.ToContainerID))
+
 	result := CashMovementResult{Movement: movement}
 	if err := s.idempotency.Save(ctx, IdempotencyRecord{
 		Operation:   operation,
@@ -170,6 +188,11 @@ func (s *CashService) CreateCashMovement(ctx context.Context, command CreateCash
 		Fingerprint: fingerprint,
 		Result:      result,
 		CreatedAt:   s.now(),
+	}); err != nil {
+		return CashMovementResult{}, err
+	}
+	if err := recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
+		return recorder.RecordCashMovementPosted(ctx, movement)
 	}); err != nil {
 		return CashMovementResult{}, err
 	}
@@ -215,6 +238,7 @@ func (s *CashService) CreateCashRecount(ctx context.Context, command CreateCashR
 	recount, err := domain.CreateCashRecount(domain.CreateCashRecountInput{
 		ID:            s.newID("crec"),
 		StoreID:       command.StoreID,
+		BusinessDate:  command.BusinessDate,
 		ContainerID:   command.ContainerID,
 		ContainerType: command.ContainerType,
 		Currency:      command.Currency,
@@ -232,6 +256,9 @@ func (s *CashService) CreateCashRecount(ctx context.Context, command CreateCashR
 	if err := s.cash.SaveCashRecount(ctx, recount); err != nil {
 		return CashRecountResult{}, err
 	}
+
+	s.recordCashJournal(ctx, recount.StoreID, "cash.recount.created", recount.ActorID, recount.ID,
+		fmt.Sprintf("recount %s expected=%d counted=%d", recount.ContainerID, recount.ExpectedMinor, recount.CountedMinor))
 
 	result := CashRecountResult{Recount: recount}
 	if err := s.idempotency.Save(ctx, IdempotencyRecord{
@@ -293,6 +320,8 @@ func (s *CashService) ResolveCashRecount(ctx context.Context, command ResolveCas
 		return CashRecountResult{}, err
 	}
 
+	s.recordCashJournal(ctx, recount.StoreID, "cash.recount.resolved", command.ActorID, recount.ID, command.ResolutionNote)
+
 	result := CashRecountResult{Recount: recount}
 	if err := s.idempotency.Save(ctx, IdempotencyRecord{
 		Operation:   operation,
@@ -308,18 +337,39 @@ func (s *CashService) ResolveCashRecount(ctx context.Context, command ResolveCas
 	return result, nil
 }
 
-func (s *CashService) ListCashMovements(ctx context.Context, storeID string) ([]domain.CashMovement, error) {
+func (s *CashService) ListCashMovements(ctx context.Context, storeID string, params PageParams) (PageResult[domain.CashMovement], error) {
 	if storeID == "" {
-		return nil, ErrInvalidCashMovementCommand
+		return PageResult[domain.CashMovement]{}, ErrInvalidCashMovementCommand
 	}
-	return s.cash.ListCashMovements(ctx, storeID)
+	movements, err := s.cash.ListCashMovements(ctx, storeID)
+	if err != nil {
+		return PageResult[domain.CashMovement]{}, err
+	}
+	return PaginateSlice(movements, params), nil
 }
 
-func (s *CashService) ListCashRecounts(ctx context.Context, storeID string) ([]domain.CashRecount, error) {
+func (s *CashService) ListCashRecounts(ctx context.Context, storeID string, params PageParams) (PageResult[domain.CashRecount], error) {
 	if storeID == "" {
-		return nil, ErrInvalidCashRecountCommand
+		return PageResult[domain.CashRecount]{}, ErrInvalidCashRecountCommand
 	}
-	return s.cash.ListCashRecounts(ctx, storeID)
+	recounts, err := s.cash.ListCashRecounts(ctx, storeID)
+	if err != nil {
+		return PageResult[domain.CashRecount]{}, err
+	}
+	return PaginateSlice(recounts, params), nil
+}
+
+func (s *CashService) recordCashJournal(ctx context.Context, storeID string, operationType string, actorID string, referenceID string, summary string) {
+	if s.journal == nil {
+		return
+	}
+	_ = s.journal.RecordOperation(ctx, RecordOperationCommand{
+		StoreID:       storeID,
+		OperationType: operationType,
+		ActorID:       actorID,
+		ReferenceID:   referenceID,
+		Summary:       summary,
+	})
 }
 
 func (s *CashService) ListCashBalances(ctx context.Context, storeID string) ([]domain.CashBalance, error) {

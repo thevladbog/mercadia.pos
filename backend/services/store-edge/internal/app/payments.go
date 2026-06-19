@@ -21,13 +21,21 @@ type PaymentRepository interface {
 	FindPaymentsByReceipt(ctx context.Context, receiptID string) ([]domain.Payment, error)
 }
 
+type CardPaymentTerminal interface {
+	AuthorizeAndCapture(ctx context.Context, deviceID string, amountMinor int64, currency, reference string) (string, error)
+}
+
 type PaymentService struct {
-	receipts    ReceiptRepository
-	payments    PaymentRepository
-	cash        CashRepository
-	idempotency IdempotencyStore
-	now         func() time.Time
-	newID       func(prefix string) string
+	receipts            ReceiptRepository
+	payments            PaymentRepository
+	cash                CashRepository
+	idempotency         IdempotencyStore
+	outbox              OutboxRecorder
+	cardTerminal        CardPaymentTerminal
+	paymentTerminalID   string
+	hardwareAgentFallback bool
+	now                 func() time.Time
+	newID               func(prefix string) string
 }
 
 type PaymentOption func(*PaymentService)
@@ -63,6 +71,20 @@ func WithPaymentIDGenerator(newID func(prefix string) string) PaymentOption {
 func WithPaymentCashLedger(cash CashRepository) PaymentOption {
 	return func(service *PaymentService) {
 		service.cash = cash
+	}
+}
+
+func WithPaymentOutboxRecorder(outbox OutboxRecorder) PaymentOption {
+	return func(service *PaymentService) {
+		service.outbox = outbox
+	}
+}
+
+func WithCardPaymentTerminal(terminal CardPaymentTerminal, deviceID string, fallback bool) PaymentOption {
+	return func(service *PaymentService) {
+		service.cardTerminal = terminal
+		service.paymentTerminalID = deviceID
+		service.hardwareAgentFallback = fallback
 	}
 }
 
@@ -105,12 +127,28 @@ func (s *PaymentService) CreatePayment(ctx context.Context, command CreatePaymen
 		return PaymentResult{}, ErrPaymentAmountExceedsRemaining
 	}
 
+	providerReference := command.ProviderReference
+	if command.Method == domain.PaymentMethodCardMock && s.cardTerminal != nil && s.paymentTerminalID != "" {
+		reference := command.ReceiptID
+		if providerReference != "" {
+			reference = providerReference
+		}
+		terminalRef, err := s.cardTerminal.AuthorizeAndCapture(ctx, s.paymentTerminalID, command.AmountMinor, "RUB", reference)
+		if err != nil {
+			if !s.hardwareAgentFallback {
+				return PaymentResult{}, err
+			}
+		} else if providerReference == "" {
+			providerReference = terminalRef
+		}
+	}
+
 	payment, err := domain.CreateCapturedPayment(domain.CreateCapturedPaymentInput{
 		ID:                s.newID("pay"),
 		ReceiptID:         command.ReceiptID,
 		Method:            command.Method,
 		AmountMinor:       command.AmountMinor,
-		ProviderReference: command.ProviderReference,
+		ProviderReference: providerReference,
 		Now:               s.now(),
 	})
 	if err != nil {
@@ -166,6 +204,11 @@ func (s *PaymentService) CreatePayment(ctx context.Context, command CreatePaymen
 		Fingerprint: fingerprint,
 		Result:      result,
 		CreatedAt:   s.now(),
+	}); err != nil {
+		return PaymentResult{}, err
+	}
+	if err := recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
+		return recorder.RecordPaymentCaptured(ctx, payment, receipt.StoreID)
 	}); err != nil {
 		return PaymentResult{}, err
 	}

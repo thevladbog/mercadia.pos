@@ -14,6 +14,7 @@ var (
 
 type ProductRepository interface {
 	FindProductByBarcode(ctx context.Context, barcode string) (domain.Product, error)
+	SaveProduct(ctx context.Context, product domain.Product) error
 }
 
 type CatalogService struct {

@@ -276,12 +276,12 @@ func TestListReceiptsByOperationalDay(t *testing.T) {
 		t.Fatalf("save receipt: %v", err)
 	}
 
-	receipts, err := service.ListReceiptsByOperationalDay(context.Background(), "oday-1")
+	receipts, err := service.ListReceiptsByOperationalDay(context.Background(), "oday-1", app.PageParams{Limit: 50})
 	if err != nil {
 		t.Fatalf("list receipts by operational day: %v", err)
 	}
-	if len(receipts) != 1 || receipts[0].ID != "receipt-1" {
-		t.Fatalf("receipts = %+v", receipts)
+	if len(receipts.Items) != 1 || receipts.Items[0].ID != "receipt-1" {
+		t.Fatalf("receipts = %+v", receipts.Items)
 	}
 }
 

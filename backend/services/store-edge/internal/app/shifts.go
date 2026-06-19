@@ -286,11 +286,15 @@ func (s *ShiftService) ListOpenShiftsByStore(ctx context.Context, storeID string
 	return s.shifts.ListOpenShiftsByStore(ctx, storeID)
 }
 
-func (s *ShiftService) ListShiftsByOperationalDay(ctx context.Context, operationalDayID string) ([]domain.Shift, error) {
+func (s *ShiftService) ListShiftsByOperationalDay(ctx context.Context, operationalDayID string, params PageParams) (PageResult[domain.Shift], error) {
 	if operationalDayID == "" {
-		return nil, ErrInvalidShiftCommand
+		return PageResult[domain.Shift]{}, ErrInvalidShiftCommand
 	}
-	return s.shifts.ListShiftsByOperationalDay(ctx, operationalDayID)
+	shifts, err := s.shifts.ListShiftsByOperationalDay(ctx, operationalDayID)
+	if err != nil {
+		return PageResult[domain.Shift]{}, err
+	}
+	return PaginateSlice(shifts, params), nil
 }
 
 func (s *ShiftService) findShiftIdempotency(ctx context.Context, operation string, key string, targetID string, fingerprint string) (ShiftResult, bool, error) {
