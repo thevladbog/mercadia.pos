@@ -20,6 +20,8 @@ type Repository interface {
 	app.SyncedReturnRepository
 	app.SyncedOperationalDayRepository
 	app.ReportingRepository
+	app.CentralUserRepository
+	app.CentralSessionRepository
 	app.IdempotencyStore
 }
 
