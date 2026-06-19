@@ -18,6 +18,7 @@ export function AppLayout() {
         </div>
         <div className="header-actions">
           <nav>
+            <Link to="/central/dashboard">Dashboard</Link>
             <Link to="/central/reporting">Reporting</Link>
             <Link to="/central/stores">Stores</Link>
             <Link to="/central/sync">Sync</Link>

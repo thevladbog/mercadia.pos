@@ -34,7 +34,7 @@ export function LoginPage() {
   });
 
   if (isAuthenticated) {
-    const redirectTo = (location.state as { from?: string } | null)?.from ?? '/central/reporting';
+    const redirectTo = (location.state as { from?: string } | null)?.from ?? '/central/dashboard';
     return <Navigate to={redirectTo} replace />;
   }
 

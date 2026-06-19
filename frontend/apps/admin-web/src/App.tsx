@@ -6,6 +6,7 @@ import { ProtectedRoute } from '@/auth/ProtectedRoute.js';
 import { RequireCentralAdmin } from '@/auth/RequireCentralAdmin.js';
 import { UnauthorizedBridge } from '@/auth/UnauthorizedBridge.js';
 import { AppLayout } from '@/layout/AppLayout.js';
+import { CentralDashboardPage } from '@/pages/CentralDashboardPage.js';
 import { CentralReportingPage } from '@/pages/CentralReportingPage.js';
 import { CentralStoresPage } from '@/pages/CentralStoresPage.js';
 import { CentralSyncExplorerPage } from '@/pages/CentralSyncExplorerPage.js';
@@ -24,6 +25,7 @@ export function App() {
         <Route element={<LoginPage />} path="/login" />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
+            <Route element={<CentralDashboardPage />} path="/central/dashboard" />
             <Route element={<CentralReportingPage />} path="/central/reporting" />
             <Route element={<StoreReportingPage />} path="/central/reporting/stores/:storeId" />
             <Route element={<CentralStoresPage />} path="/central/stores" />
@@ -37,8 +39,8 @@ export function App() {
             </Route>
           </Route>
         </Route>
-        <Route element={<Navigate replace to="/central/reporting" />} path="/" />
-        <Route element={<Navigate replace to="/central/reporting" />} path="*" />
+        <Route element={<Navigate replace to="/central/dashboard" />} path="/" />
+        <Route element={<Navigate replace to="/central/dashboard" />} path="*" />
       </Routes>
     </AuthProvider>
   );
