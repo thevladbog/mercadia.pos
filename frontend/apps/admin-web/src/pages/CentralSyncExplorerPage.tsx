@@ -144,10 +144,11 @@ export function CentralSyncExplorerPage() {
           </select>
         </label>
 
-        <div className="filters" role="tablist">
+        <div className="filters" role="tablist" aria-label="Sync projections">
           {SYNC_TABS.map((tab) => (
             <button
               key={tab.id}
+              id={`sync-tab-${tab.id}`}
               className={activeTab === tab.id ? undefined : 'secondary'}
               onClick={() => {
                 setActiveTab(tab.id);
@@ -155,6 +156,8 @@ export function CentralSyncExplorerPage() {
               }}
               role="tab"
               type="button"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`sync-tab-panel-${tab.id}`}
             >
               {tab.label}
             </button>
@@ -173,13 +176,16 @@ export function CentralSyncExplorerPage() {
           <p className="muted">Select a store to view synchronized read models.</p>
         </div>
       ) : (
-        <div className="panel">
+        <div
+          className="panel"
+          id={`sync-tab-panel-${activeTab}`}
+          role="tabpanel"
+          aria-labelledby={`sync-tab-${activeTab}`}
+        >
           <div className="panel-heading">
             <h3>{SYNC_TABS.find((tab) => tab.id === activeTab)?.label}</h3>
             <p className="muted">
-              {totalCount === 0
-                ? 'No items'
-                : `Showing ${pageStart}–${pageEnd} of ${totalCount}`}
+              {totalCount === 0 ? 'No items' : `Showing ${pageStart}–${pageEnd} of ${totalCount}`}
             </p>
           </div>
 

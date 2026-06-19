@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
 
-import { registerUnauthorizedHandler } from './unauthorized-handler.js';
+import {
+  registerUnauthorizedHandler,
+  unregisterUnauthorizedHandler,
+} from './unauthorized-handler.js';
 import { useAuth } from './useAuth.js';
 
 export function UnauthorizedBridge() {
@@ -8,6 +11,9 @@ export function UnauthorizedBridge() {
 
   useEffect(() => {
     registerUnauthorizedHandler(handleUnauthorized);
+    return () => {
+      unregisterUnauthorizedHandler();
+    };
   }, [handleUnauthorized]);
 
   return null;
