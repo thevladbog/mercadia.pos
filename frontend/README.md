@@ -72,8 +72,9 @@ pnpm orval:store-edge
 
 2. Start **store-edge** on port `8081` for store monitoring (see `backend/README.md`).
 
-3. Start the admin UI (Vite dev server proxies most `/v1` traffic to central `:8082`; store
-   monitoring paths under `/v1/stores/{storeId}/monitoring/*` go to store-edge `:8081`):
+3. Start the admin UI (Vite dev server proxies most `/v1` traffic to central `:8082`; store-edge
+   paths under `/v1/stores/{storeId}/monitoring/*`, `/v1/stores/{storeId}/terminals/*`, and
+   `/v1/terminals/*` go to store-edge `:8081`):
 
    ```bash
    cd frontend
@@ -92,7 +93,7 @@ Requires a seeded user with the `central_admin` role (default seed admin):
 3. Create a viewer account (`central_viewer` role) via **Create user**.
 4. Edit the new user: toggle **Active**, adjust roles, or set a new password.
 5. Sign in as a `central_viewer` user: the **Users** nav link is hidden and direct
-   `/central/users` URLs redirect back to reporting.
+   `/central/users` URLs redirect back to `/central/dashboard`.
 
 ### Store monitoring smoke test
 
@@ -102,6 +103,8 @@ Requires central-backend (store list) and store-edge (monitoring KPIs/terminals)
 2. Sign in and open **Monitoring** in the header.
 3. Select a store from the dropdown — KPI cards and terminal table should load.
 4. Confirm data refreshes automatically (every 5 seconds) or via **Refresh**.
+5. Confirm the **Terminal events** panel shows **Connected** and lists `terminal_heartbeat`
+   events when store-edge emits terminal heartbeats.
 
 Optional env vars when APIs are not same-origin (bypass Vite proxy):
 

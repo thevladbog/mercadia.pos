@@ -14,6 +14,7 @@ import {
   terminalStatusLabel,
 } from './monitoring-utils.js';
 import { formatMinorAmount, formatTimestamp } from './reporting-utils.js';
+import { TerminalHeartbeatEventsPanel } from './TerminalHeartbeatEventsPanel.js';
 
 export function StoreMonitoringPage() {
   const [searchParams] = useSearchParams();
@@ -204,6 +205,8 @@ export function StoreMonitoringPage() {
               <p className="muted">No terminals found for this store.</p>
             )}
           </div>
+
+          <TerminalHeartbeatEventsPanel storeId={activeStoreId} />
         </>
       )}
     </section>
