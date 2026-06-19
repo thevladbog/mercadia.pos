@@ -11,7 +11,7 @@ export function RequireCentralAdmin() {
       <Navigate
         replace
         state={{ notice: 'Central admin role is required to manage users.' }}
-        to="/central/reporting"
+        to="/central/dashboard"
       />
     );
   }
