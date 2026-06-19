@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	"mercadia.dev/pos/services/central-backend/internal/app"
 )
@@ -30,11 +29,12 @@ func RequireSyncAPIKeyOrSession(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if syncKeys != nil && syncKeys.Enabled() {
-			provided := strings.TrimSpace(r.Header.Get(syncAPIKeyHeader))
-			if provided != "" && syncKeys.Validate(provided) == nil {
-				next(w, r)
+			if err := syncKeys.Validate(r.Header.Get(syncAPIKeyHeader)); err != nil {
+				writeAppError(w, err)
 				return
 			}
+			next(w, r)
+			return
 		}
 
 		token := r.Header.Get(sessionTokenHeader)

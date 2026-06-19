@@ -743,20 +743,23 @@ func TestRegisterStoreAcceptsSyncAPIKeyWhenConfigured(t *testing.T) {
 	registerTestStore(t, server, body, "register-with-key", registerTestStoreAuth{syncAPIKey: "test-key"})
 }
 
-func TestRegisterStoreAcceptsAdminSessionWhenSyncKeyConfigured(t *testing.T) {
+func TestRegisterStoreRejectsAdminSessionWhenSyncKeyConfigured(t *testing.T) {
 	store := memory.NewStore()
 	if err := seedHTTPTestAdmin(store); err != nil {
 		t.Fatalf("seed admin: %v", err)
 	}
 	server := api.NewServerWithServices(newTestServicesWithSyncAPIKey(store, "test-key"))
 	adminToken := loginTestSession(t, server, "admin@example.com", "admin-pass")
-	registerTestStore(
-		t,
-		server,
-		`{"storeId":"store-1","name":"Main Street"}`,
-		"register-admin-with-key",
-		registerTestStoreAuth{sessionToken: adminToken},
-	)
+
+	request := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Idempotency-Key", "register-admin-without-key")
+	request.Header.Set("X-Session-Token", adminToken)
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("register with session only status = %d body=%s", response.Code, response.Body.String())
+	}
 }
 
 func TestListStoresRequiresSession(t *testing.T) {
