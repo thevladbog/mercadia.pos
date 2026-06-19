@@ -1,10 +1,14 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
+
+	"mercadia.dev/pos/platform/observability"
 )
 
 type ServiceInfo struct {
@@ -62,7 +66,28 @@ func RequireIdempotencyKey(r *http.Request) (string, error) {
 	return key, nil
 }
 
-func MountSystemRoutes(mux *http.ServeMux, spec *Spec, info ServiceInfo) {
+type SystemRoutesOption func(*systemRoutesConfig)
+
+type systemRoutesConfig struct {
+	readinessChecks []func(context.Context) error
+}
+
+func WithReadinessCheck(check func(context.Context) error) SystemRoutesOption {
+	return func(cfg *systemRoutesConfig) {
+		cfg.readinessChecks = append(cfg.readinessChecks, check)
+	}
+}
+
+func MountMetricsRoute(mux *http.ServeMux) {
+	mux.Handle("GET /metrics", observability.MetricsHandler())
+}
+
+func MountSystemRoutes(mux *http.ServeMux, spec *Spec, info ServiceInfo, options ...SystemRoutesOption) {
+	cfg := systemRoutesConfig{}
+	for _, option := range options {
+		option(&cfg)
+	}
+
 	Register(mux, spec, Operation{
 		Method:      http.MethodGet,
 		Path:        "/healthz",
@@ -91,6 +116,12 @@ func MountSystemRoutes(mux *http.ServeMux, spec *Spec, info ServiceInfo) {
 			"200": {Description: "Service is ready", Schema: HealthResponseSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
+		for _, check := range cfg.readinessChecks {
+			if err := check(r.Context()); err != nil {
+				WriteProblem(w, http.StatusServiceUnavailable, "not_ready", "Service is not ready", fmt.Sprintf("%v", err))
+				return
+			}
+		}
 		WriteJSON(w, http.StatusOK, HealthResponse{
 			Service: info.Name,
 			Status:  "ready",
@@ -107,4 +138,6 @@ func MountSystemRoutes(mux *http.ServeMux, spec *Spec, info ServiceInfo) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write([]byte(ScalarHTML(info.Title)))
 	})
+
+	MountMetricsRoute(mux)
 }

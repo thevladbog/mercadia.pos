@@ -19,6 +19,13 @@ type ResponseSpec struct {
 	Schema      Schema
 }
 
+type QueryParamSpec struct {
+	Name        string
+	Description string
+	Required    bool
+	Schema      Schema
+}
+
 type Operation struct {
 	Method              string
 	Path                string
@@ -26,6 +33,7 @@ type Operation struct {
 	Summary             string
 	Description         string
 	Tags                []string
+	QueryParameters     []QueryParamSpec
 	RequestBody         *BodySpec
 	Responses           map[string]ResponseSpec
 	RequiresIdempotency bool
@@ -76,6 +84,15 @@ func (s *Spec) OpenAPI() map[string]any {
 					"type":      "string",
 					"minLength": 8,
 				},
+			})
+		}
+		for _, query := range op.QueryParameters {
+			parameters = append(parameters, map[string]any{
+				"name":        query.Name,
+				"in":          "query",
+				"required":    query.Required,
+				"description": query.Description,
+				"schema":      query.Schema,
 			})
 		}
 		if len(parameters) > 0 {
@@ -215,7 +232,7 @@ func ScalarHTML(title string) string {
 </head>
 <body>
   <script id="api-reference" data-url="/openapi.json"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.60.0"></script>
 </body>
 </html>`
 }
