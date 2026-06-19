@@ -54,7 +54,10 @@ type PageBackLinkProps = {
   to?: string;
 };
 
-export function PageBackLink({ label = 'Back to users', to = '/central/users' }: PageBackLinkProps) {
+export function PageBackLink({
+  label = 'Back to users',
+  to = '/central/users',
+}: PageBackLinkProps) {
   return (
     <p className="page-back">
       <Link to={to}>{label}</Link>
