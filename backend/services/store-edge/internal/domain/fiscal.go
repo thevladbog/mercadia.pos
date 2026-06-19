@@ -10,6 +10,7 @@ type FiscalDocumentKind string
 
 const (
 	FiscalDocumentKindReceipt      FiscalDocumentKind   = "receipt"
+	FiscalDocumentKindReturn       FiscalDocumentKind   = "return"
 	FiscalDocumentStatusFiscalized FiscalDocumentStatus = "fiscalized"
 )
 
@@ -18,6 +19,7 @@ var ErrInvalidFiscalDocumentInput = errors.New("invalid fiscal document input")
 type FiscalDocument struct {
 	ID           string
 	ReceiptID    string
+	ReturnID     string
 	Kind         FiscalDocumentKind
 	Status       FiscalDocumentStatus
 	AmountMinor  int64
@@ -30,6 +32,7 @@ type FiscalDocument struct {
 type CreateFiscalizedDocumentInput struct {
 	ID          string
 	ReceiptID   string
+	ReturnID    string
 	Kind        FiscalDocumentKind
 	AmountMinor int64
 	DeviceID    string
@@ -41,6 +44,18 @@ func CreateFiscalizedDocument(input CreateFiscalizedDocumentInput) (FiscalDocume
 	if input.ID == "" || input.ReceiptID == "" || input.Kind == "" || input.AmountMinor <= 0 || input.DeviceID == "" || input.FiscalSign == "" {
 		return FiscalDocument{}, ErrInvalidFiscalDocumentInput
 	}
+	switch input.Kind {
+	case FiscalDocumentKindReceipt:
+		if input.ReturnID != "" {
+			return FiscalDocument{}, ErrInvalidFiscalDocumentInput
+		}
+	case FiscalDocumentKindReturn:
+		if input.ReturnID == "" {
+			return FiscalDocument{}, ErrInvalidFiscalDocumentInput
+		}
+	default:
+		return FiscalDocument{}, ErrInvalidFiscalDocumentInput
+	}
 	if input.Now.IsZero() {
 		input.Now = time.Now().UTC()
 	}
@@ -48,6 +63,7 @@ func CreateFiscalizedDocument(input CreateFiscalizedDocumentInput) (FiscalDocume
 	return FiscalDocument{
 		ID:           input.ID,
 		ReceiptID:    input.ReceiptID,
+		ReturnID:     input.ReturnID,
 		Kind:         input.Kind,
 		Status:       FiscalDocumentStatusFiscalized,
 		AmountMinor:  input.AmountMinor,

@@ -175,6 +175,7 @@ func mountDomainRoutes(
 	auth *app.AuthService,
 	returns *app.ReturnsService,
 	returnSettlement *app.ReturnSettlementService,
+	fiscalization *app.FiscalizationService,
 	discounts *app.DiscountService,
 	marking *app.MarkingService,
 	journal *app.OperationJournalService,
@@ -301,6 +302,69 @@ func mountDomainRoutes(
 		httpapi.WriteJSON(w, http.StatusAccepted, ReturnSettledResponse{
 			Return:   returnResponse(result.Return),
 			Payments: paymentResponses(result.Payments),
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:              http.MethodPost,
+		Path:                "/v1/returns/{returnId}/fiscal-documents",
+		OperationID:         "createReturnFiscalDocument",
+		Summary:             "Create fiscal return document for settled with-receipt return",
+		Tags:                []string{"fiscalization", "returns"},
+		RequiresIdempotency: true,
+		RequestBody: &httpapi.BodySpec{
+			Description: "Return fiscalization command",
+			Required:    true,
+			Schema:      createFiscalDocumentRequestSchema(),
+		},
+		Responses: map[string]httpapi.ResponseSpec{
+			"202": {Description: "Return fiscal document command accepted", Schema: fiscalDocumentAcceptedResponseSchema()},
+			"400": {Description: "Invalid fiscalization command", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Return was not found", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Return fiscalization or idempotency conflict", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
+			return
+		}
+		var request CreateFiscalDocumentRequest
+		if err := httpapi.DecodeJSON(r, &request); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_json", "Invalid JSON", err.Error())
+			return
+		}
+		result, err := fiscalization.CreateReturnFiscalDocument(r.Context(), app.CreateReturnFiscalDocumentCommand{
+			IdempotencyKey: r.Header.Get("Idempotency-Key"),
+			ReturnID:       r.PathValue("returnId"),
+			DeviceID:       request.DeviceID,
+		})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusAccepted, FiscalDocumentAcceptedResponse{
+			Document: fiscalDocumentResponse(result.Document),
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:      http.MethodGet,
+		Path:        "/v1/returns/{returnId}/fiscal-documents",
+		OperationID: "listReturnFiscalDocuments",
+		Summary:     "List fiscal documents for return",
+		Tags:        []string{"fiscalization", "returns"},
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Return fiscal documents", Schema: fiscalDocumentsResponseSchema()},
+			"404": {Description: "Return was not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		result, err := fiscalization.ListReturnFiscalDocuments(r.Context(), r.PathValue("returnId"))
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, FiscalDocumentsResponse{
+			Documents: fiscalDocumentResponses(result),
 		})
 	})
 

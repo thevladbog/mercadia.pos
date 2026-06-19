@@ -2725,6 +2725,9 @@
                           "receiptId": {
                             "type": "string"
                           },
+                          "returnId": {
+                            "type": "string"
+                          },
                           "status": {
                             "type": "string"
                           }
@@ -2870,6 +2873,9 @@
                           "type": "string"
                         },
                         "receiptId": {
+                          "type": "string"
+                        },
+                        "returnId": {
                           "type": "string"
                         },
                         "status": {
@@ -5221,6 +5227,347 @@
         "summary": "Scan product into receipt",
         "tags": [
           "checkout"
+        ]
+      }
+    },
+    "/v1/returns/{returnId}/fiscal-documents": {
+      "get": {
+        "operationId": "listReturnFiscalDocuments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "returnId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "documents": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "amountMinor": {
+                            "type": "integer"
+                          },
+                          "createdAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "deviceId": {
+                            "type": "string"
+                          },
+                          "fiscalSign": {
+                            "type": "string"
+                          },
+                          "fiscalizedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "receiptId": {
+                            "type": "string"
+                          },
+                          "returnId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "receiptId",
+                          "kind",
+                          "status",
+                          "amountMinor",
+                          "deviceId",
+                          "fiscalSign",
+                          "fiscalizedAt",
+                          "createdAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "documents"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return fiscal documents"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return was not found"
+          }
+        },
+        "summary": "List fiscal documents for return",
+        "tags": [
+          "fiscalization",
+          "returns"
+        ]
+      },
+      "post": {
+        "operationId": "createReturnFiscalDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "returnId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "deviceId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "deviceId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Return fiscalization command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "document": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "amountMinor": {
+                          "type": "integer"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "deviceId": {
+                          "type": "string"
+                        },
+                        "fiscalSign": {
+                          "type": "string"
+                        },
+                        "fiscalizedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "receiptId": {
+                          "type": "string"
+                        },
+                        "returnId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "receiptId",
+                        "kind",
+                        "status",
+                        "amountMinor",
+                        "deviceId",
+                        "fiscalSign",
+                        "fiscalizedAt",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "document"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return fiscal document command accepted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid fiscalization command"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return fiscalization or idempotency conflict"
+          }
+        },
+        "summary": "Create fiscal return document for settled with-receipt return",
+        "tags": [
+          "fiscalization",
+          "returns"
         ]
       }
     },

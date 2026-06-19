@@ -21,6 +21,7 @@ type Store struct {
 	paymentsByReceipt map[string][]string
 	fiscalDocuments   map[string]domain.FiscalDocument
 	fiscalByReceipt   map[string][]string
+	fiscalByReturn    map[string]string
 	cashMovements     map[string]domain.CashMovement
 	cashByStore       map[string][]string
 	cashRecounts      map[string]domain.CashRecount
@@ -52,6 +53,7 @@ func NewStore(options ...StoreOption) *Store {
 		paymentsByReceipt: map[string][]string{},
 		fiscalDocuments:   map[string]domain.FiscalDocument{},
 		fiscalByReceipt:   map[string][]string{},
+		fiscalByReturn:    map[string]string{},
 		cashMovements:     map[string]domain.CashMovement{},
 		cashByStore:       map[string][]string{},
 		cashRecounts:      map[string]domain.CashRecount{},
@@ -304,9 +306,27 @@ func (s *Store) SaveFiscalDocument(ctx context.Context, document domain.FiscalDo
 
 	if _, exists := s.fiscalDocuments[document.ID]; !exists {
 		s.fiscalByReceipt[document.ReceiptID] = append(s.fiscalByReceipt[document.ReceiptID], document.ID)
+		if document.ReturnID != "" {
+			s.fiscalByReturn[document.ReturnID] = document.ID
+		}
 	}
 	s.fiscalDocuments[document.ID] = document
 	return nil
+}
+
+func (s *Store) FindFiscalDocumentByReturn(ctx context.Context, returnID string) (domain.FiscalDocument, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	documentID, ok := s.fiscalByReturn[returnID]
+	if !ok {
+		return domain.FiscalDocument{}, app.ErrFiscalDocumentNotFound
+	}
+	document, ok := s.fiscalDocuments[documentID]
+	if !ok {
+		return domain.FiscalDocument{}, app.ErrFiscalDocumentNotFound
+	}
+	return document, nil
 }
 
 func (s *Store) FindFiscalDocumentsByReceipt(ctx context.Context, receiptID string) ([]domain.FiscalDocument, error) {

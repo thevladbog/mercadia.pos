@@ -234,6 +234,7 @@ type FiscalDocumentsResponse struct {
 type FiscalDocumentResponse struct {
 	ID           string                      `json:"id"`
 	ReceiptID    string                      `json:"receiptId"`
+	ReturnID     string                      `json:"returnId,omitempty"`
 	Kind         domain.FiscalDocumentKind   `json:"kind"`
 	Status       domain.FiscalDocumentStatus `json:"status"`
 	AmountMinor  int64                       `json:"amountMinor"`
@@ -661,7 +662,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	}
 
 	payments := app.NewPaymentService(store, store, store, paymentOptions...)
-	fiscalization := app.NewFiscalizationService(store, store, store, store, fiscalOptions...)
+	fiscalization := app.NewFiscalizationService(store, store, store, store, store, fiscalOptions...)
 	cash := app.NewCashService(store, store, app.WithCashOutboxRecorder(outbox), app.WithCashJournal(journal))
 	shifts := app.NewShiftService(store, store, app.WithShiftCashLedger(store), app.WithShiftReceiptRepository(store), app.WithShiftOperationalDayRepository(store))
 	terminalOptions := []app.TerminalOption{app.WithTerminalEventPublisher(terminalEvents)}
@@ -696,7 +697,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	httpapi.MountSystemRoutes(mux, spec, info, systemOptions...)
 	mountRoutes(mux, spec, outbox, config.brokerConnected, operationalDays, checkout, catalog, payments, fiscalization, cash, shifts, terminals)
 	mountMonitoringRoutes(mux, spec, terminalMonitoring)
-	mountDomainRoutes(mux, spec, auth, returns, returnSettlement, discounts, marking, journal)
+	mountDomainRoutes(mux, spec, auth, returns, returnSettlement, fiscalization, discounts, marking, journal)
 	mountCatalogSyncRoute(mux, spec, config.catalogSync)
 	mountTerminalEventsRoute(mux, terminalEvents)
 
@@ -1979,6 +1980,9 @@ func writeAppError(w http.ResponseWriter, err error) {
 	case errors.Is(err, app.ErrReturnAlreadySettled), errors.Is(err, app.ErrReturnSettlementNotAllowed),
 		errors.Is(err, app.ErrReturnSettlementPaymentMismatch), errors.Is(err, app.ErrReturnSettlementCumulativeTotalExceeded):
 		httpapi.WriteProblem(w, http.StatusConflict, "return_settlement_conflict", "Return settlement conflict", err.Error())
+	case errors.Is(err, app.ErrReturnNotSettled), errors.Is(err, app.ErrReturnNotFiscalizable),
+		errors.Is(err, app.ErrReturnFiscalDocumentAlreadyExists):
+		httpapi.WriteProblem(w, http.StatusConflict, "return_fiscalization_conflict", "Return fiscalization conflict", err.Error())
 	case errors.Is(err, app.ErrInvalidDiscountCommand):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_discount_command", "Invalid discount command", err.Error())
 	case errors.Is(err, app.ErrInvalidMarkingCommand):
@@ -2149,6 +2153,7 @@ func fiscalDocumentResponse(document domain.FiscalDocument) FiscalDocumentRespon
 	return FiscalDocumentResponse{
 		ID:           document.ID,
 		ReceiptID:    document.ReceiptID,
+		ReturnID:     document.ReturnID,
 		Kind:         document.Kind,
 		Status:       document.Status,
 		AmountMinor:  document.AmountMinor,
@@ -2758,6 +2763,7 @@ func fiscalDocumentResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"id":           httpapi.StringSchema(),
 		"receiptId":    httpapi.StringSchema(),
+		"returnId":     httpapi.StringSchema(),
 		"kind":         httpapi.StringSchema(),
 		"status":       httpapi.StringSchema(),
 		"amountMinor":  {"type": "integer"},

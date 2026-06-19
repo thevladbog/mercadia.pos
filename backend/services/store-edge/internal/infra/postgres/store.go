@@ -401,10 +401,11 @@ func (s *Store) ListUnresolvedReceiptsByShift(ctx context.Context, shiftID strin
 func (s *Store) SaveFiscalDocument(ctx context.Context, document domain.FiscalDocument) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO fiscal_documents (
-			id, receipt_id, kind, status, amount_minor, device_id, fiscal_sign, fiscalized_at, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			id, receipt_id, return_id, kind, status, amount_minor, device_id, fiscal_sign, fiscalized_at, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (id) DO UPDATE SET
 			receipt_id = EXCLUDED.receipt_id,
+			return_id = EXCLUDED.return_id,
 			kind = EXCLUDED.kind,
 			status = EXCLUDED.status,
 			amount_minor = EXCLUDED.amount_minor,
@@ -414,6 +415,7 @@ func (s *Store) SaveFiscalDocument(ctx context.Context, document domain.FiscalDo
 	`,
 		document.ID,
 		document.ReceiptID,
+		nullString(document.ReturnID),
 		string(document.Kind),
 		string(document.Status),
 		document.AmountMinor,
@@ -427,7 +429,7 @@ func (s *Store) SaveFiscalDocument(ctx context.Context, document domain.FiscalDo
 
 func (s *Store) FindFiscalDocumentsByReceipt(ctx context.Context, receiptID string) ([]domain.FiscalDocument, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, receipt_id, kind, status, amount_minor, device_id, fiscal_sign, fiscalized_at, created_at
+		SELECT id, receipt_id, return_id, kind, status, amount_minor, device_id, fiscal_sign, fiscalized_at, created_at
 		FROM fiscal_documents
 		WHERE receipt_id = $1
 		ORDER BY created_at
@@ -438,6 +440,22 @@ func (s *Store) FindFiscalDocumentsByReceipt(ctx context.Context, receiptID stri
 	defer rows.Close()
 
 	return scanFiscalDocuments(rows)
+}
+
+func (s *Store) FindFiscalDocumentByReturn(ctx context.Context, returnID string) (domain.FiscalDocument, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT id, receipt_id, return_id, kind, status, amount_minor, device_id, fiscal_sign, fiscalized_at, created_at
+		FROM fiscal_documents
+		WHERE return_id = $1
+	`, returnID)
+	document, err := scanFiscalDocument(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.FiscalDocument{}, app.ErrFiscalDocumentNotFound
+		}
+		return domain.FiscalDocument{}, err
+	}
+	return document, nil
 }
 
 func (s *Store) SaveCashMovement(ctx context.Context, movement domain.CashMovement) error {
@@ -1086,10 +1104,12 @@ func scanFiscalDocument(row rowScanner) (domain.FiscalDocument, error) {
 	var document domain.FiscalDocument
 	var kind string
 	var status string
+	var returnID *string
 
 	err := row.Scan(
 		&document.ID,
 		&document.ReceiptID,
+		&returnID,
 		&kind,
 		&status,
 		&document.AmountMinor,
@@ -1100,6 +1120,9 @@ func scanFiscalDocument(row rowScanner) (domain.FiscalDocument, error) {
 	)
 	if err != nil {
 		return domain.FiscalDocument{}, err
+	}
+	if returnID != nil {
+		document.ReturnID = *returnID
 	}
 
 	document.Kind = domain.FiscalDocumentKind(kind)
@@ -1386,4 +1409,11 @@ func scanOutboxEvent(row rowScanner) (domain.OutboxEvent, error) {
 	}
 	event.PublishedAt = publishedAt
 	return event, nil
+}
+
+func nullString(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
 }

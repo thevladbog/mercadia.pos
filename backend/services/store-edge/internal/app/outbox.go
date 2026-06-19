@@ -158,16 +158,20 @@ func (s *OutboxService) RecordPaymentRefunded(ctx context.Context, payment domai
 }
 
 func (s *OutboxService) RecordFiscalDocumentCreated(ctx context.Context, document domain.FiscalDocument, storeID string) error {
-	payload, err := json.Marshal(map[string]any{
-		"storeId":         storeID,
+	payload := map[string]any{
+		"storeId":          storeID,
 		"fiscalDocumentId": document.ID,
-		"receiptId":       document.ReceiptID,
-		"kind":            document.Kind,
-		"amountMinor":     document.AmountMinor,
-		"deviceId":        document.DeviceID,
-		"fiscalSign":      document.FiscalSign,
-		"fiscalizedAt":    document.FiscalizedAt,
-	})
+		"receiptId":        document.ReceiptID,
+		"kind":             document.Kind,
+		"amountMinor":      document.AmountMinor,
+		"deviceId":         document.DeviceID,
+		"fiscalSign":       document.FiscalSign,
+		"fiscalizedAt":     document.FiscalizedAt,
+	}
+	if document.ReturnID != "" {
+		payload["returnId"] = document.ReturnID
+	}
+	encoded, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
@@ -176,7 +180,7 @@ func (s *OutboxService) RecordFiscalDocumentCreated(ctx context.Context, documen
 		AggregateType: domain.OutboxAggregateFiscalDocument,
 		AggregateID:   document.ID,
 		EventType:     domain.OutboxEventFiscalDocumentCreated,
-		Payload:       payload,
+		Payload:       encoded,
 		CreatedAt:     s.now(),
 	})
 }
