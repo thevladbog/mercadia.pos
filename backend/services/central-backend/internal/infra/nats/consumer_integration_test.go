@@ -30,7 +30,7 @@ func TestConsumerProcessesPublishedMessageWhenNatsAvailable(t *testing.T) {
 		t.Fatalf("register store: %v", err)
 	}
 
-	syncService := app.NewSyncService(store, store, store, store, store, store, store)
+	syncService := app.NewSyncService(store, store, store, store, store, store, store, store)
 	paymentsService := app.NewPaymentsService(store, store)
 	cashMovementsService := app.NewCashMovementsService(store, store)
 	fiscalDocumentsService := app.NewFiscalDocumentsService(store, store)

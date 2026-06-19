@@ -20,7 +20,8 @@ type Store struct {
 	payments      map[string]domain.SyncedPayment
 	cashMovements  map[string]domain.SyncedCashMovement
 	fiscalDocuments map[string]domain.SyncedFiscalDocument
-	users          map[string]domain.CentralUser
+	returns         map[string]domain.SyncedReturn
+	users           map[string]domain.CentralUser
 	idempotency   map[string]app.IdempotencyRecord
 }
 
@@ -35,7 +36,8 @@ func NewStore(options ...StoreOption) *Store {
 		payments:      map[string]domain.SyncedPayment{},
 		cashMovements:  map[string]domain.SyncedCashMovement{},
 		fiscalDocuments: map[string]domain.SyncedFiscalDocument{},
-		users:          map[string]domain.CentralUser{},
+		returns:         map[string]domain.SyncedReturn{},
+		users:           map[string]domain.CentralUser{},
 		idempotency:   map[string]app.IdempotencyRecord{},
 	}
 	for _, option := range options {
@@ -347,6 +349,53 @@ func (s *Store) ListFiscalDocuments(ctx context.Context, storeID string, limit, 
 	return append([]domain.SyncedFiscalDocument(nil), documents[offset:end]...), total, nil
 }
 
+func (s *Store) SaveReturn(ctx context.Context, ret domain.SyncedReturn) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.returns[productKey(ret.StoreID, ret.ID)] = cloneSyncedReturn(ret)
+	return nil
+}
+
+func (s *Store) FindReturn(ctx context.Context, storeID string, returnID string) (domain.SyncedReturn, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ret, ok := s.returns[productKey(storeID, returnID)]
+	if !ok {
+		return domain.SyncedReturn{}, app.ErrReturnNotFound
+	}
+	return cloneSyncedReturn(ret), nil
+}
+
+func (s *Store) ListReturns(ctx context.Context, storeID string, limit, offset int) ([]domain.SyncedReturn, int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	returns := make([]domain.SyncedReturn, 0)
+	for _, ret := range s.returns {
+		if ret.StoreID == storeID {
+			returns = append(returns, cloneSyncedReturn(ret))
+		}
+	}
+	sort.Slice(returns, func(i, j int) bool {
+		if returns[i].SettledAt.Equal(returns[j].SettledAt) {
+			return returns[i].ID > returns[j].ID
+		}
+		return returns[i].SettledAt.After(returns[j].SettledAt)
+	})
+
+	total := len(returns)
+	if offset >= total {
+		return []domain.SyncedReturn{}, total, nil
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	return append([]domain.SyncedReturn(nil), returns[offset:end]...), total, nil
+}
+
 func (s *Store) Find(ctx context.Context, operation string, key string) (app.IdempotencyRecord, bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -393,4 +442,12 @@ func cloneSyncedCashMovement(movement domain.SyncedCashMovement) domain.SyncedCa
 
 func cloneSyncedFiscalDocument(document domain.SyncedFiscalDocument) domain.SyncedFiscalDocument {
 	return document
+}
+
+func cloneSyncedReturn(ret domain.SyncedReturn) domain.SyncedReturn {
+	cloned := ret
+	if ret.PaymentIDs != nil {
+		cloned.PaymentIDs = append([]string(nil), ret.PaymentIDs...)
+	}
+	return cloned
 }

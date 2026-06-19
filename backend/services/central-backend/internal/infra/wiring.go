@@ -17,6 +17,7 @@ type Repository interface {
 	app.SyncedPaymentRepository
 	app.SyncedCashMovementRepository
 	app.SyncedFiscalDocumentRepository
+	app.SyncedReturnRepository
 	app.IdempotencyStore
 }
 

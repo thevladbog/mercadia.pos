@@ -18,11 +18,12 @@ func newTestServer() http.Handler {
 	repo := store
 	return api.NewServerWithServices(api.Services{
 		StoreRegistry: app.NewStoreRegistryService(repo, repo),
-		Sync:            app.NewSyncService(repo, repo, repo, repo, repo, repo, repo),
+		Sync:            app.NewSyncService(repo, repo, repo, repo, repo, repo, repo, repo),
 		Catalog:         app.NewCatalogService(repo, repo),
 		Payments:        app.NewPaymentsService(repo, repo),
 		CashMovements:   app.NewCashMovementsService(repo, repo),
 		FiscalDocuments: app.NewFiscalDocumentsService(repo, repo),
+		Returns:         app.NewReturnsService(repo, repo),
 	})
 }
 
@@ -316,5 +317,46 @@ func TestSyncEventsProjectFiscalDocument(t *testing.T) {
 	}
 	if document.Kind != "sale" || document.FiscalSign != "sign-abc" {
 		t.Fatalf("fiscal document = %+v", document)
+	}
+}
+
+func TestSyncEventsProjectReturn(t *testing.T) {
+	server := newTestServer()
+
+	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
+	registerRequest.Header.Set("Content-Type", "application/json")
+	registerRequest.Header.Set("Idempotency-Key", "register-return-http")
+	registerResponse := httptest.NewRecorder()
+	server.ServeHTTP(registerResponse, registerRequest)
+	if registerResponse.Code != http.StatusAccepted {
+		t.Fatalf("register status = %d", registerResponse.Code)
+	}
+
+	settledAt := time.Date(2026, 6, 19, 17, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	syncBody := bytes.NewBufferString(`{"events":[` +
+		`{"eventId":"obx-ret-1","eventType":"return.settled","payload":{"storeId":"store-1","returnId":"ret-1","receiptId":"rcpt-1","totalMinor":50000,"paymentIds":["pay-1"],"cashMovementId":"cash-1","settledAt":"` + settledAt + `","actorId":"cashier-1"}}` +
+		`]}`)
+	syncRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/sync-events", syncBody)
+	syncRequest.Header.Set("Content-Type", "application/json")
+	syncRequest.Header.Set("Idempotency-Key", "sync-return-http")
+	syncResponse := httptest.NewRecorder()
+	server.ServeHTTP(syncResponse, syncRequest)
+	if syncResponse.Code != http.StatusAccepted {
+		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
+	}
+
+	returnResponse := httptest.NewRecorder()
+	returnRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/returns/ret-1", nil)
+	server.ServeHTTP(returnResponse, returnRequest)
+	if returnResponse.Code != http.StatusOK {
+		t.Fatalf("get return status = %d body=%s", returnResponse.Code, returnResponse.Body.String())
+	}
+
+	var ret api.SyncedReturnResponse
+	if err := json.Unmarshal(returnResponse.Body.Bytes(), &ret); err != nil {
+		t.Fatalf("decode return: %v", err)
+	}
+	if ret.TotalMinor != 50000 || ret.CashMovementID != "cash-1" || len(ret.PaymentIDs) != 1 {
+		t.Fatalf("return = %+v", ret)
 	}
 }

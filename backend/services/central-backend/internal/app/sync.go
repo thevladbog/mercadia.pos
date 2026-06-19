@@ -49,6 +49,7 @@ type SyncService struct {
 	payments      SyncedPaymentRepository
 	cashMovements SyncedCashMovementRepository
 	fiscalDocs    SyncedFiscalDocumentRepository
+	returns       SyncedReturnRepository
 	idempotency   IdempotencyStore
 	now           func() time.Time
 	newID         func(prefix string) string
@@ -61,6 +62,7 @@ func NewSyncService(
 	payments SyncedPaymentRepository,
 	cashMovements SyncedCashMovementRepository,
 	fiscalDocs SyncedFiscalDocumentRepository,
+	returns SyncedReturnRepository,
 	idempotency IdempotencyStore,
 ) *SyncService {
 	return &SyncService{
@@ -70,6 +72,7 @@ func NewSyncService(
 		payments:      payments,
 		cashMovements: cashMovements,
 		fiscalDocs:    fiscalDocs,
+		returns:       returns,
 		idempotency:   idempotency,
 		now:           time.Now,
 		newID:         defaultNewID,
@@ -177,6 +180,8 @@ func (s *SyncService) applySyncEvent(ctx context.Context, event domain.SyncEvent
 		return s.upsertCashMovementFromPayload(ctx, event)
 	case "fiscal.document.created":
 		return s.upsertFiscalDocumentFromPayload(ctx, event)
+	case "return.settled":
+		return s.upsertReturnFromPayload(ctx, event)
 	default:
 		return nil
 	}
@@ -436,6 +441,38 @@ func (s *SyncService) upsertFiscalDocumentFromPayload(ctx context.Context, event
 		return ErrInvalidSyncCommand
 	}
 	return s.fiscalDocs.SaveFiscalDocument(ctx, document)
+}
+
+func (s *SyncService) upsertReturnFromPayload(ctx context.Context, event domain.SyncEvent) error {
+	var payload struct {
+		ReturnID       string    `json:"returnId"`
+		ReceiptID      string    `json:"receiptId"`
+		TotalMinor     int64     `json:"totalMinor"`
+		PaymentIDs     []string  `json:"paymentIds"`
+		CashMovementID string    `json:"cashMovementId"`
+		SettledAt      time.Time `json:"settledAt"`
+		ActorID        string    `json:"actorId"`
+	}
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		return ErrInvalidSyncCommand
+	}
+
+	ret, err := domain.NewSyncedReturn(domain.SyncedReturn{
+		ID:             payload.ReturnID,
+		StoreID:        event.StoreID,
+		ReceiptID:      payload.ReceiptID,
+		TotalMinor:     payload.TotalMinor,
+		PaymentIDs:     payload.PaymentIDs,
+		CashMovementID: payload.CashMovementID,
+		ActorID:        payload.ActorID,
+		SettledAt:      payload.SettledAt.UTC(),
+		SourceEventID:  event.SourceEventID,
+		SyncedAt:       event.ReceivedAt,
+	})
+	if err != nil {
+		return ErrInvalidSyncCommand
+	}
+	return s.returns.SaveReturn(ctx, ret)
 }
 
 func (s *SyncService) findSyncIdempotency(ctx context.Context, operation string, key string, targetID string, fingerprint string) (SyncEventsResult, bool, error) {

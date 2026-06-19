@@ -24,6 +24,7 @@ type Services struct {
 	Payments      *app.PaymentsService
 	CashMovements    *app.CashMovementsService
 	FiscalDocuments  *app.FiscalDocumentsService
+	Returns          *app.ReturnsService
 }
 
 type StatusResponse struct {
@@ -169,6 +170,24 @@ type PaginatedSyncedFiscalDocumentsResponse struct {
 	TotalCount int                            `json:"totalCount"`
 }
 
+type SyncedReturnResponse struct {
+	ID             string    `json:"id"`
+	StoreID        string    `json:"storeId"`
+	ReceiptID      string    `json:"receiptId"`
+	TotalMinor     int64     `json:"totalMinor"`
+	PaymentIDs     []string  `json:"paymentIds"`
+	CashMovementID string    `json:"cashMovementId,omitempty"`
+	ActorID        string    `json:"actorId"`
+	SettledAt      time.Time `json:"settledAt"`
+	SourceEventID  string    `json:"sourceEventId"`
+	SyncedAt       time.Time `json:"syncedAt"`
+}
+
+type PaginatedSyncedReturnsResponse struct {
+	Items      []SyncedReturnResponse `json:"items"`
+	TotalCount int                    `json:"totalCount"`
+}
+
 type ServerOptions struct {
 	ReadinessChecks []func(context.Context) error
 }
@@ -204,11 +223,12 @@ func NewServerBundle(opts ServerOptions) (*ServerBundle, error) {
 func newServices(repo infra.Repository) Services {
 	return Services{
 		StoreRegistry: app.NewStoreRegistryService(repo, repo),
-		Sync:            app.NewSyncService(repo, repo, repo, repo, repo, repo, repo),
+		Sync:            app.NewSyncService(repo, repo, repo, repo, repo, repo, repo, repo),
 		Catalog:         app.NewCatalogService(repo, repo),
 		Payments:        app.NewPaymentsService(repo, repo),
 		CashMovements:   app.NewCashMovementsService(repo, repo),
 		FiscalDocuments: app.NewFiscalDocumentsService(repo, repo),
+		Returns:         app.NewReturnsService(repo, repo),
 	}
 }
 
@@ -608,6 +628,50 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		}
 		httpapi.WriteJSON(w, http.StatusOK, syncedFiscalDocumentResponse(document))
 	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:          http.MethodGet,
+		Path:            "/v1/stores/{storeId}/returns",
+		OperationID:     "listStoreReturns",
+		Summary:         "List synchronized returns for a store",
+		Tags:            []string{"sync"},
+		QueryParameters: paginationQueryParams(),
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Synchronized returns", Schema: paginatedSyncedReturnsResponseSchema()},
+			"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := services.Returns.ListReturns(r.Context(), r.PathValue("storeId"), params)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedSyncedReturnsResponse{
+			Items:      syncedReturnResponses(result.Items),
+			TotalCount: result.TotalCount,
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:      http.MethodGet,
+		Path:        "/v1/stores/{storeId}/returns/{returnId}",
+		OperationID: "getStoreReturn",
+		Summary:     "Get a synchronized return",
+		Tags:        []string{"sync"},
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Synchronized return", Schema: syncedReturnResponseSchema()},
+			"404": {Description: "Store or return not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		ret, err := services.Returns.GetReturn(r.Context(), r.PathValue("storeId"), r.PathValue("returnId"))
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, syncedReturnResponse(ret))
+	})
 }
 
 func writeAppError(w http.ResponseWriter, err error) {
@@ -622,6 +686,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusNotFound, "cash_movement_not_found", "Cash movement was not found", err.Error())
 	case errors.Is(err, app.ErrFiscalDocumentNotFound):
 		httpapi.WriteProblem(w, http.StatusNotFound, "fiscal_document_not_found", "Fiscal document was not found", err.Error())
+	case errors.Is(err, app.ErrReturnNotFound):
+		httpapi.WriteProblem(w, http.StatusNotFound, "return_not_found", "Return was not found", err.Error())
 	case errors.Is(err, app.ErrIdempotencyKeyRequired):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 	case errors.Is(err, app.ErrIdempotencyKeyReused):
@@ -638,6 +704,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_cash_movement_query", "Invalid cash movement query", err.Error())
 	case errors.Is(err, app.ErrInvalidFiscalDocumentQuery), errors.Is(err, domain.ErrInvalidSyncedFiscalDocumentInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_fiscal_document_query", "Invalid fiscal document query", err.Error())
+	case errors.Is(err, app.ErrInvalidReturnQuery), errors.Is(err, domain.ErrInvalidSyncedReturnInput):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_return_query", "Invalid return query", err.Error())
 	default:
 		httpapi.WriteProblem(w, http.StatusInternalServerError, "internal_error", "Unexpected server error", err.Error())
 	}
@@ -966,6 +1034,51 @@ func syncedFiscalDocumentResponseSchema() httpapi.Schema {
 func paginatedSyncedFiscalDocumentsResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"items":      httpapi.ArraySchema(syncedFiscalDocumentResponseSchema()),
+		"totalCount": {"type": "integer"},
+	}, "items", "totalCount")
+}
+
+func syncedReturnResponse(ret domain.SyncedReturn) SyncedReturnResponse {
+	return SyncedReturnResponse{
+		ID:             ret.ID,
+		StoreID:        ret.StoreID,
+		ReceiptID:      ret.ReceiptID,
+		TotalMinor:     ret.TotalMinor,
+		PaymentIDs:     ret.PaymentIDs,
+		CashMovementID: ret.CashMovementID,
+		ActorID:        ret.ActorID,
+		SettledAt:      ret.SettledAt,
+		SourceEventID:  ret.SourceEventID,
+		SyncedAt:       ret.SyncedAt,
+	}
+}
+
+func syncedReturnResponses(returns []domain.SyncedReturn) []SyncedReturnResponse {
+	responses := make([]SyncedReturnResponse, 0, len(returns))
+	for _, ret := range returns {
+		responses = append(responses, syncedReturnResponse(ret))
+	}
+	return responses
+}
+
+func syncedReturnResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"id":             httpapi.StringSchema(),
+		"storeId":        httpapi.StringSchema(),
+		"receiptId":      httpapi.StringSchema(),
+		"totalMinor":     {"type": "integer"},
+		"paymentIds":     httpapi.ArraySchema(httpapi.StringSchema()),
+		"cashMovementId": httpapi.StringSchema(),
+		"actorId":        httpapi.StringSchema(),
+		"settledAt":      httpapi.DateTimeSchema(),
+		"sourceEventId":  httpapi.StringSchema(),
+		"syncedAt":       httpapi.DateTimeSchema(),
+	}, "id", "storeId", "receiptId", "totalMinor", "paymentIds", "actorId", "settledAt", "sourceEventId", "syncedAt")
+}
+
+func paginatedSyncedReturnsResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"items":      httpapi.ArraySchema(syncedReturnResponseSchema()),
 		"totalCount": {"type": "integer"},
 	}, "items", "totalCount")
 }

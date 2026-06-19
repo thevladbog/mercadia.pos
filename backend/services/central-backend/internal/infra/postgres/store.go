@@ -415,6 +415,66 @@ func (s *Store) ListFiscalDocuments(ctx context.Context, storeID string, limit, 
 	return scanSyncedFiscalDocuments(rows, total)
 }
 
+func (s *Store) SaveReturn(ctx context.Context, ret domain.SyncedReturn) error {
+	paymentIDsJSON, err := json.Marshal(ret.PaymentIDs)
+	if err != nil {
+		return err
+	}
+	_, err = s.pool.Exec(ctx, `
+		INSERT INTO synced_returns (
+			store_id, id, receipt_id, total_minor, payment_ids, cash_movement_id,
+			actor_id, settled_at, source_event_id, synced_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		ON CONFLICT (store_id, id) DO UPDATE SET
+			receipt_id = EXCLUDED.receipt_id,
+			total_minor = EXCLUDED.total_minor,
+			payment_ids = EXCLUDED.payment_ids,
+			cash_movement_id = EXCLUDED.cash_movement_id,
+			actor_id = EXCLUDED.actor_id,
+			settled_at = EXCLUDED.settled_at,
+			source_event_id = EXCLUDED.source_event_id,
+			synced_at = EXCLUDED.synced_at
+	`, ret.StoreID, ret.ID, ret.ReceiptID, ret.TotalMinor, paymentIDsJSON, ret.CashMovementID,
+		ret.ActorID, ret.SettledAt, ret.SourceEventID, ret.SyncedAt)
+	return err
+}
+
+func (s *Store) FindReturn(ctx context.Context, storeID string, returnID string) (domain.SyncedReturn, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT store_id, id, receipt_id, total_minor, payment_ids, cash_movement_id,
+			actor_id, settled_at, source_event_id, synced_at
+		FROM synced_returns
+		WHERE store_id = $1 AND id = $2
+	`, storeID, returnID)
+	return scanSyncedReturn(row)
+}
+
+func (s *Store) ListReturns(ctx context.Context, storeID string, limit, offset int) ([]domain.SyncedReturn, int, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM synced_returns
+		WHERE store_id = $1
+	`, storeID)
+	var total int
+	if err := row.Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT store_id, id, receipt_id, total_minor, payment_ids, cash_movement_id,
+			actor_id, settled_at, source_event_id, synced_at
+		FROM synced_returns
+		WHERE store_id = $1
+		ORDER BY settled_at DESC, id DESC
+		LIMIT $2 OFFSET $3
+	`, storeID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	return scanSyncedReturns(rows, total)
+}
+
 func (s *Store) Find(ctx context.Context, operation string, key string) (app.IdempotencyRecord, bool, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT operation, key, target_id, fingerprint, result, created_at
@@ -641,6 +701,54 @@ func scanSyncedFiscalDocuments(rows pgx.Rows, total int) ([]domain.SyncedFiscalD
 		return nil, 0, err
 	}
 	return documents, total, nil
+}
+
+func scanSyncedReturn(row rowScanner) (domain.SyncedReturn, error) {
+	var ret domain.SyncedReturn
+	var paymentIDsJSON []byte
+	var cashMovementID *string
+	if err := row.Scan(&ret.StoreID, &ret.ID, &ret.ReceiptID, &ret.TotalMinor, &paymentIDsJSON,
+		&cashMovementID, &ret.ActorID, &ret.SettledAt, &ret.SourceEventID, &ret.SyncedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.SyncedReturn{}, app.ErrReturnNotFound
+		}
+		return domain.SyncedReturn{}, err
+	}
+	if len(paymentIDsJSON) > 0 {
+		if err := json.Unmarshal(paymentIDsJSON, &ret.PaymentIDs); err != nil {
+			return domain.SyncedReturn{}, err
+		}
+	}
+	if cashMovementID != nil {
+		ret.CashMovementID = *cashMovementID
+	}
+	return ret, nil
+}
+
+func scanSyncedReturns(rows pgx.Rows, total int) ([]domain.SyncedReturn, int, error) {
+	returns := make([]domain.SyncedReturn, 0)
+	for rows.Next() {
+		var ret domain.SyncedReturn
+		var paymentIDsJSON []byte
+		var cashMovementID *string
+		if err := rows.Scan(&ret.StoreID, &ret.ID, &ret.ReceiptID, &ret.TotalMinor, &paymentIDsJSON,
+			&cashMovementID, &ret.ActorID, &ret.SettledAt, &ret.SourceEventID, &ret.SyncedAt); err != nil {
+			return nil, 0, err
+		}
+		if len(paymentIDsJSON) > 0 {
+			if err := json.Unmarshal(paymentIDsJSON, &ret.PaymentIDs); err != nil {
+				return nil, 0, err
+			}
+		}
+		if cashMovementID != nil {
+			ret.CashMovementID = *cashMovementID
+		}
+		returns = append(returns, ret)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return returns, total, nil
 }
 
 func isUniqueViolation(err error) bool {
