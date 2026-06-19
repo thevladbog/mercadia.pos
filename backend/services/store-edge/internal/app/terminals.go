@@ -149,14 +149,14 @@ func (s *TerminalService) ListStoreTerminals(ctx context.Context, storeID string
 	})
 
 	for i := range terminals {
-		terminals[i].Status = s.deriveListStatus(terminals[i])
+		terminals[i].Status = DeriveTerminalListStatus(terminals[i], s.now(), s.offlineAfter)
 	}
 
 	return PaginateSlice(terminals, params), nil
 }
 
-func (s *TerminalService) deriveListStatus(terminal domain.Terminal) domain.TerminalStatus {
-	if s.offlineAfter > 0 && s.now().Sub(terminal.LastSeenAt) > s.offlineAfter {
+func DeriveTerminalListStatus(terminal domain.Terminal, now time.Time, offlineAfter time.Duration) domain.TerminalStatus {
+	if offlineAfter > 0 && now.Sub(terminal.LastSeenAt) > offlineAfter {
 		return domain.TerminalStatusOffline
 	}
 	return terminal.Status

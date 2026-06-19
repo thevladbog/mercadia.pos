@@ -657,6 +657,11 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 		terminalOptions = append(terminalOptions, app.WithTerminalOfflineAfter(config.terminalOfflineAfter))
 	}
 	terminals := app.NewTerminalService(store, store, terminalOptions...)
+	monitoringOptions := []app.TerminalMonitoringOption{}
+	if config.terminalOfflineAfter > 0 {
+		monitoringOptions = append(monitoringOptions, app.WithTerminalMonitoringOfflineAfter(config.terminalOfflineAfter))
+	}
+	terminalMonitoring := app.NewTerminalMonitoringService(store, store, store, store, cash, monitoringOptions...)
 	returns := app.NewReturnsService(store, store, store, auth, app.WithReturnsJournal(journal))
 	discounts := app.NewDiscountService(store, store, auth, app.WithDiscountJournal(journal))
 	marking := app.NewMarkingService(store)
@@ -672,6 +677,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	spec := httpapi.NewSpec(info)
 	httpapi.MountSystemRoutes(mux, spec, info, systemOptions...)
 	mountRoutes(mux, spec, outbox, config.brokerConnected, operationalDays, checkout, catalog, payments, fiscalization, cash, shifts, terminals)
+	mountMonitoringRoutes(mux, spec, terminalMonitoring)
 	mountDomainRoutes(mux, spec, auth, returns, discounts, marking, journal)
 	mountCatalogSyncRoute(mux, spec, config.catalogSync)
 	mountTerminalEventsRoute(mux, terminalEvents)

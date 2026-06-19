@@ -159,7 +159,11 @@ The Store Edge service has the first checkout and terminal monitoring paths:
 - `POST /v1/terminals/{terminalId}/heartbeat` - records terminal heartbeat/state.
 - `GET /v1/terminals/{terminalId}` - returns last known terminal state.
 - `GET /v1/stores/{storeId}/terminals` - paginated terminal fleet snapshot with offline derivation from `lastSeenAt`.
+- `GET /v1/stores/{storeId}/monitoring/terminals` - paginated terminal monitoring cards with shift, receipt, and drawer KPIs.
+- `GET /v1/stores/{storeId}/monitoring/summary` - store-level monitoring counters and today's fiscalized receipt totals.
 - `GET /v1/stores/{storeId}/terminals/events` - SSE stream of terminal heartbeat events (documented outside OpenAPI).
+
+Use `GET /v1/stores/{storeId}/monitoring/*` for REST polling of terminal tiles and store KPIs; use SSE for live heartbeat push.
 
 When `MERCADIA_STORE_EDGE_USE_HARDWARE_AGENT=true`, card payments and fiscalization send commands to
 the local hardware-agent (`authorize`/`capture`, `print_receipt`) with mock fallback enabled by default.

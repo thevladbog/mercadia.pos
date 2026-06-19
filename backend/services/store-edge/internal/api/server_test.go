@@ -45,6 +45,12 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	if _, ok := paths["/v1/stores/{storeId}/terminals"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/terminals path")
 	}
+	if _, ok := paths["/v1/stores/{storeId}/monitoring/terminals"]; !ok {
+		t.Fatal("expected /v1/stores/{storeId}/monitoring/terminals path")
+	}
+	if _, ok := paths["/v1/stores/{storeId}/monitoring/summary"]; !ok {
+		t.Fatal("expected /v1/stores/{storeId}/monitoring/summary path")
+	}
 	if _, ok := paths["/v1/stores/{storeId}/cash-movements"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/cash-movements path")
 	}
@@ -336,6 +342,116 @@ func TestListStoreTerminalsReturnsHeartbeats(t *testing.T) {
 	}
 	if listed.Items[0].ID != "pos-1" || listed.Items[1].ID != "pos-2" {
 		t.Fatalf("terminal order = %+v", listed.Items)
+	}
+}
+
+func TestStoreMonitoringEndpoints(t *testing.T) {
+	server := NewServer()
+
+	heartbeatRequest := httptest.NewRequest(http.MethodPost, "/v1/terminals/pos-1/heartbeat", bytes.NewBufferString(`{
+		"storeId": "store-1",
+		"kind": "pos",
+		"softwareVersion": "0.1.0"
+	}`))
+	heartbeatRequest.Header.Set("Content-Type", "application/json")
+	heartbeatRequest.Header.Set("Idempotency-Key", "monitoring-heartbeat-1")
+	heartbeatResponse := httptest.NewRecorder()
+	server.ServeHTTP(heartbeatResponse, heartbeatRequest)
+	if heartbeatResponse.Code != http.StatusAccepted {
+		t.Fatalf("heartbeat status = %d body = %s", heartbeatResponse.Code, heartbeatResponse.Body.String())
+	}
+
+	openStoreDayAndShift(t, server, "monitoring")
+
+	openReceiptResponse := httptest.NewRecorder()
+	openReceiptRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts", bytes.NewBufferString(`{
+		"storeId": "store-1",
+		"terminalId": "pos-1",
+		"cashierId": "cashier-1",
+		"channel": "pos"
+	}`))
+	openReceiptRequest.Header.Set("Content-Type", "application/json")
+	openReceiptRequest.Header.Set("Idempotency-Key", "monitoring-receipt-open-1")
+	server.ServeHTTP(openReceiptResponse, openReceiptRequest)
+	if openReceiptResponse.Code != http.StatusAccepted {
+		t.Fatalf("open receipt status = %d body = %s", openReceiptResponse.Code, openReceiptResponse.Body.String())
+	}
+
+	var openedReceipt ReceiptAcceptedResponse
+	if err := json.Unmarshal(openReceiptResponse.Body.Bytes(), &openedReceipt); err != nil {
+		t.Fatalf("decode open receipt response: %v", err)
+	}
+
+	addLineResponse := httptest.NewRecorder()
+	addLineRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/lines", bytes.NewBufferString(`{
+		"productId": "sku-1",
+		"name": "Milk",
+		"quantity": 1,
+		"unitPriceMinor": 50000
+	}`))
+	addLineRequest.Header.Set("Content-Type", "application/json")
+	addLineRequest.Header.Set("Idempotency-Key", "monitoring-receipt-line-1")
+	server.ServeHTTP(addLineResponse, addLineRequest)
+	if addLineResponse.Code != http.StatusAccepted {
+		t.Fatalf("add line status = %d body = %s", addLineResponse.Code, addLineResponse.Body.String())
+	}
+
+	paymentResponse := httptest.NewRecorder()
+	paymentRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/payments", bytes.NewBufferString(`{
+		"method": "card_mock",
+		"amountMinor": 50000,
+		"providerReference": "monitoring-card-1"
+	}`))
+	paymentRequest.Header.Set("Content-Type", "application/json")
+	paymentRequest.Header.Set("Idempotency-Key", "monitoring-payment-1")
+	server.ServeHTTP(paymentResponse, paymentRequest)
+	if paymentResponse.Code != http.StatusAccepted {
+		t.Fatalf("create payment status = %d body = %s", paymentResponse.Code, paymentResponse.Body.String())
+	}
+
+	fiscalResponse := httptest.NewRecorder()
+	fiscalRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/fiscal-documents", bytes.NewBufferString(`{
+		"deviceId": "mock-atol-1"
+	}`))
+	fiscalRequest.Header.Set("Content-Type", "application/json")
+	fiscalRequest.Header.Set("Idempotency-Key", "monitoring-fiscal-1")
+	server.ServeHTTP(fiscalResponse, fiscalRequest)
+	if fiscalResponse.Code != http.StatusAccepted {
+		t.Fatalf("create fiscal document status = %d body = %s", fiscalResponse.Code, fiscalResponse.Body.String())
+	}
+
+	terminalsResponse := httptest.NewRecorder()
+	terminalsRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/monitoring/terminals", nil)
+	server.ServeHTTP(terminalsResponse, terminalsRequest)
+	if terminalsResponse.Code != http.StatusOK {
+		t.Fatalf("monitoring terminals status = %d body = %s", terminalsResponse.Code, terminalsResponse.Body.String())
+	}
+
+	var terminals PaginatedTerminalOverviewResponse
+	if err := json.Unmarshal(terminalsResponse.Body.Bytes(), &terminals); err != nil {
+		t.Fatalf("decode monitoring terminals: %v", err)
+	}
+	if terminals.TotalCount != 1 || len(terminals.Items) != 1 {
+		t.Fatalf("monitoring terminals = %+v", terminals)
+	}
+	item := terminals.Items[0]
+	if item.ShiftID == "" || item.CashierID != "cashier-1" || item.ReceiptCount != 1 || item.RevenueMinor != 50000 {
+		t.Fatalf("monitoring terminal card = %+v", item)
+	}
+
+	summaryResponse := httptest.NewRecorder()
+	summaryRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/monitoring/summary", nil)
+	server.ServeHTTP(summaryResponse, summaryRequest)
+	if summaryResponse.Code != http.StatusOK {
+		t.Fatalf("monitoring summary status = %d body = %s", summaryResponse.Code, summaryResponse.Body.String())
+	}
+
+	var summary StoreMonitoringSummaryResponse
+	if err := json.Unmarshal(summaryResponse.Body.Bytes(), &summary); err != nil {
+		t.Fatalf("decode monitoring summary: %v", err)
+	}
+	if summary.ActiveTerminalCount != 1 || summary.ReceiptCountToday != 1 || summary.RevenueMinorToday != 50000 {
+		t.Fatalf("monitoring summary = %+v", summary)
 	}
 }
 

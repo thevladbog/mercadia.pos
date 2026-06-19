@@ -6859,6 +6859,278 @@
         ]
       }
     },
+    "/v1/stores/{storeId}/monitoring/summary": {
+      "get": {
+        "operationId": "getStoreMonitoringSummary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "activeTerminalCount": {
+                      "type": "integer"
+                    },
+                    "attentionTerminalCount": {
+                      "type": "integer"
+                    },
+                    "averageReceiptMinor": {
+                      "type": "integer"
+                    },
+                    "drawerCashMinor": {
+                      "type": "integer"
+                    },
+                    "freeTerminalCount": {
+                      "type": "integer"
+                    },
+                    "offlineTerminalCount": {
+                      "type": "integer"
+                    },
+                    "receiptCountToday": {
+                      "type": "integer"
+                    },
+                    "revenueMinorToday": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "revenueMinorToday",
+                    "drawerCashMinor",
+                    "activeTerminalCount",
+                    "freeTerminalCount",
+                    "offlineTerminalCount",
+                    "attentionTerminalCount",
+                    "receiptCountToday",
+                    "averageReceiptMinor"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store monitoring summary"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid monitoring query"
+          }
+        },
+        "summary": "Get store monitoring summary",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/monitoring/terminals": {
+      "get": {
+        "operationId": "listStoreMonitoringTerminals",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of items to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "attentionNeeded": {
+                            "type": "boolean"
+                          },
+                          "cashierId": {
+                            "type": "string"
+                          },
+                          "currentReceiptId": {
+                            "type": "string"
+                          },
+                          "currentReceiptStatus": {
+                            "type": "string"
+                          },
+                          "currentReceiptTotalMinor": {
+                            "type": "integer"
+                          },
+                          "drawerBalanceMinor": {
+                            "type": "integer"
+                          },
+                          "drawerId": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "lastSeenAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "receiptCount": {
+                            "type": "integer"
+                          },
+                          "revenueMinor": {
+                            "type": "integer"
+                          },
+                          "shiftId": {
+                            "type": "string"
+                          },
+                          "softwareVersion": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storeId",
+                          "kind",
+                          "status",
+                          "lastSeenAt",
+                          "updatedAt",
+                          "receiptCount",
+                          "revenueMinor",
+                          "drawerBalanceMinor",
+                          "attentionNeeded"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "totalCount": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "totalCount"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Terminal monitoring cards"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid monitoring query"
+          }
+        },
+        "summary": "List terminal monitoring cards for a store",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
     "/v1/stores/{storeId}/operation-journal": {
       "get": {
         "operationId": "listOperationJournal",
