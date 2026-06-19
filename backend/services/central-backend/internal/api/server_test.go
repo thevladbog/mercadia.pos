@@ -38,7 +38,14 @@ func newTestServices(store *memory.Store) api.Services {
 		Reporting:       app.NewReportingService(repo, repo),
 		Auth:            app.NewAuthService(repo, repo),
 		CentralUsers:    app.NewCentralUsersService(repo),
+		SyncAPIKey:      app.NewSyncAPIKeyService(""),
 	}
+}
+
+func newTestServicesWithSyncAPIKey(store *memory.Store, syncAPIKey string) api.Services {
+	services := newTestServices(store)
+	services.SyncAPIKey = app.NewSyncAPIKeyService(syncAPIKey)
+	return services
 }
 
 func seedHTTPTestAdmin(store *memory.Store) error {
@@ -692,5 +699,40 @@ func TestCentralAuthAndUserManagementHTTP(t *testing.T) {
 	server.ServeHTTP(reportingResponse, reportingRequest)
 	if reportingResponse.Code != http.StatusOK {
 		t.Fatalf("viewer reporting status = %d body=%s", reportingResponse.Code, reportingResponse.Body.String())
+	}
+}
+
+func TestSyncEventsRequireAPIKeyWhenConfigured(t *testing.T) {
+	store := memory.NewStore()
+	server := api.NewServerWithServices(newTestServicesWithSyncAPIKey(store, "test-key"))
+
+	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
+	registerRequest.Header.Set("Content-Type", "application/json")
+	registerRequest.Header.Set("Idempotency-Key", "register-sync-key")
+	registerResponse := httptest.NewRecorder()
+	server.ServeHTTP(registerResponse, registerRequest)
+	if registerResponse.Code != http.StatusAccepted {
+		t.Fatalf("register status = %d body=%s", registerResponse.Code, registerResponse.Body.String())
+	}
+
+	syncBody := bytes.NewBufferString(`{"events":[{"eventId":"evt-key-1","eventType":"catalog.product.upserted","payload":{"productId":"sku-1","name":"Milk","barcodes":["4600000000000"],"unitPriceMinor":19999,"taxCategoryId":"vat_20"}}]}`)
+
+	unauthorizedRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/sync-events", syncBody)
+	unauthorizedRequest.Header.Set("Content-Type", "application/json")
+	unauthorizedRequest.Header.Set("Idempotency-Key", "sync-key-unauthorized")
+	unauthorizedResponse := httptest.NewRecorder()
+	server.ServeHTTP(unauthorizedResponse, unauthorizedRequest)
+	if unauthorizedResponse.Code != http.StatusUnauthorized {
+		t.Fatalf("sync without key status = %d body=%s", unauthorizedResponse.Code, unauthorizedResponse.Body.String())
+	}
+
+	authorizedRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/sync-events", bytes.NewBufferString(`{"events":[{"eventId":"evt-key-1","eventType":"catalog.product.upserted","payload":{"productId":"sku-1","name":"Milk","barcodes":["4600000000000"],"unitPriceMinor":19999,"taxCategoryId":"vat_20"}}]}`))
+	authorizedRequest.Header.Set("Content-Type", "application/json")
+	authorizedRequest.Header.Set("Idempotency-Key", "sync-key-authorized")
+	authorizedRequest.Header.Set("X-Sync-Api-Key", "test-key")
+	authorizedResponse := httptest.NewRecorder()
+	server.ServeHTTP(authorizedResponse, authorizedRequest)
+	if authorizedResponse.Code != http.StatusAccepted {
+		t.Fatalf("sync with key status = %d body=%s", authorizedResponse.Code, authorizedResponse.Body.String())
 	}
 }

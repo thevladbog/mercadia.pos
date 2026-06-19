@@ -3918,6 +3918,7 @@
         ]
       },
       "post": {
+        "description": "Accepts synchronized Store Edge event batches over HTTP. When `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` is set, requires `X-Sync-Api-Key` header.",
         "operationId": "acceptStoreSyncEvents",
         "parameters": [
           {
@@ -4043,6 +4044,40 @@
               }
             },
             "description": "Invalid sync batch"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sync API key is missing or invalid"
           },
           "404": {
             "content": {

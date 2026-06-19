@@ -61,6 +61,7 @@ Environment variables:
 | `MERCADIA_CENTRAL_BACKEND_SEED_ADMIN_PASSWORD` | _(empty = disabled)_ | password for seeded central admin |
 | `MERCADIA_CENTRAL_BACKEND_SEED_ADMIN_DISPLAY_NAME` | `Central Admin` | display name for seeded central admin |
 | `MERCADIA_CENTRAL_BACKEND_SEED_ADMIN_USER_ID` | `seed-admin` | id for seeded central admin |
+| `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` | _(empty = disabled)_ | shared API key for HTTP sync ingestion (`X-Sync-Api-Key`) |
 | `MERCADIA_OTEL_ENABLED` | `false` | all services (enables OpenTelemetry HTTP tracing) |
 
 Example PostgreSQL URL: `postgres://mercadia:mercadia@127.0.0.1:5433/mercadia_pos?sslmode=disable`
@@ -102,6 +103,8 @@ Local smoke:
 6. Confirm the event appears in central sync events: `GET /v1/stores/{storeId}/sync-events`
 7. Confirm projected read models: `GET /v1/stores/{storeId}/payments`, `GET /v1/stores/{storeId}/cash-movements`, `GET /v1/stores/{storeId}/fiscal-documents`, `GET /v1/stores/{storeId}/returns`, and `GET /v1/stores/{storeId}/operational-days`
 8. After cancel/refund, return settlement, or EoD close on store-edge, confirm the corresponding central read models are updated
+
+When using NATS (steps 3–4 above), sync ingestion does not use the HTTP API key. For manual `POST /v1/stores/{storeId}/sync-events` calls, set `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` and pass `X-Sync-Api-Key` with the same value. When the env var is unset, HTTP sync ingestion remains open for local development.
 
 The consumer uses durable name `central-backend-sync` and idempotency keys `nats:{storeId}:{eventId}` so JetStream redelivery is safe.
 
@@ -256,7 +259,7 @@ The central backend service exposes store registration, sync ingestion, synced r
 - `GET /v1/central/status` - returns region status and registered store count.
 - `POST /v1/stores` - registers a store (idempotent).
 - `GET /v1/stores` - lists registered stores.
-- `POST /v1/stores/{storeId}/sync-events` - accepts synchronized Store Edge event batches.
+- `POST /v1/stores/{storeId}/sync-events` - accepts synchronized Store Edge event batches. When `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` is set, requires `X-Sync-Api-Key`.
 - `GET /v1/stores/{storeId}/sync-events` - lists accepted sync events (paginated, newest first).
 - `GET /v1/stores/{storeId}/catalog/products` - lists catalog products for a store.
 - `GET /v1/stores/{storeId}/catalog/delta` - returns catalog products updated since a timestamp.
