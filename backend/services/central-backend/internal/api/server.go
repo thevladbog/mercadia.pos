@@ -29,6 +29,7 @@ type Services struct {
 	Reporting         *app.ReportingService
 	Auth              *app.AuthService
 	CentralUsers      *app.CentralUsersService
+	SyncAPIKey        *app.SyncAPIKeyService
 }
 
 type StatusResponse struct {
@@ -297,6 +298,7 @@ func newServices(repo infra.Repository) Services {
 		Reporting:         app.NewReportingService(repo, repo),
 		Auth:              app.NewAuthService(repo, repo),
 		CentralUsers:      app.NewCentralUsersService(repo),
+		SyncAPIKey:        app.NewSyncAPIKeyServiceFromEnv(),
 	}
 }
 
@@ -440,6 +442,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		Path:                "/v1/stores/{storeId}/sync-events",
 		OperationID:         "acceptStoreSyncEvents",
 		Summary:             "Accept synchronized Store Edge events",
+		Description:         syncAPIKeyProtectedDescription("Accepts synchronized Store Edge event batches over HTTP."),
 		Tags:                []string{"sync"},
 		RequiresIdempotency: true,
 		RequestBody: &httpapi.BodySpec{
@@ -450,10 +453,11 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		Responses: map[string]httpapi.ResponseSpec{
 			"202": {Description: "Sync batch accepted", Schema: syncEventsAcceptedResponseSchema()},
 			"400": {Description: "Invalid sync batch", Schema: httpapi.ProblemSchema()},
+			"401": {Description: "Sync API key is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
 			"409": {Description: "Idempotency conflict", Schema: httpapi.ProblemSchema()},
 		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+	}, RequireSyncAPIKey(services.SyncAPIKey, func(w http.ResponseWriter, r *http.Request) {
 		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
 			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 			return
@@ -486,7 +490,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			Status:   result.Status,
 			Accepted: result.Accepted,
 		})
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:          http.MethodGet,
@@ -942,6 +946,10 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusConflict, "central_user_conflict", "Central user already exists", err.Error())
 	case errors.Is(err, domain.ErrInvalidCentralUserInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_central_user_command", "Invalid central user command", err.Error())
+	case errors.Is(err, app.ErrSyncAPIKeyRequired):
+		httpapi.WriteProblem(w, http.StatusUnauthorized, "sync_api_key_required", "Sync API key is required", err.Error())
+	case errors.Is(err, app.ErrSyncAPIKeyInvalid):
+		httpapi.WriteProblem(w, http.StatusUnauthorized, "sync_api_key_invalid", "Sync API key is invalid", err.Error())
 	default:
 		httpapi.WriteProblem(w, http.StatusInternalServerError, "internal_error", "Unexpected server error", err.Error())
 	}
