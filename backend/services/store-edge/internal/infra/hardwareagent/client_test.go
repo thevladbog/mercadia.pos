@@ -115,6 +115,52 @@ func TestClientCancelCardPayment(t *testing.T) {
 	}
 }
 
+func TestClientRefundCardPayment(t *testing.T) {
+	var mu sync.Mutex
+	commands := map[string]hardwareagent.Command{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/devices/sim-payment-1/commands":
+			var request struct {
+				Type    string         `json:"type"`
+				Payload map[string]any `json:"payload"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			command := hardwareagent.Command{
+				ID:       "cmd-" + request.Type,
+				DeviceID: "sim-payment-1",
+				Type:     request.Type,
+				Payload:  request.Payload,
+				Status:   hardwareagent.CommandStatusCompleted,
+				Result:   map[string]any{"status": "refunded"},
+			}
+			mu.Lock()
+			commands[command.ID] = command
+			mu.Unlock()
+			w.WriteHeader(http.StatusAccepted)
+			_ = json.NewEncoder(w).Encode(map[string]any{"command": command})
+		case r.Method == http.MethodGet:
+			commandID := r.URL.Path[len("/v1/devices/sim-payment-1/commands/"):]
+			mu.Lock()
+			command := commands[commandID]
+			mu.Unlock()
+			_ = json.NewEncoder(w).Encode(command)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := hardwareagent.NewClient(server.URL, server.Client())
+	if err := client.RefundCardPayment(context.Background(), "sim-payment-1", "RRN456", 19999); err != nil {
+		t.Fatalf("refund card payment: %v", err)
+	}
+}
+
 func TestClientPrintReceipt(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {

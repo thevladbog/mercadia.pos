@@ -62,6 +62,18 @@ func (a *PaymentTerminalAdapter) Execute(_ context.Context, device domain.Device
 			"status":        "cancelled",
 			"terminalState": "idle",
 		}, nil
+	case "refund":
+		amountMinor := int64(0)
+		if value, ok := payload["amountMinor"].(float64); ok {
+			amountMinor = int64(value)
+		}
+		return map[string]any{
+			"status":        "refunded",
+			"rrn":           a.lastRRN,
+			"authCode":      a.lastAuthCode,
+			"amountMinor":   amountMinor,
+			"terminalState": "idle",
+		}, nil
 	default:
 		return nil, fmt.Errorf("%w: %s", ErrUnsupportedCommand, commandType)
 	}

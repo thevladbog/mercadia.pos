@@ -11,13 +11,15 @@ type PaymentStatus string
 const (
 	PaymentMethodCash     PaymentMethod = "cash"
 	PaymentMethodCardMock PaymentMethod = "card_mock"
-	PaymentStatusCaptured PaymentStatus = "captured"
+	PaymentStatusCaptured  PaymentStatus = "captured"
 	PaymentStatusCancelled PaymentStatus = "cancelled"
+	PaymentStatusRefunded  PaymentStatus = "refunded"
 )
 
 var (
 	ErrInvalidPaymentInput      = errors.New("invalid payment input")
 	ErrPaymentCannotBeCancelled = errors.New("payment cannot be cancelled")
+	ErrPaymentCannotBeRefunded  = errors.New("payment cannot be refunded")
 )
 
 type Payment struct {
@@ -70,6 +72,18 @@ func (p *Payment) Cancel(now time.Time) error {
 		now = time.Now().UTC()
 	}
 	p.Status = PaymentStatusCancelled
+	p.UpdatedAt = now
+	return nil
+}
+
+func (p *Payment) Refund(now time.Time) error {
+	if p.Status != PaymentStatusCaptured {
+		return ErrPaymentCannotBeRefunded
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	p.Status = PaymentStatusRefunded
 	p.UpdatedAt = now
 	return nil
 }

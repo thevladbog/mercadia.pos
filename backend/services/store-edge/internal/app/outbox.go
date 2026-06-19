@@ -18,6 +18,7 @@ type OutboxRepository interface {
 type OutboxRecorder interface {
 	RecordPaymentCaptured(ctx context.Context, payment domain.Payment, storeID string) error
 	RecordPaymentCancelled(ctx context.Context, payment domain.Payment, storeID string, actorID string, reason string) error
+	RecordPaymentRefunded(ctx context.Context, payment domain.Payment, storeID string, actorID string, reason string) error
 	RecordFiscalDocumentCreated(ctx context.Context, document domain.FiscalDocument, storeID string) error
 	RecordCashMovementPosted(ctx context.Context, movement domain.CashMovement) error
 	RecordOperationalDayClosed(ctx context.Context, day domain.OperationalDay) error
@@ -124,6 +125,30 @@ func (s *OutboxService) RecordPaymentCancelled(ctx context.Context, payment doma
 		AggregateType: domain.OutboxAggregatePayment,
 		AggregateID:   payment.ID,
 		EventType:     domain.OutboxEventPaymentCancelled,
+		Payload:       payload,
+		CreatedAt:     s.now(),
+	})
+}
+
+func (s *OutboxService) RecordPaymentRefunded(ctx context.Context, payment domain.Payment, storeID string, actorID string, reason string) error {
+	payload, err := json.Marshal(map[string]any{
+		"storeId":     storeID,
+		"paymentId":   payment.ID,
+		"receiptId":   payment.ReceiptID,
+		"method":      payment.Method,
+		"amountMinor": payment.AmountMinor,
+		"refundedAt":  payment.UpdatedAt,
+		"actorId":     actorID,
+		"reason":      reason,
+	})
+	if err != nil {
+		return err
+	}
+	return s.Enqueue(ctx, domain.OutboxEvent{
+		ID:            s.newID("obx"),
+		AggregateType: domain.OutboxAggregatePayment,
+		AggregateID:   payment.ID,
+		EventType:     domain.OutboxEventPaymentRefunded,
 		Payload:       payload,
 		CreatedAt:     s.now(),
 	})

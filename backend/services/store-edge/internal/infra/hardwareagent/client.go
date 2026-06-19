@@ -238,6 +238,26 @@ func (c *Client) CancelCardPayment(ctx context.Context, deviceID, reference stri
 	return fmt.Errorf("card payment cancel did not complete")
 }
 
+func (c *Client) RefundCardPayment(ctx context.Context, deviceID, reference string, amountMinor int64) error {
+	command, err := c.SendCommand(ctx, deviceID, "refund", map[string]any{
+		"reference":   reference,
+		"amountMinor": amountMinor,
+	})
+	if err != nil {
+		return err
+	}
+	command, err = c.WaitCommand(ctx, deviceID, command.ID, 5*time.Second)
+	if err != nil {
+		return err
+	}
+	if command.Result != nil {
+		if status, ok := command.Result["status"].(string); ok && status == "refunded" {
+			return nil
+		}
+	}
+	return fmt.Errorf("card payment refund did not complete")
+}
+
 func (c *Client) PrintReceipt(ctx context.Context, deviceID string, totalMinor int64) (string, error) {
 	command, err := c.SendCommand(ctx, deviceID, "print_receipt", map[string]any{
 		"totalMinor": totalMinor,

@@ -192,6 +192,11 @@ type CancelPaymentRequest struct {
 	Reason  string `json:"reason,omitempty"`
 }
 
+type RefundPaymentRequest struct {
+	ActorID string `json:"actorId,omitempty"`
+	Reason  string `json:"reason,omitempty"`
+}
+
 type PaymentAcceptedResponse struct {
 	Payment PaymentResponse `json:"payment"`
 }
@@ -1615,6 +1620,52 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:              http.MethodPost,
+		Path:                "/v1/receipts/{receiptId}/payments/{paymentId}/refund",
+		OperationID:         "refundReceiptPayment",
+		Summary:             "Refund captured card payment for receipt",
+		Tags:                []string{"payments"},
+		RequiresIdempotency: true,
+		RequestBody: &httpapi.BodySpec{
+			Description: "Payment refund command",
+			Required:    false,
+			Schema:      refundPaymentRequestSchema(),
+		},
+		Responses: map[string]httpapi.ResponseSpec{
+			"202": {Description: "Payment refunded", Schema: paymentAcceptedResponseSchema()},
+			"400": {Description: "Invalid payment refund command", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Receipt or payment was not found", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Payment cannot be refunded", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
+			return
+		}
+		var request RefundPaymentRequest
+		if r.ContentLength > 0 {
+			if err := httpapi.DecodeJSON(r, &request); err != nil {
+				httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_json", "Invalid JSON", err.Error())
+				return
+			}
+		}
+		result, err := payments.RefundPayment(r.Context(), app.RefundPaymentCommand{
+			IdempotencyKey: r.Header.Get("Idempotency-Key"),
+			ReceiptID:      r.PathValue("receiptId"),
+			PaymentID:      r.PathValue("paymentId"),
+			ActorID:        request.ActorID,
+			Reason:         request.Reason,
+		})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusAccepted, PaymentAcceptedResponse{
+			Payment: paymentResponse(result.Payment),
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:              http.MethodPost,
 		Path:                "/v1/receipts/{receiptId}/lines",
 		OperationID:         "addReceiptLine",
 		Summary:             "Add line to receipt",
@@ -1842,6 +1893,12 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusConflict, "payment_cancel_same_day_required", "Payment cancel is allowed only on the receipt business date", err.Error())
 	case errors.Is(err, app.ErrPaymentCancelNotSupported):
 		httpapi.WriteProblem(w, http.StatusConflict, "payment_cancel_not_supported", "Payment cancel is not supported for this method", err.Error())
+	case errors.Is(err, app.ErrPaymentCannotBeRefunded), errors.Is(err, domain.ErrPaymentCannotBeRefunded):
+		httpapi.WriteProblem(w, http.StatusConflict, "payment_cannot_be_refunded", "Payment cannot be refunded", err.Error())
+	case errors.Is(err, app.ErrPaymentRefundNotSupported):
+		httpapi.WriteProblem(w, http.StatusConflict, "payment_refund_not_supported", "Payment refund is not supported for this method", err.Error())
+	case errors.Is(err, app.ErrPaymentUseCancelInstead):
+		httpapi.WriteProblem(w, http.StatusConflict, "payment_use_cancel_instead", "Use payment cancel for same-day pre-fiscal card payments", err.Error())
 	case errors.Is(err, app.ErrCashDrawerRequired):
 		httpapi.WriteProblem(w, http.StatusConflict, "cash_drawer_required", "Cash drawer is required for cash payment", err.Error())
 	case errors.Is(err, app.ErrReceiptCannotBeCancelled), errors.Is(err, domain.ErrReceiptCannotBeCancelled):
@@ -2487,6 +2544,13 @@ func createPaymentRequestSchema() httpapi.Schema {
 }
 
 func cancelPaymentRequestSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"actorId": httpapi.StringSchema(),
+		"reason":  httpapi.StringSchema(),
+	})
+}
+
+func refundPaymentRequestSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"actorId": httpapi.StringSchema(),
 		"reason":  httpapi.StringSchema(),
