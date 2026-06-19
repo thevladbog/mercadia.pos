@@ -107,14 +107,20 @@ type CatalogDeltaResponse struct {
 }
 
 type SyncedPaymentResponse struct {
-	ID            string    `json:"id"`
-	StoreID       string    `json:"storeId"`
-	ReceiptID     string    `json:"receiptId"`
-	Method        string    `json:"method"`
-	AmountMinor   int64     `json:"amountMinor"`
-	CapturedAt    time.Time `json:"capturedAt"`
-	SourceEventID string    `json:"sourceEventId"`
-	SyncedAt      time.Time `json:"syncedAt"`
+	ID                   string     `json:"id"`
+	StoreID              string     `json:"storeId"`
+	ReceiptID            string     `json:"receiptId"`
+	Method               string     `json:"method"`
+	AmountMinor          int64      `json:"amountMinor"`
+	Status               string     `json:"status"`
+	CapturedAt           time.Time  `json:"capturedAt"`
+	CancelledAt          *time.Time `json:"cancelledAt,omitempty"`
+	RefundedAmountMinor  int64      `json:"refundedAmountMinor"`
+	RemainingAmountMinor int64      `json:"remainingAmountMinor"`
+	SourceEventID        string     `json:"sourceEventId"`
+	LastEventID          string     `json:"lastEventId"`
+	SyncedAt             time.Time  `json:"syncedAt"`
+	UpdatedAt            time.Time  `json:"updatedAt"`
 }
 
 type PaginatedSyncedPaymentsResponse struct {
@@ -632,14 +638,20 @@ func syncEventResponse(event domain.SyncEvent) SyncEventResponse {
 
 func syncedPaymentResponse(payment domain.SyncedPayment) SyncedPaymentResponse {
 	return SyncedPaymentResponse{
-		ID:            payment.ID,
-		StoreID:       payment.StoreID,
-		ReceiptID:     payment.ReceiptID,
-		Method:        payment.Method,
-		AmountMinor:   payment.AmountMinor,
-		CapturedAt:    payment.CapturedAt,
-		SourceEventID: payment.SourceEventID,
-		SyncedAt:      payment.SyncedAt,
+		ID:                   payment.ID,
+		StoreID:              payment.StoreID,
+		ReceiptID:            payment.ReceiptID,
+		Method:               payment.Method,
+		AmountMinor:          payment.AmountMinor,
+		Status:               string(payment.Status),
+		CapturedAt:           payment.CapturedAt,
+		CancelledAt:          payment.CancelledAt,
+		RefundedAmountMinor:  payment.RefundedAmountMinor,
+		RemainingAmountMinor: payment.RemainingAmountMinor,
+		SourceEventID:        payment.SourceEventID,
+		LastEventID:          payment.LastEventID,
+		SyncedAt:             payment.SyncedAt,
+		UpdatedAt:            payment.UpdatedAt,
 	}
 }
 
@@ -793,15 +805,21 @@ func catalogDeltaResponseSchema() httpapi.Schema {
 
 func syncedPaymentResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"id":            httpapi.StringSchema(),
-		"storeId":       httpapi.StringSchema(),
-		"receiptId":     httpapi.StringSchema(),
-		"method":        httpapi.StringSchema(),
-		"amountMinor":   {"type": "integer"},
-		"capturedAt":    httpapi.DateTimeSchema(),
-		"sourceEventId": httpapi.StringSchema(),
-		"syncedAt":      httpapi.DateTimeSchema(),
-	}, "id", "storeId", "receiptId", "method", "amountMinor", "capturedAt", "sourceEventId", "syncedAt")
+		"id":                   httpapi.StringSchema(),
+		"storeId":              httpapi.StringSchema(),
+		"receiptId":            httpapi.StringSchema(),
+		"method":               httpapi.StringSchema(),
+		"amountMinor":          {"type": "integer"},
+		"status":               httpapi.StringSchema(),
+		"capturedAt":           httpapi.DateTimeSchema(),
+		"cancelledAt":          httpapi.DateTimeSchema(),
+		"refundedAmountMinor":  {"type": "integer"},
+		"remainingAmountMinor": {"type": "integer"},
+		"sourceEventId":        httpapi.StringSchema(),
+		"lastEventId":          httpapi.StringSchema(),
+		"syncedAt":             httpapi.DateTimeSchema(),
+		"updatedAt":            httpapi.DateTimeSchema(),
+	}, "id", "storeId", "receiptId", "method", "amountMinor", "status", "capturedAt", "refundedAmountMinor", "remainingAmountMinor", "sourceEventId", "lastEventId", "syncedAt", "updatedAt")
 }
 
 func paginatedSyncedPaymentsResponseSchema() httpapi.Schema {

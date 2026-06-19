@@ -231,3 +231,46 @@ func TestSyncEventsProjectPaymentsAndCashMovements(t *testing.T) {
 		t.Fatalf("listed payments = %+v", listedPayments)
 	}
 }
+
+func TestSyncEventsUpdatePaymentLifecycle(t *testing.T) {
+	server := newTestServer()
+
+	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
+	registerRequest.Header.Set("Content-Type", "application/json")
+	registerRequest.Header.Set("Idempotency-Key", "register-lifecycle-http")
+	registerResponse := httptest.NewRecorder()
+	server.ServeHTTP(registerResponse, registerRequest)
+	if registerResponse.Code != http.StatusAccepted {
+		t.Fatalf("register status = %d", registerResponse.Code)
+	}
+
+	capturedAt := time.Date(2026, 6, 19, 14, 30, 0, 0, time.UTC).Format(time.RFC3339)
+	cancelledAt := time.Date(2026, 6, 19, 15, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	syncBody := bytes.NewBufferString(`{"events":[` +
+		`{"eventId":"obx-pay-cap","eventType":"payment.captured","payload":{"storeId":"store-1","paymentId":"pay-1","receiptId":"rcpt-1","method":"card","amountMinor":150000,"capturedAt":"` + capturedAt + `"}},` +
+		`{"eventId":"obx-pay-cancel","eventType":"payment.cancelled","payload":{"storeId":"store-1","paymentId":"pay-1","receiptId":"rcpt-1","method":"card","amountMinor":150000,"cancelledAt":"` + cancelledAt + `","actorId":"manager-1","reason":"void"}}` +
+		`]}`)
+	syncRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/sync-events", syncBody)
+	syncRequest.Header.Set("Content-Type", "application/json")
+	syncRequest.Header.Set("Idempotency-Key", "sync-lifecycle-http")
+	syncResponse := httptest.NewRecorder()
+	server.ServeHTTP(syncResponse, syncRequest)
+	if syncResponse.Code != http.StatusAccepted {
+		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
+	}
+
+	paymentResponse := httptest.NewRecorder()
+	paymentRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/payments/pay-1", nil)
+	server.ServeHTTP(paymentResponse, paymentRequest)
+	if paymentResponse.Code != http.StatusOK {
+		t.Fatalf("get payment status = %d body=%s", paymentResponse.Code, paymentResponse.Body.String())
+	}
+
+	var payment api.SyncedPaymentResponse
+	if err := json.Unmarshal(paymentResponse.Body.Bytes(), &payment); err != nil {
+		t.Fatalf("decode payment: %v", err)
+	}
+	if payment.Status != "cancelled" || payment.LastEventID != "obx-pay-cancel" {
+		t.Fatalf("payment = %+v", payment)
+	}
+}

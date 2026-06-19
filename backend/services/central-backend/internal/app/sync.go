@@ -166,6 +166,10 @@ func (s *SyncService) applySyncEvent(ctx context.Context, event domain.SyncEvent
 		return s.upsertCatalogProductFromPayload(ctx, event)
 	case "payment.captured":
 		return s.upsertPaymentFromPayload(ctx, event)
+	case "payment.cancelled":
+		return s.updatePaymentCancelledFromPayload(ctx, event)
+	case "payment.refunded":
+		return s.updatePaymentRefundedFromPayload(ctx, event)
 	case "cash.movement.posted":
 		return s.upsertCashMovementFromPayload(ctx, event)
 	default:
@@ -234,14 +238,127 @@ func (s *SyncService) upsertPaymentFromPayload(ctx context.Context, event domain
 		ReceiptID:     payload.ReceiptID,
 		Method:        payload.Method,
 		AmountMinor:   payload.AmountMinor,
+		Status:        domain.SyncedPaymentStatusCaptured,
 		CapturedAt:    payload.CapturedAt.UTC(),
 		SourceEventID: event.SourceEventID,
+		LastEventID:   event.SourceEventID,
 		SyncedAt:      event.ReceivedAt,
+		UpdatedAt:     event.ReceivedAt,
 	})
 	if err != nil {
 		return ErrInvalidSyncCommand
 	}
 	return s.payments.SavePayment(ctx, payment)
+}
+
+func (s *SyncService) updatePaymentCancelledFromPayload(ctx context.Context, event domain.SyncEvent) error {
+	var payload struct {
+		PaymentID   string    `json:"paymentId"`
+		ReceiptID   string    `json:"receiptId"`
+		Method      string    `json:"method"`
+		AmountMinor int64     `json:"amountMinor"`
+		CancelledAt time.Time `json:"cancelledAt"`
+	}
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		return ErrInvalidSyncCommand
+	}
+
+	cancelledAt := payload.CancelledAt.UTC()
+	now := event.ReceivedAt
+
+	existing, err := s.payments.FindPayment(ctx, event.StoreID, payload.PaymentID)
+	if err != nil {
+		if !errors.Is(err, ErrPaymentNotFound) {
+			return err
+		}
+		payment, err := domain.NewSyncedPayment(domain.SyncedPayment{
+			ID:            payload.PaymentID,
+			StoreID:       event.StoreID,
+			ReceiptID:     payload.ReceiptID,
+			Method:        payload.Method,
+			AmountMinor:   payload.AmountMinor,
+			Status:        domain.SyncedPaymentStatusCancelled,
+			CapturedAt:    cancelledAt,
+			CancelledAt:   &cancelledAt,
+			SourceEventID: event.SourceEventID,
+			LastEventID:   event.SourceEventID,
+			SyncedAt:      now,
+			UpdatedAt:     now,
+		})
+		if err != nil {
+			return ErrInvalidSyncCommand
+		}
+		return s.payments.SavePayment(ctx, payment)
+	}
+
+	existing.Status = domain.SyncedPaymentStatusCancelled
+	existing.CancelledAt = &cancelledAt
+	existing.LastEventID = event.SourceEventID
+	existing.UpdatedAt = now
+	_, err = domain.NewSyncedPayment(existing)
+	if err != nil {
+		return ErrInvalidSyncCommand
+	}
+	return s.payments.SavePayment(ctx, existing)
+}
+
+func (s *SyncService) updatePaymentRefundedFromPayload(ctx context.Context, event domain.SyncEvent) error {
+	var payload struct {
+		PaymentID            string    `json:"paymentId"`
+		ReceiptID            string    `json:"receiptId"`
+		Method               string    `json:"method"`
+		AmountMinor          int64     `json:"amountMinor"`
+		RefundedAmountMinor  int64     `json:"refundedAmountMinor"`
+		RemainingAmountMinor int64     `json:"remainingAmountMinor"`
+		RefundedAt           time.Time `json:"refundedAt"`
+	}
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		return ErrInvalidSyncCommand
+	}
+
+	status := domain.SyncedPaymentStatusPartiallyRefunded
+	if payload.RemainingAmountMinor == 0 {
+		status = domain.SyncedPaymentStatusRefunded
+	}
+	refundedAt := payload.RefundedAt.UTC()
+	now := event.ReceivedAt
+
+	existing, err := s.payments.FindPayment(ctx, event.StoreID, payload.PaymentID)
+	if err != nil {
+		if !errors.Is(err, ErrPaymentNotFound) {
+			return err
+		}
+		payment, err := domain.NewSyncedPayment(domain.SyncedPayment{
+			ID:                   payload.PaymentID,
+			StoreID:              event.StoreID,
+			ReceiptID:            payload.ReceiptID,
+			Method:               payload.Method,
+			AmountMinor:          payload.AmountMinor,
+			Status:               status,
+			CapturedAt:           refundedAt,
+			RefundedAmountMinor:  payload.RefundedAmountMinor,
+			RemainingAmountMinor: payload.RemainingAmountMinor,
+			SourceEventID:        event.SourceEventID,
+			LastEventID:          event.SourceEventID,
+			SyncedAt:             now,
+			UpdatedAt:            refundedAt,
+		})
+		if err != nil {
+			return ErrInvalidSyncCommand
+		}
+		return s.payments.SavePayment(ctx, payment)
+	}
+
+	existing.Status = status
+	existing.RefundedAmountMinor = payload.RefundedAmountMinor
+	existing.RemainingAmountMinor = payload.RemainingAmountMinor
+	existing.LastEventID = event.SourceEventID
+	existing.UpdatedAt = refundedAt
+	_, err = domain.NewSyncedPayment(existing)
+	if err != nil {
+		return ErrInvalidSyncCommand
+	}
+	return s.payments.SavePayment(ctx, existing)
 }
 
 func (s *SyncService) upsertCashMovementFromPayload(ctx context.Context, event domain.SyncEvent) error {

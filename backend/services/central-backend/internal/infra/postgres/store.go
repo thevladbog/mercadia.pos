@@ -232,23 +232,35 @@ func (s *Store) ListProductsSince(ctx context.Context, storeID string, since tim
 func (s *Store) SavePayment(ctx context.Context, payment domain.SyncedPayment) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO synced_payments (
-			store_id, id, receipt_id, method, amount_minor, captured_at, source_event_id, synced_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			store_id, id, receipt_id, method, amount_minor, status, captured_at,
+			cancelled_at, refunded_amount_minor, remaining_amount_minor,
+			source_event_id, last_event_id, synced_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		ON CONFLICT (store_id, id) DO UPDATE SET
 			receipt_id = EXCLUDED.receipt_id,
 			method = EXCLUDED.method,
 			amount_minor = EXCLUDED.amount_minor,
+			status = EXCLUDED.status,
 			captured_at = EXCLUDED.captured_at,
+			cancelled_at = EXCLUDED.cancelled_at,
+			refunded_amount_minor = EXCLUDED.refunded_amount_minor,
+			remaining_amount_minor = EXCLUDED.remaining_amount_minor,
 			source_event_id = EXCLUDED.source_event_id,
-			synced_at = EXCLUDED.synced_at
+			last_event_id = EXCLUDED.last_event_id,
+			synced_at = EXCLUDED.synced_at,
+			updated_at = EXCLUDED.updated_at
 	`, payment.StoreID, payment.ID, payment.ReceiptID, payment.Method, payment.AmountMinor,
-		payment.CapturedAt, payment.SourceEventID, payment.SyncedAt)
+		string(payment.Status), payment.CapturedAt, payment.CancelledAt,
+		payment.RefundedAmountMinor, payment.RemainingAmountMinor,
+		payment.SourceEventID, payment.LastEventID, payment.SyncedAt, payment.UpdatedAt)
 	return err
 }
 
 func (s *Store) FindPayment(ctx context.Context, storeID string, paymentID string) (domain.SyncedPayment, error) {
 	row := s.pool.QueryRow(ctx, `
-		SELECT store_id, id, receipt_id, method, amount_minor, captured_at, source_event_id, synced_at
+		SELECT store_id, id, receipt_id, method, amount_minor, status, captured_at,
+			cancelled_at, refunded_amount_minor, remaining_amount_minor,
+			source_event_id, last_event_id, synced_at, updated_at
 		FROM synced_payments
 		WHERE store_id = $1 AND id = $2
 	`, storeID, paymentID)
@@ -267,7 +279,9 @@ func (s *Store) ListPayments(ctx context.Context, storeID string, limit, offset 
 	}
 
 	rows, err := s.pool.Query(ctx, `
-		SELECT store_id, id, receipt_id, method, amount_minor, captured_at, source_event_id, synced_at
+		SELECT store_id, id, receipt_id, method, amount_minor, status, captured_at,
+			cancelled_at, refunded_amount_minor, remaining_amount_minor,
+			source_event_id, last_event_id, synced_at, updated_at
 		FROM synced_payments
 		WHERE store_id = $1
 		ORDER BY captured_at DESC, id DESC
@@ -471,13 +485,16 @@ func scanProducts(rows pgx.Rows) ([]domain.CatalogProduct, error) {
 
 func scanSyncedPayment(row rowScanner) (domain.SyncedPayment, error) {
 	var payment domain.SyncedPayment
+	var status string
 	if err := row.Scan(&payment.StoreID, &payment.ID, &payment.ReceiptID, &payment.Method, &payment.AmountMinor,
-		&payment.CapturedAt, &payment.SourceEventID, &payment.SyncedAt); err != nil {
+		&status, &payment.CapturedAt, &payment.CancelledAt, &payment.RefundedAmountMinor, &payment.RemainingAmountMinor,
+		&payment.SourceEventID, &payment.LastEventID, &payment.SyncedAt, &payment.UpdatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.SyncedPayment{}, app.ErrPaymentNotFound
 		}
 		return domain.SyncedPayment{}, err
 	}
+	payment.Status = domain.SyncedPaymentStatus(status)
 	return payment, nil
 }
 
@@ -485,10 +502,13 @@ func scanSyncedPayments(rows pgx.Rows, total int) ([]domain.SyncedPayment, int, 
 	payments := make([]domain.SyncedPayment, 0)
 	for rows.Next() {
 		var payment domain.SyncedPayment
+		var status string
 		if err := rows.Scan(&payment.StoreID, &payment.ID, &payment.ReceiptID, &payment.Method, &payment.AmountMinor,
-			&payment.CapturedAt, &payment.SourceEventID, &payment.SyncedAt); err != nil {
+			&status, &payment.CapturedAt, &payment.CancelledAt, &payment.RefundedAmountMinor, &payment.RemainingAmountMinor,
+			&payment.SourceEventID, &payment.LastEventID, &payment.SyncedAt, &payment.UpdatedAt); err != nil {
 			return nil, 0, err
 		}
+		payment.Status = domain.SyncedPaymentStatus(status)
 		payments = append(payments, payment)
 	}
 	if err := rows.Err(); err != nil {
