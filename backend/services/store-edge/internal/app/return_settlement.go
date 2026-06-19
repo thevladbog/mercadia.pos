@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"mercadia.dev/pos/services/store-edge/internal/domain"
 )
 
 var (
-	ErrReturnSettlementRequiresFullReceiptReturn = errors.New("return settlement requires full receipt return")
 	ErrReturnSettlementPaymentMismatch           = errors.New("return settlement payment mismatch")
+	ErrReturnSettlementCumulativeTotalExceeded   = errors.New("return settlement cumulative total exceeded")
 )
 
 type PaymentRefunder interface {
@@ -110,6 +111,9 @@ func (s *ReturnSettlementService) SettleReturn(ctx context.Context, command Sett
 	if ret.Status != domain.ReturnStatusCompleted {
 		return SettleReturnResult{}, ErrReturnSettlementNotAllowed
 	}
+	if ret.TotalMinor <= 0 {
+		return SettleReturnResult{}, ErrInvalidReturnCommand
+	}
 
 	receipt, err := s.receipts.FindReceipt(ctx, ret.ReceiptID)
 	if err != nil {
@@ -118,28 +122,45 @@ func (s *ReturnSettlementService) SettleReturn(ctx context.Context, command Sett
 	if receipt.Status != domain.ReceiptStatusFiscalized {
 		return SettleReturnResult{}, ErrReceiptNotReturnable
 	}
-	if ret.TotalMinor != receipt.TotalMinor() {
-		return SettleReturnResult{}, ErrReturnSettlementRequiresFullReceiptReturn
+	if ret.TotalMinor > receipt.TotalMinor() {
+		return SettleReturnResult{}, ErrReturnSettlementPaymentMismatch
+	}
+
+	priorSettled, err := s.priorSettledTotal(ctx, ret.ReceiptID, ret.ID)
+	if err != nil {
+		return SettleReturnResult{}, err
+	}
+	if priorSettled+ret.TotalMinor > receipt.TotalMinor() {
+		return SettleReturnResult{}, ErrReturnSettlementCumulativeTotalExceeded
 	}
 
 	receiptPayments, err := s.payments.FindPaymentsByReceipt(ctx, ret.ReceiptID)
 	if err != nil {
 		return SettleReturnResult{}, err
 	}
-	captured, sum, err := capturedPayments(receiptPayments)
+	refundable, totalRefundable, err := refundablePayments(receiptPayments)
 	if err != nil {
 		return SettleReturnResult{}, err
 	}
-	if sum != ret.TotalMinor {
+	if totalRefundable < ret.TotalMinor {
 		return SettleReturnResult{}, ErrReturnSettlementPaymentMismatch
 	}
 
-	refundedPayments := make([]domain.Payment, 0, len(captured))
-	for _, payment := range captured {
+	allocations, err := allocateRefundAmounts(refundable, ret.TotalMinor, totalRefundable)
+	if err != nil {
+		return SettleReturnResult{}, err
+	}
+
+	refundedPayments := make([]domain.Payment, 0, len(allocations))
+	for paymentID, amountMinor := range allocations {
+		if amountMinor == 0 {
+			continue
+		}
 		refundResult, err := s.refunder.RefundPayment(ctx, RefundPaymentCommand{
-			IdempotencyKey: fmt.Sprintf("%s:%s", command.IdempotencyKey, payment.ID),
+			IdempotencyKey: fmt.Sprintf("%s:%s", command.IdempotencyKey, paymentID),
 			ReceiptID:      ret.ReceiptID,
-			PaymentID:      payment.ID,
+			PaymentID:      paymentID,
+			AmountMinor:    amountMinor,
 			ActorID:        command.ActorID,
 			Reason:         command.Reason,
 		})
@@ -189,21 +210,78 @@ func (s *ReturnSettlementService) SettleReturn(ctx context.Context, command Sett
 	return result, nil
 }
 
-func capturedPayments(payments []domain.Payment) ([]domain.Payment, int64, error) {
+func (s *ReturnSettlementService) priorSettledTotal(ctx context.Context, receiptID string, excludeReturnID string) (int64, error) {
+	returns, err := s.returns.ListReturnsByReceipt(ctx, receiptID)
+	if err != nil {
+		return 0, err
+	}
+	var total int64
+	for _, ret := range returns {
+		if ret.ID == excludeReturnID {
+			continue
+		}
+		if ret.Status == domain.ReturnStatusSettled {
+			total += ret.TotalMinor
+		}
+	}
+	return total, nil
+}
+
+func refundablePayments(payments []domain.Payment) ([]domain.Payment, int64, error) {
 	if len(payments) == 0 {
 		return nil, 0, ErrReturnSettlementPaymentMismatch
 	}
 
-	captured := make([]domain.Payment, 0, len(payments))
-	var sum int64
+	refundable := make([]domain.Payment, 0, len(payments))
+	var total int64
 	for _, payment := range payments {
-		if payment.Status != domain.PaymentStatusCaptured {
-			return nil, 0, ErrReturnSettlementPaymentMismatch
+		remaining := payment.RefundableAmountMinor()
+		if remaining <= 0 {
+			continue
 		}
-		captured = append(captured, payment)
-		sum += payment.AmountMinor
+		refundable = append(refundable, payment)
+		total += remaining
 	}
-	return captured, sum, nil
+	if len(refundable) == 0 {
+		return nil, 0, ErrReturnSettlementPaymentMismatch
+	}
+	return refundable, total, nil
+}
+
+func allocateRefundAmounts(payments []domain.Payment, returnTotal int64, totalRefundable int64) (map[string]int64, error) {
+	if returnTotal <= 0 || returnTotal > totalRefundable {
+		return nil, ErrReturnSettlementPaymentMismatch
+	}
+
+	sorted := append([]domain.Payment(nil), payments...)
+	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].CapturedAt.Equal(sorted[j].CapturedAt) {
+			return sorted[i].ID < sorted[j].ID
+		}
+		return sorted[i].CapturedAt.Before(sorted[j].CapturedAt)
+	})
+
+	allocations := make(map[string]int64, len(sorted))
+	var allocated int64
+	for i, payment := range sorted {
+		var amount int64
+		if i == len(sorted)-1 {
+			amount = returnTotal - allocated
+		} else {
+			amount = returnTotal * payment.RefundableAmountMinor() / totalRefundable
+		}
+		if amount > payment.RefundableAmountMinor() {
+			amount = payment.RefundableAmountMinor()
+		}
+		if amount > 0 {
+			allocations[payment.ID] = amount
+			allocated += amount
+		}
+	}
+	if allocated != returnTotal {
+		return nil, ErrReturnSettlementPaymentMismatch
+	}
+	return allocations, nil
 }
 
 func mapReturnSettlementDomainError(err error) error {

@@ -20,6 +20,7 @@ var (
 type ReturnRepository interface {
 	SaveReturn(ctx context.Context, ret domain.Return) error
 	FindReturn(ctx context.Context, returnID string) (domain.Return, error)
+	ListReturnsByReceipt(ctx context.Context, receiptID string) ([]domain.Return, error)
 }
 
 type ReturnsService struct {

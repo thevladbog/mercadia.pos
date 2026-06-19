@@ -847,6 +847,152 @@ func TestRefundCashPaymentPostsReversalMovement(t *testing.T) {
 	}
 }
 
+func TestPartialCashRefundLeavesPartiallyRefundedPayment(t *testing.T) {
+	store := memory.NewStore(memory.WithProducts(testProduct()))
+	checkout, payments, cash := newTestCheckoutPaymentAndCashServices(store)
+	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
+
+	created, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-1",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCash,
+		AmountMinor:    39998,
+	})
+	if err != nil {
+		t.Fatalf("create cash payment: %v", err)
+	}
+
+	receipt, err := store.FindReceipt(context.Background(), receiptID)
+	if err != nil {
+		t.Fatalf("find receipt: %v", err)
+	}
+	if err := receipt.MarkFiscalized(time.Date(2026, 6, 18, 10, 1, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("mark fiscalized: %v", err)
+	}
+	if err := store.SaveReceipt(context.Background(), receipt); err != nil {
+		t.Fatalf("save receipt: %v", err)
+	}
+
+	refunded, err := payments.RefundPayment(context.Background(), app.RefundPaymentCommand{
+		IdempotencyKey: "refund-1",
+		ReceiptID:      receiptID,
+		PaymentID:      created.Payment.ID,
+		AmountMinor:    19999,
+	})
+	if err != nil {
+		t.Fatalf("partial refund: %v", err)
+	}
+	if refunded.Payment.Status != domain.PaymentStatusPartiallyRefunded {
+		t.Fatalf("payment status = %s", refunded.Payment.Status)
+	}
+	if refunded.Payment.RefundedAmountMinor != 19999 {
+		t.Fatalf("refunded amount = %d", refunded.Payment.RefundedAmountMinor)
+	}
+
+	movements, err := cash.ListCashMovements(context.Background(), "store-1", app.PageParams{Limit: 50})
+	if err != nil {
+		t.Fatalf("list cash movements: %v", err)
+	}
+	var reversalTotal int64
+	for _, movement := range movements.Items {
+		if movement.Type == domain.CashMovementTypeCashSaleReversal {
+			reversalTotal += movement.AmountMinor
+		}
+	}
+	if reversalTotal != 19999 {
+		t.Fatalf("reversal total = %d", reversalTotal)
+	}
+}
+
+func TestSecondPartialCashRefundCompletesPayment(t *testing.T) {
+	store := memory.NewStore(memory.WithProducts(testProduct()))
+	checkout, payments, _ := newTestCheckoutPaymentAndCashServices(store)
+	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
+
+	created, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-1",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCash,
+		AmountMinor:    39998,
+	})
+	if err != nil {
+		t.Fatalf("create cash payment: %v", err)
+	}
+
+	receipt, err := store.FindReceipt(context.Background(), receiptID)
+	if err != nil {
+		t.Fatalf("find receipt: %v", err)
+	}
+	if err := receipt.MarkFiscalized(time.Date(2026, 6, 18, 10, 1, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("mark fiscalized: %v", err)
+	}
+	if err := store.SaveReceipt(context.Background(), receipt); err != nil {
+		t.Fatalf("save receipt: %v", err)
+	}
+
+	if _, err := payments.RefundPayment(context.Background(), app.RefundPaymentCommand{
+		IdempotencyKey: "refund-1",
+		ReceiptID:      receiptID,
+		PaymentID:      created.Payment.ID,
+		AmountMinor:    19999,
+	}); err != nil {
+		t.Fatalf("first partial refund: %v", err)
+	}
+
+	refunded, err := payments.RefundPayment(context.Background(), app.RefundPaymentCommand{
+		IdempotencyKey: "refund-2",
+		ReceiptID:      receiptID,
+		PaymentID:      created.Payment.ID,
+		AmountMinor:    19999,
+	})
+	if err != nil {
+		t.Fatalf("second partial refund: %v", err)
+	}
+	if refunded.Payment.Status != domain.PaymentStatusRefunded {
+		t.Fatalf("payment status = %s", refunded.Payment.Status)
+	}
+	if refunded.Payment.RefundedAmountMinor != 39998 {
+		t.Fatalf("refunded amount = %d", refunded.Payment.RefundedAmountMinor)
+	}
+}
+
+func TestPartialCashRefundRejectsOverRefund(t *testing.T) {
+	store := memory.NewStore(memory.WithProducts(testProduct()))
+	checkout, payments, _ := newTestCheckoutPaymentAndCashServices(store)
+	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
+
+	created, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-1",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCash,
+		AmountMinor:    39998,
+	})
+	if err != nil {
+		t.Fatalf("create cash payment: %v", err)
+	}
+
+	receipt, err := store.FindReceipt(context.Background(), receiptID)
+	if err != nil {
+		t.Fatalf("find receipt: %v", err)
+	}
+	if err := receipt.MarkFiscalized(time.Date(2026, 6, 18, 10, 1, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("mark fiscalized: %v", err)
+	}
+	if err := store.SaveReceipt(context.Background(), receipt); err != nil {
+		t.Fatalf("save receipt: %v", err)
+	}
+
+	_, err = payments.RefundPayment(context.Background(), app.RefundPaymentCommand{
+		IdempotencyKey: "refund-1",
+		ReceiptID:      receiptID,
+		PaymentID:      created.Payment.ID,
+		AmountMinor:    40000,
+	})
+	if !errors.Is(err, app.ErrPaymentRefundAmountInvalid) {
+		t.Fatalf("expected invalid refund amount, got %v", err)
+	}
+}
+
 func newTestCheckoutAndPaymentServicesWithStore(store *memory.Store) (*app.CheckoutService, *app.PaymentService) {
 	var counter int
 	now := func() time.Time {

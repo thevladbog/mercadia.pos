@@ -76,6 +76,19 @@ func (s *Store) FindReturn(ctx context.Context, returnID string) (domain.Return,
 	return cloneReturn(ret), nil
 }
 
+func (s *Store) ListReturnsByReceipt(ctx context.Context, receiptID string) ([]domain.Return, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	result := make([]domain.Return, 0)
+	for _, ret := range s.returns {
+		if ret.ReceiptID == receiptID {
+			result = append(result, cloneReturn(ret))
+		}
+	}
+	return result, nil
+}
+
 func (s *Store) SaveOperationJournalEntry(ctx context.Context, entry domain.OperationJournalEntry) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

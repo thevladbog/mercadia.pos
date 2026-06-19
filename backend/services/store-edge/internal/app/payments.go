@@ -19,6 +19,7 @@ var (
 	ErrPaymentCancelNotSupported     = errors.New("payment cancel is not supported for this method")
 	ErrPaymentCannotBeRefunded       = errors.New("payment cannot be refunded")
 	ErrPaymentRefundNotSupported     = errors.New("payment refund is not supported for this method")
+	ErrPaymentRefundAmountInvalid    = errors.New("payment refund amount is invalid")
 	ErrPaymentUseCancelInstead       = errors.New("use payment cancel for same-day pre-fiscal card payments")
 )
 
@@ -363,6 +364,7 @@ type RefundPaymentCommand struct {
 	IdempotencyKey string
 	ReceiptID      string
 	PaymentID      string
+	AmountMinor    int64
 	ActorID        string
 	Reason         string
 }
@@ -376,7 +378,7 @@ func (s *PaymentService) RefundPayment(ctx context.Context, command RefundPaymen
 	}
 
 	const operation = "payments.refund_payment"
-	fingerprint := fmt.Sprintf("%s|%s|%s|%s", command.ReceiptID, command.PaymentID, command.ActorID, command.Reason)
+	fingerprint := fmt.Sprintf("%s|%s|%d|%s|%s", command.ReceiptID, command.PaymentID, command.AmountMinor, command.ActorID, command.Reason)
 	if result, found, err := s.findRefundPaymentIdempotency(ctx, operation, command.IdempotencyKey, command.PaymentID, fingerprint); err != nil || found {
 		return result, err
 	}
@@ -402,13 +404,20 @@ func (s *PaymentService) RefundPayment(ctx context.Context, command RefundPaymen
 	default:
 		return PaymentResult{}, ErrPaymentRefundNotSupported
 	}
-	if payment.Status != domain.PaymentStatusCaptured {
+	refundAmount := command.AmountMinor
+	if refundAmount == 0 {
+		refundAmount = payment.RefundableAmountMinor()
+	}
+	if refundAmount <= 0 || refundAmount > payment.RefundableAmountMinor() {
+		return PaymentResult{}, ErrPaymentRefundAmountInvalid
+	}
+	if payment.RefundableAmountMinor() == 0 {
 		return PaymentResult{}, ErrPaymentCannotBeRefunded
 	}
 
 	if payment.Method == domain.PaymentMethodCardMock &&
 		s.cardTerminal != nil && s.paymentTerminalID != "" && payment.ProviderReference != "" {
-		if err := s.cardTerminal.RefundCardPayment(ctx, s.paymentTerminalID, payment.ProviderReference, payment.AmountMinor); err != nil {
+		if err := s.cardTerminal.RefundCardPayment(ctx, s.paymentTerminalID, payment.ProviderReference, refundAmount); err != nil {
 			if !s.hardwareAgentFallback {
 				return PaymentResult{}, err
 			}
@@ -432,7 +441,7 @@ func (s *PaymentService) RefundPayment(ctx context.Context, command RefundPaymen
 			FromContainerType: domain.CashContainerTypeDrawer,
 			ToContainerID:     "external-customer",
 			ToContainerType:   domain.CashContainerTypeExternal,
-			AmountMinor:       payment.AmountMinor,
+			AmountMinor:       refundAmount,
 			Currency:          "RUB",
 			Reason:            "Cash payment refund for receipt " + receipt.ID,
 			ActorID:           actorID,
@@ -446,7 +455,13 @@ func (s *PaymentService) RefundPayment(ctx context.Context, command RefundPaymen
 		}
 	}
 
-	if err := payment.Refund(now); err != nil {
+	if err := payment.RefundAmount(refundAmount, now); err != nil {
+		if errors.Is(err, domain.ErrPaymentRefundAmountInvalid) {
+			return PaymentResult{}, ErrPaymentRefundAmountInvalid
+		}
+		if errors.Is(err, domain.ErrPaymentCannotBeRefunded) {
+			return PaymentResult{}, ErrPaymentCannotBeRefunded
+		}
 		return PaymentResult{}, err
 	}
 	if err := s.payments.SavePayment(ctx, payment); err != nil {
@@ -534,8 +549,11 @@ func (s *PaymentService) findRefundPaymentIdempotency(ctx context.Context, opera
 func remainingAmountMinor(receipt domain.Receipt, payments []domain.Payment) int64 {
 	paid := int64(0)
 	for _, payment := range payments {
-		if payment.Status == domain.PaymentStatusCaptured {
+		switch payment.Status {
+		case domain.PaymentStatusCaptured:
 			paid += payment.AmountMinor
+		case domain.PaymentStatusPartiallyRefunded:
+			paid += payment.AmountMinor - payment.RefundedAmountMinor
 		}
 	}
 	return receipt.TotalMinor() - paid

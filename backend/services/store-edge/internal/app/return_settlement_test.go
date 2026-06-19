@@ -115,7 +115,117 @@ func TestSettleReturnRefundsMixedCashAndCardPayments(t *testing.T) {
 	}
 }
 
-func TestSettleReturnBlocksPartialReturn(t *testing.T) {
+func TestSettlePartialReturnRefundsCashPayment(t *testing.T) {
+	store, checkout, payments, fiscalization, returns, settlement, cash := newReturnSettlementServices(t)
+	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
+
+	if _, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-1",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCash,
+		AmountMinor:    39998,
+	}); err != nil {
+		t.Fatalf("create payment: %v", err)
+	}
+	if _, err := fiscalization.CreateFiscalDocument(context.Background(), app.CreateFiscalDocumentCommand{
+		IdempotencyKey: "fiscal-1",
+		ReceiptID:      receiptID,
+		DeviceID:       "mock-atol-1",
+	}); err != nil {
+		t.Fatalf("create fiscal document: %v", err)
+	}
+
+	ret := createPartialReceiptReturn(t, store, returns, receiptID, 1)
+
+	result, err := settlement.SettleReturn(context.Background(), app.SettleReturnCommand{
+		IdempotencyKey: "settle-1",
+		ReturnID:       ret.ID,
+	})
+	if err != nil {
+		t.Fatalf("settle partial return: %v", err)
+	}
+	if result.Return.Status != domain.ReturnStatusSettled {
+		t.Fatalf("return status = %s", result.Return.Status)
+	}
+	if len(result.Payments) != 1 {
+		t.Fatalf("payments count = %d", len(result.Payments))
+	}
+	if result.Payments[0].Status != domain.PaymentStatusPartiallyRefunded {
+		t.Fatalf("payment status = %s", result.Payments[0].Status)
+	}
+	if result.Payments[0].RefundedAmountMinor != 19999 {
+		t.Fatalf("refunded amount = %d", result.Payments[0].RefundedAmountMinor)
+	}
+
+	movements, err := cash.ListCashMovements(context.Background(), "store-1", app.PageParams{Limit: 50})
+	if err != nil {
+		t.Fatalf("list cash movements: %v", err)
+	}
+	var reversalTotal int64
+	for _, movement := range movements.Items {
+		if movement.Type == domain.CashMovementTypeCashSaleReversal {
+			reversalTotal += movement.AmountMinor
+		}
+	}
+	if reversalTotal != 19999 {
+		t.Fatalf("reversal total = %d", reversalTotal)
+	}
+}
+
+func TestSettlePartialReturnRefundsMixedPayments(t *testing.T) {
+	store, checkout, payments, fiscalization, returns, settlement, _ := newReturnSettlementServices(t)
+	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
+
+	if _, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-1",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCash,
+		AmountMinor:    20000,
+	}); err != nil {
+		t.Fatalf("create cash payment: %v", err)
+	}
+	if _, err := payments.CreatePayment(context.Background(), app.CreatePaymentCommand{
+		IdempotencyKey: "payment-2",
+		ReceiptID:      receiptID,
+		Method:         domain.PaymentMethodCardMock,
+		AmountMinor:    19998,
+	}); err != nil {
+		t.Fatalf("create card payment: %v", err)
+	}
+	if _, err := fiscalization.CreateFiscalDocument(context.Background(), app.CreateFiscalDocumentCommand{
+		IdempotencyKey: "fiscal-1",
+		ReceiptID:      receiptID,
+		DeviceID:       "mock-atol-1",
+	}); err != nil {
+		t.Fatalf("create fiscal document: %v", err)
+	}
+
+	ret := createPartialReceiptReturn(t, store, returns, receiptID, 1)
+
+	result, err := settlement.SettleReturn(context.Background(), app.SettleReturnCommand{
+		IdempotencyKey: "settle-1",
+		ReturnID:       ret.ID,
+	})
+	if err != nil {
+		t.Fatalf("settle partial return: %v", err)
+	}
+	if len(result.Payments) != 2 {
+		t.Fatalf("payments count = %d", len(result.Payments))
+	}
+
+	var refundedTotal int64
+	for _, payment := range result.Payments {
+		if payment.Status != domain.PaymentStatusPartiallyRefunded {
+			t.Fatalf("payment %s status = %s", payment.ID, payment.Status)
+		}
+		refundedTotal += payment.RefundedAmountMinor
+	}
+	if refundedTotal != 19999 {
+		t.Fatalf("refunded total = %d", refundedTotal)
+	}
+}
+
+func TestSettleReturnBlocksCumulativeTotalExceeded(t *testing.T) {
 	store, checkout, payments, fiscalization, returns, settlement, _ := newReturnSettlementServices(t)
 	receiptID := openOperationalReceiptAndScanTestProduct(t, store, checkout)
 
@@ -135,31 +245,35 @@ func TestSettleReturnBlocksPartialReturn(t *testing.T) {
 		t.Fatalf("create fiscal document: %v", err)
 	}
 
+	first := createPartialReceiptReturn(t, store, returns, receiptID, 1)
+	if _, err := settlement.SettleReturn(context.Background(), app.SettleReturnCommand{
+		IdempotencyKey: "settle-1",
+		ReturnID:       first.ID,
+	}); err != nil {
+		t.Fatalf("first settle: %v", err)
+	}
+
 	receipt, err := store.FindReceipt(context.Background(), receiptID)
 	if err != nil {
 		t.Fatalf("find receipt: %v", err)
 	}
-	if len(receipt.Lines) != 1 {
-		t.Fatalf("lines count = %d", len(receipt.Lines))
-	}
-
-	partial, err := returns.CreateReceiptReturn(context.Background(), app.CreateReceiptReturnCommand{
-		IdempotencyKey: "return-partial",
+	second, err := returns.CreateReceiptReturn(context.Background(), app.CreateReceiptReturnCommand{
+		IdempotencyKey: "return-second",
 		ReceiptID:      receiptID,
-		Lines:          []app.ReturnLineCommand{{LineID: receipt.Lines[0].ID, Quantity: 1}},
-		Reason:         "Partial return",
+		Lines:          []app.ReturnLineCommand{{LineID: receipt.Lines[0].ID, Quantity: 2}},
+		Reason:         "Second return exceeds cumulative cap",
 		ActorID:        "senior-1",
 	})
 	if err != nil {
-		t.Fatalf("create partial return: %v", err)
+		t.Fatalf("create second return: %v", err)
 	}
 
 	_, err = settlement.SettleReturn(context.Background(), app.SettleReturnCommand{
-		IdempotencyKey: "settle-1",
-		ReturnID:       partial.Return.ID,
+		IdempotencyKey: "settle-2",
+		ReturnID:       second.Return.ID,
 	})
-	if !errors.Is(err, app.ErrReturnSettlementRequiresFullReceiptReturn) {
-		t.Fatalf("expected full return required, got %v", err)
+	if !errors.Is(err, app.ErrReturnSettlementCumulativeTotalExceeded) {
+		t.Fatalf("expected cumulative total exceeded, got %v", err)
 	}
 }
 
@@ -287,6 +401,30 @@ func createFullReceiptReturn(t *testing.T, store *memory.Store, returns *app.Ret
 	})
 	if err != nil {
 		t.Fatalf("create receipt return: %v", err)
+	}
+	return result.Return
+}
+
+func createPartialReceiptReturn(t *testing.T, store *memory.Store, returns *app.ReturnsService, receiptID string, quantity int64) domain.Return {
+	t.Helper()
+
+	receipt, err := store.FindReceipt(context.Background(), receiptID)
+	if err != nil {
+		t.Fatalf("find receipt: %v", err)
+	}
+	if len(receipt.Lines) != 1 {
+		t.Fatalf("lines count = %d", len(receipt.Lines))
+	}
+
+	result, err := returns.CreateReceiptReturn(context.Background(), app.CreateReceiptReturnCommand{
+		IdempotencyKey: fmt.Sprintf("return-partial-%s-%d", receiptID, quantity),
+		ReceiptID:      receiptID,
+		Lines:          []app.ReturnLineCommand{{LineID: receipt.Lines[0].ID, Quantity: quantity}},
+		Reason:         "Partial return",
+		ActorID:        "senior-1",
+	})
+	if err != nil {
+		t.Fatalf("create partial return: %v", err)
 	}
 	return result.Return
 }

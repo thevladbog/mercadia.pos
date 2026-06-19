@@ -193,8 +193,9 @@ type CancelPaymentRequest struct {
 }
 
 type RefundPaymentRequest struct {
-	ActorID string `json:"actorId,omitempty"`
-	Reason  string `json:"reason,omitempty"`
+	AmountMinor int64  `json:"amountMinor,omitempty"`
+	ActorID     string `json:"actorId,omitempty"`
+	Reason      string `json:"reason,omitempty"`
 }
 
 type PaymentAcceptedResponse struct {
@@ -206,15 +207,16 @@ type PaymentsResponse struct {
 }
 
 type PaymentResponse struct {
-	ID                string               `json:"id"`
-	ReceiptID         string               `json:"receiptId"`
-	Method            domain.PaymentMethod `json:"method"`
-	Status            domain.PaymentStatus `json:"status"`
-	AmountMinor       int64                `json:"amountMinor"`
-	ProviderReference string               `json:"providerReference,omitempty"`
-	CreatedAt         time.Time            `json:"createdAt"`
-	UpdatedAt         time.Time            `json:"updatedAt"`
-	CapturedAt        time.Time            `json:"capturedAt"`
+	ID                  string               `json:"id"`
+	ReceiptID           string               `json:"receiptId"`
+	Method              domain.PaymentMethod `json:"method"`
+	Status              domain.PaymentStatus `json:"status"`
+	AmountMinor         int64                `json:"amountMinor"`
+	RefundedAmountMinor int64                `json:"refundedAmountMinor"`
+	ProviderReference   string               `json:"providerReference,omitempty"`
+	CreatedAt           time.Time            `json:"createdAt"`
+	UpdatedAt           time.Time            `json:"updatedAt"`
+	CapturedAt          time.Time            `json:"capturedAt"`
 }
 
 type CreateFiscalDocumentRequest struct {
@@ -1656,6 +1658,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 			IdempotencyKey: r.Header.Get("Idempotency-Key"),
 			ReceiptID:      r.PathValue("receiptId"),
 			PaymentID:      r.PathValue("paymentId"),
+			AmountMinor:    request.AmountMinor,
 			ActorID:        request.ActorID,
 			Reason:         request.Reason,
 		})
@@ -1899,6 +1902,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusConflict, "payment_cancel_not_supported", "Payment cancel is not supported for this method", err.Error())
 	case errors.Is(err, app.ErrPaymentCannotBeRefunded), errors.Is(err, domain.ErrPaymentCannotBeRefunded):
 		httpapi.WriteProblem(w, http.StatusConflict, "payment_cannot_be_refunded", "Payment cannot be refunded", err.Error())
+	case errors.Is(err, app.ErrPaymentRefundAmountInvalid), errors.Is(err, domain.ErrPaymentRefundAmountInvalid):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "payment_refund_amount_invalid", "Payment refund amount is invalid", err.Error())
 	case errors.Is(err, app.ErrPaymentRefundNotSupported):
 		httpapi.WriteProblem(w, http.StatusConflict, "payment_refund_not_supported", "Payment refund is not supported for this method", err.Error())
 	case errors.Is(err, app.ErrPaymentUseCancelInstead):
@@ -1970,7 +1975,7 @@ func writeAppError(w http.ResponseWriter, err error) {
 	case errors.Is(err, app.ErrReturnNotFound):
 		httpapi.WriteProblem(w, http.StatusNotFound, "return_not_found", "Return was not found", err.Error())
 	case errors.Is(err, app.ErrReturnAlreadySettled), errors.Is(err, app.ErrReturnSettlementNotAllowed),
-		errors.Is(err, app.ErrReturnSettlementRequiresFullReceiptReturn), errors.Is(err, app.ErrReturnSettlementPaymentMismatch):
+		errors.Is(err, app.ErrReturnSettlementPaymentMismatch), errors.Is(err, app.ErrReturnSettlementCumulativeTotalExceeded):
 		httpapi.WriteProblem(w, http.StatusConflict, "return_settlement_conflict", "Return settlement conflict", err.Error())
 	case errors.Is(err, app.ErrInvalidDiscountCommand):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_discount_command", "Invalid discount command", err.Error())
@@ -2125,15 +2130,16 @@ func productResponse(product domain.Product) ProductResponse {
 
 func paymentResponse(payment domain.Payment) PaymentResponse {
 	return PaymentResponse{
-		ID:                payment.ID,
-		ReceiptID:         payment.ReceiptID,
-		Method:            payment.Method,
-		Status:            payment.Status,
-		AmountMinor:       payment.AmountMinor,
-		ProviderReference: payment.ProviderReference,
-		CreatedAt:         payment.CreatedAt,
-		UpdatedAt:         payment.UpdatedAt,
-		CapturedAt:        payment.CapturedAt,
+		ID:                  payment.ID,
+		ReceiptID:           payment.ReceiptID,
+		Method:              payment.Method,
+		Status:              payment.Status,
+		AmountMinor:         payment.AmountMinor,
+		RefundedAmountMinor: payment.RefundedAmountMinor,
+		ProviderReference:   payment.ProviderReference,
+		CreatedAt:           payment.CreatedAt,
+		UpdatedAt:           payment.UpdatedAt,
+		CapturedAt:          payment.CapturedAt,
 	}
 }
 
@@ -2561,8 +2567,9 @@ func cancelPaymentRequestSchema() httpapi.Schema {
 
 func refundPaymentRequestSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"actorId": httpapi.StringSchema(),
-		"reason":  httpapi.StringSchema(),
+		"amountMinor": {"type": "integer", "minimum": 1},
+		"actorId":     httpapi.StringSchema(),
+		"reason":      httpapi.StringSchema(),
 	})
 }
 
@@ -2720,16 +2727,17 @@ func paymentsResponseSchema() httpapi.Schema {
 
 func paymentResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"id":                httpapi.StringSchema(),
-		"receiptId":         httpapi.StringSchema(),
-		"method":            httpapi.StringSchema(),
-		"status":            httpapi.StringSchema(),
-		"amountMinor":       {"type": "integer"},
-		"providerReference": httpapi.StringSchema(),
-		"createdAt":         httpapi.DateTimeSchema(),
-		"updatedAt":         httpapi.DateTimeSchema(),
-		"capturedAt":        httpapi.DateTimeSchema(),
-	}, "id", "receiptId", "method", "status", "amountMinor", "createdAt", "updatedAt", "capturedAt")
+		"id":                  httpapi.StringSchema(),
+		"receiptId":           httpapi.StringSchema(),
+		"method":              httpapi.StringSchema(),
+		"status":              httpapi.StringSchema(),
+		"amountMinor":         {"type": "integer"},
+		"refundedAmountMinor": {"type": "integer"},
+		"providerReference":   httpapi.StringSchema(),
+		"createdAt":           httpapi.DateTimeSchema(),
+		"updatedAt":           httpapi.DateTimeSchema(),
+		"capturedAt":          httpapi.DateTimeSchema(),
+	}, "id", "receiptId", "method", "status", "amountMinor", "refundedAmountMinor", "createdAt", "updatedAt", "capturedAt")
 }
 
 func fiscalDocumentAcceptedResponseSchema() httpapi.Schema {

@@ -3848,6 +3848,9 @@
                           "receiptId": {
                             "type": "string"
                           },
+                          "refundedAmountMinor": {
+                            "type": "integer"
+                          },
                           "status": {
                             "type": "string"
                           },
@@ -3862,6 +3865,7 @@
                           "method",
                           "status",
                           "amountMinor",
+                          "refundedAmountMinor",
                           "createdAt",
                           "updatedAt",
                           "capturedAt"
@@ -4003,6 +4007,9 @@
                         "receiptId": {
                           "type": "string"
                         },
+                        "refundedAmountMinor": {
+                          "type": "integer"
+                        },
                         "status": {
                           "type": "string"
                         },
@@ -4017,6 +4024,7 @@
                         "method",
                         "status",
                         "amountMinor",
+                        "refundedAmountMinor",
                         "createdAt",
                         "updatedAt",
                         "capturedAt"
@@ -4226,6 +4234,9 @@
                         "receiptId": {
                           "type": "string"
                         },
+                        "refundedAmountMinor": {
+                          "type": "integer"
+                        },
                         "status": {
                           "type": "string"
                         },
@@ -4240,6 +4251,7 @@
                         "method",
                         "status",
                         "amountMinor",
+                        "refundedAmountMinor",
                         "createdAt",
                         "updatedAt",
                         "capturedAt"
@@ -4405,6 +4417,10 @@
                   "actorId": {
                     "type": "string"
                   },
+                  "amountMinor": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
                   "reason": {
                     "type": "string"
                   }
@@ -4449,6 +4465,9 @@
                         "receiptId": {
                           "type": "string"
                         },
+                        "refundedAmountMinor": {
+                          "type": "integer"
+                        },
                         "status": {
                           "type": "string"
                         },
@@ -4463,6 +4482,7 @@
                         "method",
                         "status",
                         "amountMinor",
+                        "refundedAmountMinor",
                         "createdAt",
                         "updatedAt",
                         "capturedAt"
@@ -5281,6 +5301,9 @@
                           "receiptId": {
                             "type": "string"
                           },
+                          "refundedAmountMinor": {
+                            "type": "integer"
+                          },
                           "status": {
                             "type": "string"
                           },
@@ -5295,6 +5318,7 @@
                           "method",
                           "status",
                           "amountMinor",
+                          "refundedAmountMinor",
                           "createdAt",
                           "updatedAt",
                           "capturedAt"

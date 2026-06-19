@@ -9,29 +9,32 @@ type PaymentMethod string
 type PaymentStatus string
 
 const (
-	PaymentMethodCash     PaymentMethod = "cash"
-	PaymentMethodCardMock PaymentMethod = "card_mock"
-	PaymentStatusCaptured  PaymentStatus = "captured"
-	PaymentStatusCancelled PaymentStatus = "cancelled"
-	PaymentStatusRefunded  PaymentStatus = "refunded"
+	PaymentMethodCash              PaymentMethod = "cash"
+	PaymentMethodCardMock          PaymentMethod = "card_mock"
+	PaymentStatusCaptured          PaymentStatus = "captured"
+	PaymentStatusPartiallyRefunded PaymentStatus = "partially_refunded"
+	PaymentStatusCancelled         PaymentStatus = "cancelled"
+	PaymentStatusRefunded          PaymentStatus = "refunded"
 )
 
 var (
-	ErrInvalidPaymentInput      = errors.New("invalid payment input")
-	ErrPaymentCannotBeCancelled = errors.New("payment cannot be cancelled")
-	ErrPaymentCannotBeRefunded  = errors.New("payment cannot be refunded")
+	ErrInvalidPaymentInput         = errors.New("invalid payment input")
+	ErrPaymentCannotBeCancelled    = errors.New("payment cannot be cancelled")
+	ErrPaymentCannotBeRefunded     = errors.New("payment cannot be refunded")
+	ErrPaymentRefundAmountInvalid  = errors.New("payment refund amount is invalid")
 )
 
 type Payment struct {
-	ID                string
-	ReceiptID         string
-	Method            PaymentMethod
-	Status            PaymentStatus
-	AmountMinor       int64
-	ProviderReference string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	CapturedAt        time.Time
+	ID                  string
+	ReceiptID           string
+	Method              PaymentMethod
+	Status              PaymentStatus
+	AmountMinor         int64
+	RefundedAmountMinor int64
+	ProviderReference   string
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	CapturedAt          time.Time
 }
 
 type CreateCapturedPaymentInput struct {
@@ -64,6 +67,17 @@ func CreateCapturedPayment(input CreateCapturedPaymentInput) (Payment, error) {
 	}, nil
 }
 
+func (p Payment) RefundableAmountMinor() int64 {
+	switch p.Status {
+	case PaymentStatusCaptured:
+		return p.AmountMinor
+	case PaymentStatusPartiallyRefunded:
+		return p.AmountMinor - p.RefundedAmountMinor
+	default:
+		return 0
+	}
+}
+
 func (p *Payment) Cancel(now time.Time) error {
 	if p.Status != PaymentStatusCaptured {
 		return ErrPaymentCannotBeCancelled
@@ -77,13 +91,25 @@ func (p *Payment) Cancel(now time.Time) error {
 }
 
 func (p *Payment) Refund(now time.Time) error {
-	if p.Status != PaymentStatusCaptured {
+	return p.RefundAmount(p.RefundableAmountMinor(), now)
+}
+
+func (p *Payment) RefundAmount(amountMinor int64, now time.Time) error {
+	if p.Status != PaymentStatusCaptured && p.Status != PaymentStatusPartiallyRefunded {
 		return ErrPaymentCannotBeRefunded
+	}
+	if amountMinor <= 0 || amountMinor > p.RefundableAmountMinor() {
+		return ErrPaymentRefundAmountInvalid
 	}
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	p.Status = PaymentStatusRefunded
+	p.RefundedAmountMinor += amountMinor
+	if p.RefundedAmountMinor >= p.AmountMinor {
+		p.Status = PaymentStatusRefunded
+	} else {
+		p.Status = PaymentStatusPartiallyRefunded
+	}
 	p.UpdatedAt = now
 	return nil
 }

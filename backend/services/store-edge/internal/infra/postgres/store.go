@@ -284,14 +284,15 @@ func (s *Store) SaveLastSyncedAt(ctx context.Context, storeID string, syncedAt t
 func (s *Store) SavePayment(ctx context.Context, payment domain.Payment) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO payments (
-			id, receipt_id, method, status, amount_minor, provider_reference,
+			id, receipt_id, method, status, amount_minor, refunded_amount_minor, provider_reference,
 			created_at, updated_at, captured_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (id) DO UPDATE SET
 			receipt_id = EXCLUDED.receipt_id,
 			method = EXCLUDED.method,
 			status = EXCLUDED.status,
 			amount_minor = EXCLUDED.amount_minor,
+			refunded_amount_minor = EXCLUDED.refunded_amount_minor,
 			provider_reference = EXCLUDED.provider_reference,
 			updated_at = EXCLUDED.updated_at,
 			captured_at = EXCLUDED.captured_at
@@ -301,6 +302,7 @@ func (s *Store) SavePayment(ctx context.Context, payment domain.Payment) error {
 		string(payment.Method),
 		string(payment.Status),
 		payment.AmountMinor,
+		payment.RefundedAmountMinor,
 		payment.ProviderReference,
 		payment.CreatedAt,
 		payment.UpdatedAt,
@@ -311,7 +313,7 @@ func (s *Store) SavePayment(ctx context.Context, payment domain.Payment) error {
 
 func (s *Store) FindPayment(ctx context.Context, paymentID string) (domain.Payment, error) {
 	row := s.pool.QueryRow(ctx, `
-		SELECT id, receipt_id, method, status, amount_minor, provider_reference,
+		SELECT id, receipt_id, method, status, amount_minor, refunded_amount_minor, provider_reference,
 			created_at, updated_at, captured_at
 		FROM payments
 		WHERE id = $1
@@ -325,7 +327,7 @@ func (s *Store) FindPayment(ctx context.Context, paymentID string) (domain.Payme
 
 func (s *Store) FindPaymentsByReceipt(ctx context.Context, receiptID string) ([]domain.Payment, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, receipt_id, method, status, amount_minor, provider_reference,
+		SELECT id, receipt_id, method, status, amount_minor, refunded_amount_minor, provider_reference,
 			created_at, updated_at, captured_at
 		FROM payments
 		WHERE receipt_id = $1
@@ -1053,6 +1055,7 @@ func scanPayment(row rowScanner) (domain.Payment, error) {
 		&method,
 		&status,
 		&payment.AmountMinor,
+		&payment.RefundedAmountMinor,
 		&payment.ProviderReference,
 		&payment.CreatedAt,
 		&payment.UpdatedAt,
