@@ -11,6 +11,7 @@ import {
   terminalStatusLabel,
 } from './monitoring-utils.js';
 import { formatMinorAmount, formatTimestamp } from './reporting-utils.js';
+import { TerminalHeartbeatEventsPanel } from './TerminalHeartbeatEventsPanel.js';
 import { PageBackLink } from './users-shared.js';
 
 export function TerminalMonitoringDetailPage() {
@@ -203,6 +204,13 @@ export function TerminalMonitoringDetailPage() {
           <p className="muted">No live monitoring data for this terminal.</p>
         )}
       </div>
+
+      <TerminalHeartbeatEventsPanel
+        maxEvents={10}
+        storeId={storeId}
+        terminalId={terminalId}
+        title="Recent heartbeats"
+      />
     </section>
   );
 }

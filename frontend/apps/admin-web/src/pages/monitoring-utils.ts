@@ -1,5 +1,33 @@
 export const MONITORING_REFRESH_INTERVAL_MS = 5000;
 
+export type StreamConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error';
+
+export function streamConnectionStatusLabel(status: StreamConnectionStatus): string {
+  switch (status) {
+    case 'connecting':
+      return 'Connecting';
+    case 'connected':
+      return 'Connected';
+    case 'error':
+      return 'Error';
+    default:
+      return 'Disconnected';
+  }
+}
+
+export function streamConnectionStatusClass(status: StreamConnectionStatus): string {
+  switch (status) {
+    case 'connected':
+      return 'status-badge status-online';
+    case 'connecting':
+      return 'status-badge status-attention';
+    case 'error':
+      return 'status-badge status-offline';
+    default:
+      return 'status-badge';
+  }
+}
+
 type TerminalStatusInput = {
   attentionNeeded?: boolean;
   status: string;

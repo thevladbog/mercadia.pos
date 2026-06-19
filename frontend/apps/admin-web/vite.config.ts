@@ -16,7 +16,11 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '^/v1/stores/[^/]+/monitoring': {
+      '^/v1/stores/[^/]+/(monitoring|terminals)': {
+        target: 'http://127.0.0.1:8081',
+        changeOrigin: true,
+      },
+      '/v1/terminals': {
         target: 'http://127.0.0.1:8081',
         changeOrigin: true,
       },
