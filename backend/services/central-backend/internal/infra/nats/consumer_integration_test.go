@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"mercadia.dev/pos/services/central-backend/internal/app"
+	"mercadia.dev/pos/services/central-backend/internal/domain"
 	"mercadia.dev/pos/services/central-backend/internal/infra/memory"
 	centralnats "mercadia.dev/pos/services/central-backend/internal/infra/nats"
 )
@@ -32,6 +33,7 @@ func TestConsumerProcessesPublishedMessageWhenNatsAvailable(t *testing.T) {
 	syncService := app.NewSyncService(store, store, store, store, store, store, store)
 	paymentsService := app.NewPaymentsService(store, store)
 	cashMovementsService := app.NewCashMovementsService(store, store)
+	fiscalDocumentsService := app.NewFiscalDocumentsService(store, store)
 	consumer, err := centralnats.NewConsumer(natsURL, syncService)
 	if err != nil {
 		t.Fatalf("new consumer: %v", err)
@@ -52,6 +54,9 @@ func TestConsumerProcessesPublishedMessageWhenNatsAvailable(t *testing.T) {
 
 	capturedAt := time.Date(2026, 6, 19, 14, 30, 0, 0, time.UTC)
 	postedAt := time.Date(2026, 6, 19, 15, 0, 0, 0, time.UTC)
+	cancelledAt := time.Date(2026, 6, 19, 15, 30, 0, 0, time.UTC)
+	refundedAt := time.Date(2026, 6, 19, 16, 0, 0, 0, time.UTC)
+	fiscalizedAt := time.Date(2026, 6, 19, 16, 30, 0, 0, time.UTC)
 
 	messages := []struct {
 		eventID   string
@@ -87,6 +92,50 @@ func TestConsumerProcessesPublishedMessageWhenNatsAvailable(t *testing.T) {
 				"postedAt":          postedAt,
 			},
 		},
+		{
+			eventID:   "integration-pay-cancel-1",
+			eventType: "payment.cancelled",
+			payload: map[string]any{
+				"storeId":     "store-1",
+				"paymentId":   "pay-1",
+				"receiptId":   "rcpt-1",
+				"method":      "card",
+				"amountMinor": int64(150000),
+				"cancelledAt": cancelledAt,
+				"actorId":     "manager-1",
+				"reason":      "void",
+			},
+		},
+		{
+			eventID:   "integration-pay-refund-1",
+			eventType: "payment.refunded",
+			payload: map[string]any{
+				"storeId":              "store-1",
+				"paymentId":            "pay-2",
+				"receiptId":            "rcpt-2",
+				"method":               "card",
+				"amountMinor":          int64(80000),
+				"refundedAmountMinor":  int64(80000),
+				"remainingAmountMinor": int64(0),
+				"refundedAt":           refundedAt,
+				"actorId":              "manager-1",
+				"reason":               "return",
+			},
+		},
+		{
+			eventID:   "integration-fisc-1",
+			eventType: "fiscal.document.created",
+			payload: map[string]any{
+				"storeId":          "store-1",
+				"fiscalDocumentId": "fisc-1",
+				"receiptId":        "rcpt-1",
+				"kind":             "sale",
+				"amountMinor":      int64(150000),
+				"deviceId":         "kkt-1",
+				"fiscalSign":       "sign-abc",
+				"fiscalizedAt":     fiscalizedAt,
+			},
+		},
 	}
 
 	for _, message := range messages {
@@ -104,34 +153,64 @@ func TestConsumerProcessesPublishedMessageWhenNatsAvailable(t *testing.T) {
 		}
 	}
 
+	expectedEvents := []string{
+		"integration-pay-1",
+		"integration-cash-1",
+		"integration-pay-cancel-1",
+		"integration-pay-refund-1",
+		"integration-fisc-1",
+	}
+
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		paymentExists, err := store.ExistsSyncEvent(context.Background(), "store-1", "integration-pay-1")
-		if err != nil {
-			t.Fatalf("check payment sync event: %v", err)
-		}
-		cashExists, err := store.ExistsSyncEvent(context.Background(), "store-1", "integration-cash-1")
-		if err != nil {
-			t.Fatalf("check cash sync event: %v", err)
-		}
-		if paymentExists && cashExists {
-			payment, err := paymentsService.GetPayment(context.Background(), "store-1", "pay-1")
+		allEventsPersisted := true
+		for _, eventID := range expectedEvents {
+			exists, err := store.ExistsSyncEvent(context.Background(), "store-1", eventID)
 			if err != nil {
-				t.Fatalf("get projected payment: %v", err)
+				t.Fatalf("check sync event %s: %v", eventID, err)
 			}
-			if payment.ReceiptID != "rcpt-1" {
-				t.Fatalf("projected payment = %+v", payment)
+			if !exists {
+				allEventsPersisted = false
+				break
 			}
-			movement, err := cashMovementsService.GetCashMovement(context.Background(), "store-1", "cash-1")
-			if err != nil {
-				t.Fatalf("get projected cash movement: %v", err)
-			}
-			if movement.Type != "safe_to_bank" {
-				t.Fatalf("projected cash movement = %+v", movement)
-			}
-			return
 		}
-		time.Sleep(50 * time.Millisecond)
+		if !allEventsPersisted {
+			time.Sleep(50 * time.Millisecond)
+			continue
+		}
+
+		payment, err := paymentsService.GetPayment(context.Background(), "store-1", "pay-1")
+		if err != nil {
+			t.Fatalf("get projected payment: %v", err)
+		}
+		if payment.Status != domain.SyncedPaymentStatusCancelled {
+			t.Fatalf("projected payment = %+v", payment)
+		}
+
+		refunded, err := paymentsService.GetPayment(context.Background(), "store-1", "pay-2")
+		if err != nil {
+			t.Fatalf("get refunded payment: %v", err)
+		}
+		if refunded.Status != domain.SyncedPaymentStatusRefunded {
+			t.Fatalf("refunded payment = %+v", refunded)
+		}
+
+		movement, err := cashMovementsService.GetCashMovement(context.Background(), "store-1", "cash-1")
+		if err != nil {
+			t.Fatalf("get projected cash movement: %v", err)
+		}
+		if movement.Type != "safe_to_bank" {
+			t.Fatalf("projected cash movement = %+v", movement)
+		}
+
+		document, err := fiscalDocumentsService.GetFiscalDocument(context.Background(), "store-1", "fisc-1")
+		if err != nil {
+			t.Fatalf("get projected fiscal document: %v", err)
+		}
+		if document.FiscalSign != "sign-abc" {
+			t.Fatalf("projected fiscal document = %+v", document)
+		}
+		return
 	}
 	t.Fatal("expected sync events and projections to be persisted by consumer")
 }

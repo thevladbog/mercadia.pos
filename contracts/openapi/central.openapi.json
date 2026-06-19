@@ -997,6 +997,315 @@
         ]
       }
     },
+    "/v1/stores/{storeId}/fiscal-documents": {
+      "get": {
+        "operationId": "listStoreFiscalDocuments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of items to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "amountMinor": {
+                            "type": "integer"
+                          },
+                          "deviceId": {
+                            "type": "string"
+                          },
+                          "fiscalSign": {
+                            "type": "string"
+                          },
+                          "fiscalizedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "receiptId": {
+                            "type": "string"
+                          },
+                          "returnId": {
+                            "type": "string"
+                          },
+                          "sourceEventId": {
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          },
+                          "syncedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storeId",
+                          "receiptId",
+                          "kind",
+                          "amountMinor",
+                          "deviceId",
+                          "fiscalSign",
+                          "fiscalizedAt",
+                          "sourceEventId",
+                          "syncedAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "totalCount": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "totalCount"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Synchronized fiscal documents"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid list query"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store not found"
+          }
+        },
+        "summary": "List synchronized fiscal documents for a store",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/fiscal-documents/{fiscalDocumentId}": {
+      "get": {
+        "operationId": "getStoreFiscalDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fiscalDocumentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "amountMinor": {
+                      "type": "integer"
+                    },
+                    "deviceId": {
+                      "type": "string"
+                    },
+                    "fiscalSign": {
+                      "type": "string"
+                    },
+                    "fiscalizedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "receiptId": {
+                      "type": "string"
+                    },
+                    "returnId": {
+                      "type": "string"
+                    },
+                    "sourceEventId": {
+                      "type": "string"
+                    },
+                    "storeId": {
+                      "type": "string"
+                    },
+                    "syncedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "storeId",
+                    "receiptId",
+                    "kind",
+                    "amountMinor",
+                    "deviceId",
+                    "fiscalSign",
+                    "fiscalizedAt",
+                    "sourceEventId",
+                    "syncedAt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Synchronized fiscal document"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store or fiscal document not found"
+          }
+        },
+        "summary": "Get a synchronized fiscal document",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
     "/v1/stores/{storeId}/payments": {
       "get": {
         "operationId": "listStorePayments",
@@ -1045,11 +1354,18 @@
                           "amountMinor": {
                             "type": "integer"
                           },
+                          "cancelledAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
                           "capturedAt": {
                             "format": "date-time",
                             "type": "string"
                           },
                           "id": {
+                            "type": "string"
+                          },
+                          "lastEventId": {
                             "type": "string"
                           },
                           "method": {
@@ -1058,13 +1374,26 @@
                           "receiptId": {
                             "type": "string"
                           },
+                          "refundedAmountMinor": {
+                            "type": "integer"
+                          },
+                          "remainingAmountMinor": {
+                            "type": "integer"
+                          },
                           "sourceEventId": {
+                            "type": "string"
+                          },
+                          "status": {
                             "type": "string"
                           },
                           "storeId": {
                             "type": "string"
                           },
                           "syncedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "updatedAt": {
                             "format": "date-time",
                             "type": "string"
                           }
@@ -1075,9 +1404,14 @@
                           "receiptId",
                           "method",
                           "amountMinor",
+                          "status",
                           "capturedAt",
+                          "refundedAmountMinor",
+                          "remainingAmountMinor",
                           "sourceEventId",
-                          "syncedAt"
+                          "lastEventId",
+                          "syncedAt",
+                          "updatedAt"
                         ],
                         "type": "object"
                       },
@@ -1203,11 +1537,18 @@
                     "amountMinor": {
                       "type": "integer"
                     },
+                    "cancelledAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
                     "capturedAt": {
                       "format": "date-time",
                       "type": "string"
                     },
                     "id": {
+                      "type": "string"
+                    },
+                    "lastEventId": {
                       "type": "string"
                     },
                     "method": {
@@ -1216,13 +1557,26 @@
                     "receiptId": {
                       "type": "string"
                     },
+                    "refundedAmountMinor": {
+                      "type": "integer"
+                    },
+                    "remainingAmountMinor": {
+                      "type": "integer"
+                    },
                     "sourceEventId": {
+                      "type": "string"
+                    },
+                    "status": {
                       "type": "string"
                     },
                     "storeId": {
                       "type": "string"
                     },
                     "syncedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "updatedAt": {
                       "format": "date-time",
                       "type": "string"
                     }
@@ -1233,9 +1587,14 @@
                     "receiptId",
                     "method",
                     "amountMinor",
+                    "status",
                     "capturedAt",
+                    "refundedAmountMinor",
+                    "remainingAmountMinor",
                     "sourceEventId",
-                    "syncedAt"
+                    "lastEventId",
+                    "syncedAt",
+                    "updatedAt"
                   ],
                   "type": "object"
                 }
