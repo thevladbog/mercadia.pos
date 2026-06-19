@@ -39,6 +39,7 @@ type ShiftService struct {
 	receipts     ShiftReceiptRepository
 	days         OperationalDayRepository
 	idempotency  IdempotencyStore
+	journal      OperationJournalRecorder
 	transactions TransactionRunner
 	now          func() time.Time
 	newID        func(prefix string) string
@@ -94,6 +95,12 @@ func WithShiftOperationalDayRepository(days OperationalDayRepository) ShiftOptio
 func WithShiftTransactionRunner(runner TransactionRunner) ShiftOption {
 	return func(service *ShiftService) {
 		service.transactions = runner
+	}
+}
+
+func WithShiftJournal(journal OperationJournalRecorder) ShiftOption {
+	return func(service *ShiftService) {
+		service.journal = journal
 	}
 }
 
@@ -199,9 +206,20 @@ func (s *ShiftService) OpenShift(ctx context.Context, command OpenShiftCommand) 
 			if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
 				return err
 			}
+			if err := s.recordCashMovementJournal(ctx, movement); err != nil {
+				return err
+			}
 		}
 
 		if err := s.shifts.SaveShift(ctx, shift); err != nil {
+			return err
+		}
+
+		openSummary := fmt.Sprintf("drawer=%s openingCash=%d", shift.DrawerID, command.OpeningCashMinor)
+		if command.SourceSafeID != "" {
+			openSummary += fmt.Sprintf(" safe=%s", command.SourceSafeID)
+		}
+		if err := s.recordShiftJournal(ctx, command.StoreID, "shift.opened", command.CashierID, shift.ID, openSummary); err != nil {
 			return err
 		}
 
@@ -288,9 +306,24 @@ func (s *ShiftService) CloseShift(ctx context.Context, command CloseShiftCommand
 			if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
 				return err
 			}
+			if err := s.recordCashMovementJournal(ctx, movement); err != nil {
+				return err
+			}
 		}
 
 		if err := s.shifts.SaveShift(ctx, shift); err != nil {
+			return err
+		}
+
+		closeSummary := fmt.Sprintf("closingCash=%d", command.ClosingCashMinor)
+		if command.SafeID != "" {
+			closeSummary += fmt.Sprintf(" safe=%s", command.SafeID)
+		}
+		actorID := command.ActorID
+		if actorID == "" {
+			actorID = shift.CashierID
+		}
+		if err := s.recordShiftJournal(ctx, shift.StoreID, "shift.closed", actorID, shift.ID, closeSummary); err != nil {
 			return err
 		}
 
@@ -337,6 +370,33 @@ func (s *ShiftService) ListShiftsByOperationalDay(ctx context.Context, operation
 		return PageResult[domain.Shift]{}, err
 	}
 	return PaginateSlice(shifts, params), nil
+}
+
+func (s *ShiftService) recordShiftJournal(ctx context.Context, storeID string, operationType string, actorID string, referenceID string, summary string) error {
+	if s.journal == nil {
+		return nil
+	}
+	return s.journal.RecordOperation(ctx, RecordOperationCommand{
+		StoreID:       storeID,
+		OperationType: operationType,
+		ActorID:       actorID,
+		ReferenceID:   referenceID,
+		Summary:       summary,
+	})
+}
+
+func (s *ShiftService) recordCashMovementJournal(ctx context.Context, movement domain.CashMovement) error {
+	if s.journal == nil {
+		return nil
+	}
+	return s.journal.RecordOperation(ctx, RecordOperationCommand{
+		StoreID:       movement.StoreID,
+		OperationType: "cash.movement.created",
+		ActorID:       movement.ActorID,
+		ReferenceID:   movement.ID,
+		Summary: fmt.Sprintf("%s %d from %s to %s",
+			movement.Type, movement.AmountMinor, movement.FromContainerID, movement.ToContainerID),
+	})
 }
 
 func (s *ShiftService) findShiftIdempotency(ctx context.Context, operation string, key string, targetID string, fingerprint string) (ShiftResult, bool, error) {

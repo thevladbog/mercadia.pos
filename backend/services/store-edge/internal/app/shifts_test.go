@@ -325,6 +325,57 @@ func TestOpenShiftRejectsOpeningCashWithoutSafe(t *testing.T) {
 	}
 }
 
+func TestOpenCloseShiftRecordsOperationJournal(t *testing.T) {
+	store := memory.NewStore()
+	var counter int
+	journal := app.NewOperationJournalService(store)
+	service := app.NewShiftService(store, store,
+		app.WithShiftCashLedger(store),
+		app.WithShiftJournal(journal),
+		app.WithShiftClock(func() time.Time {
+			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+		}),
+		app.WithShiftIDGenerator(func(prefix string) string {
+			counter++
+			return fmt.Sprintf("%s-test-%d", prefix, counter)
+		}),
+	)
+
+	opened, err := service.OpenShift(context.Background(), testOpenShiftCommand())
+	if err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+	if _, err := service.CloseShift(context.Background(), app.CloseShiftCommand{
+		IdempotencyKey:   "shift-close-1",
+		ShiftID:          opened.Shift.ID,
+		ClosingCashMinor: 125000,
+		SafeID:           "safe-1",
+		ActorID:          "cashier-1",
+		ApprovedByID:     "senior-1",
+	}); err != nil {
+		t.Fatalf("close shift: %v", err)
+	}
+
+	entries, err := journal.ListOperationJournal(context.Background(), "store-1", app.PageParams{Limit: 50})
+	if err != nil {
+		t.Fatalf("list journal: %v", err)
+	}
+	if entries.TotalCount < 4 {
+		t.Fatalf("expected at least 4 journal entries, got %+v", entries.Items)
+	}
+
+	types := map[string]int{}
+	for _, entry := range entries.Items {
+		types[entry.OperationType]++
+	}
+	if types["shift.opened"] != 1 || types["shift.closed"] != 1 {
+		t.Fatalf("shift journal types = %+v", types)
+	}
+	if types["cash.movement.created"] < 2 {
+		t.Fatalf("expected 2 cash movement journal entries, got %+v", types)
+	}
+}
+
 func TestCloseShiftWithCashRejectsSelfApproval(t *testing.T) {
 	store := memory.NewStore()
 	service := app.NewShiftService(store, store, app.WithShiftCashLedger(store))

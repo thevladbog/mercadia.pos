@@ -467,3 +467,116 @@ func TestRunRollsBackShiftCloseWhenIdempotencyFails(t *testing.T) {
 		t.Fatalf("expected no cash movements, got %d", len(movements))
 	}
 }
+
+func TestRunRollsBackShiftCloseJournalWhenIdempotencyFails(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	now := time.Date(2026, 6, 19, 15, 0, 0, 0, time.UTC)
+
+	day, err := domain.OpenOperationalDay(domain.OpenOperationalDayInput{
+		ID:           "day_shift_journal_tx",
+		StoreID:      "store_test",
+		BusinessDate: "2026-06-19",
+		OpenedByID:   "manager_1",
+		Now:          now,
+	})
+	if err != nil {
+		t.Fatalf("open operational day: %v", err)
+	}
+	if err := store.SaveOperationalDay(ctx, day); err != nil {
+		t.Fatalf("save operational day: %v", err)
+	}
+
+	shift, err := domain.OpenShift(domain.OpenShiftInput{
+		ID:               "shift_journal_tx",
+		StoreID:          "store_test",
+		OperationalDayID: day.ID,
+		BusinessDate:     day.BusinessDate,
+		TerminalID:       "terminal_1",
+		CashierID:        "cashier_1",
+		DrawerID:         "drawer_1",
+		OpeningCashMinor: 0,
+		Now:              now,
+	})
+	if err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+	if err := store.SaveShift(ctx, shift); err != nil {
+		t.Fatalf("save shift: %v", err)
+	}
+	if err := shift.Close(5000, now); err != nil {
+		t.Fatalf("close shift in memory: %v", err)
+	}
+
+	movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
+		ID:                "cash_shift_journal_tx",
+		StoreID:           "store_test",
+		Type:              domain.CashMovementTypeDrawerToSafe,
+		FromContainerID:   "drawer_1",
+		FromContainerType: domain.CashContainerTypeDrawer,
+		ToContainerID:     "safe_1",
+		ToContainerType:   domain.CashContainerTypeSafe,
+		AmountMinor:       5000,
+		Currency:          "RUB",
+		Reason:            "test collection",
+		ActorID:           "cashier_1",
+		ApprovedByID:      "senior_1",
+		Now:               now,
+	})
+	if err != nil {
+		t.Fatalf("create movement: %v", err)
+	}
+
+	journalEntry, err := domain.NewOperationJournalEntry(domain.CreateOperationJournalEntryInput{
+		ID:            "oj_shift_close_tx",
+		StoreID:       "store_test",
+		OperationType: "shift.closed",
+		ActorID:       "cashier_1",
+		ReferenceID:   shift.ID,
+		Summary:       "closingCash=5000 safe=safe_1",
+		Now:           now,
+	})
+	if err != nil {
+		t.Fatalf("new journal entry: %v", err)
+	}
+
+	err = store.Run(ctx, func(txCtx context.Context) error {
+		if err := store.SaveCashMovement(txCtx, movement); err != nil {
+			return err
+		}
+		if err := store.SaveShift(txCtx, shift); err != nil {
+			return err
+		}
+		if err := store.SaveOperationJournalEntry(txCtx, journalEntry); err != nil {
+			return err
+		}
+		return errors.New("simulated idempotency failure")
+	})
+	if err == nil {
+		t.Fatal("expected transaction error")
+	}
+
+	journalResult, err := store.ListOperationJournalEntries(ctx, "store_test", app.PageParams{Limit: 10, Offset: 0})
+	if err != nil {
+		t.Fatalf("list journal entries: %v", err)
+	}
+	if journalResult.TotalCount != 0 || len(journalResult.Items) != 0 {
+		t.Fatalf("expected no journal rows, got total=%d items=%d", journalResult.TotalCount, len(journalResult.Items))
+	}
+
+	foundShift, err := store.FindShift(ctx, shift.ID)
+	if err != nil {
+		t.Fatalf("find shift: %v", err)
+	}
+	if foundShift.Status != domain.ShiftStatusOpen {
+		t.Fatalf("expected shift to remain open, got %s", foundShift.Status)
+	}
+
+	movements, err := store.ListCashMovements(ctx, "store_test")
+	if err != nil {
+		t.Fatalf("list cash movements: %v", err)
+	}
+	if len(movements) != 0 {
+		t.Fatalf("expected no cash movements, got %d", len(movements))
+	}
+}
