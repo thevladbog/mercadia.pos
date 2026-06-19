@@ -22,6 +22,7 @@ type OutboxRecorder interface {
 	RecordFiscalDocumentCreated(ctx context.Context, document domain.FiscalDocument, storeID string) error
 	RecordCashMovementPosted(ctx context.Context, movement domain.CashMovement) error
 	RecordOperationalDayClosed(ctx context.Context, day domain.OperationalDay) error
+	RecordReturnSettled(ctx context.Context, ret domain.Return, paymentIDs []string, storeID string, actorID string) error
 }
 
 type OutboxService struct {
@@ -221,6 +222,29 @@ func (s *OutboxService) RecordOperationalDayClosed(ctx context.Context, day doma
 		AggregateType: domain.OutboxAggregateOperationalDay,
 		AggregateID:   day.ID,
 		EventType:     domain.OutboxEventOperationalDayClosed,
+		Payload:       payload,
+		CreatedAt:     s.now(),
+	})
+}
+
+func (s *OutboxService) RecordReturnSettled(ctx context.Context, ret domain.Return, paymentIDs []string, storeID string, actorID string) error {
+	payload, err := json.Marshal(map[string]any{
+		"storeId":     storeID,
+		"returnId":    ret.ID,
+		"receiptId":   ret.ReceiptID,
+		"totalMinor":  ret.TotalMinor,
+		"paymentIds":  paymentIDs,
+		"settledAt":   s.now(),
+		"actorId":     actorID,
+	})
+	if err != nil {
+		return err
+	}
+	return s.Enqueue(ctx, domain.OutboxEvent{
+		ID:            s.newID("obx"),
+		AggregateType: domain.OutboxAggregateReturn,
+		AggregateID:   ret.ID,
+		EventType:     domain.OutboxEventReturnSettled,
 		Payload:       payload,
 		CreatedAt:     s.now(),
 	})

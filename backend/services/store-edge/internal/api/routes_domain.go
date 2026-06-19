@@ -111,6 +111,16 @@ type ReturnAcceptedResponse struct {
 	Return ReturnResponse `json:"return"`
 }
 
+type SettleReturnRequest struct {
+	ActorID string `json:"actorId,omitempty"`
+	Reason  string `json:"reason,omitempty"`
+}
+
+type ReturnSettledResponse struct {
+	Return   ReturnResponse    `json:"return"`
+	Payments []PaymentResponse `json:"payments"`
+}
+
 type ReturnResponse struct {
 	ID           string               `json:"id"`
 	StoreID      string               `json:"storeId"`
@@ -163,6 +173,7 @@ func mountDomainRoutes(
 	spec *httpapi.Spec,
 	auth *app.AuthService,
 	returns *app.ReturnsService,
+	returnSettlement *app.ReturnSettlementService,
 	discounts *app.DiscountService,
 	marking *app.MarkingService,
 	journal *app.OperationJournalService,
@@ -243,6 +254,52 @@ func mountDomainRoutes(
 			return
 		}
 		httpapi.WriteJSON(w, http.StatusAccepted, ReturnAcceptedResponse{Return: returnResponse(result.Return)})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:              http.MethodPost,
+		Path:                "/v1/returns/{returnId}/settle",
+		OperationID:         "settleReturn",
+		Summary:             "Settle with-receipt return by refunding captured payments",
+		Tags:                []string{"returns"},
+		RequiresIdempotency: true,
+		RequestBody: &httpapi.BodySpec{
+			Description: "Return settlement command",
+			Required:    false,
+			Schema:      settleReturnRequestSchema(),
+		},
+		Responses: map[string]httpapi.ResponseSpec{
+			"202": {Description: "Return settled", Schema: returnSettledResponseSchema()},
+			"400": {Description: "Invalid settlement command", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Return was not found", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Return settlement conflict", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
+			return
+		}
+		var request SettleReturnRequest
+		if r.ContentLength > 0 {
+			if err := httpapi.DecodeJSON(r, &request); err != nil {
+				httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_json", "Invalid JSON", err.Error())
+				return
+			}
+		}
+		result, err := returnSettlement.SettleReturn(r.Context(), app.SettleReturnCommand{
+			IdempotencyKey: r.Header.Get("Idempotency-Key"),
+			ReturnID:       r.PathValue("returnId"),
+			ActorID:        request.ActorID,
+			Reason:         request.Reason,
+		})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusAccepted, ReturnSettledResponse{
+			Return:   returnResponse(result.Return),
+			Payments: paymentResponses(result.Payments),
+		})
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
@@ -514,6 +571,20 @@ func returnAcceptedResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"return": returnResponseSchema(),
 	}, "return")
+}
+
+func settleReturnRequestSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"actorId": httpapi.StringSchema(),
+		"reason":  httpapi.StringSchema(),
+	})
+}
+
+func returnSettledResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"return":   returnResponseSchema(),
+		"payments": httpapi.ArraySchema(paymentResponseSchema()),
+	}, "return", "payments")
 }
 
 func returnResponseSchema() httpapi.Schema {

@@ -16,6 +16,7 @@ type ReturnStatus string
 
 const (
 	ReturnStatusCompleted ReturnStatus = "completed"
+	ReturnStatusSettled   ReturnStatus = "settled"
 )
 
 var (
@@ -23,6 +24,8 @@ var (
 	ErrReceiptNotReturnable   = errors.New("receipt is not returnable")
 	ErrReturnLineNotFound     = errors.New("return line not found")
 	ErrReturnQuantityExceeded = errors.New("return quantity exceeds line quantity")
+	ErrReturnAlreadySettled   = errors.New("return is already settled")
+	ErrReturnSettlementNotAllowed = errors.New("return settlement is not allowed")
 )
 
 type ReturnLine struct {
@@ -147,5 +150,19 @@ func ValidateReceiptReturn(receipt Receipt, lines []ReturnLineInput) error {
 			return ErrReturnQuantityExceeded
 		}
 	}
+	return nil
+}
+
+func (r *Return) MarkSettled(now time.Time) error {
+	if r.Status == ReturnStatusSettled {
+		return ErrReturnAlreadySettled
+	}
+	if r.Status != ReturnStatusCompleted {
+		return ErrReturnSettlementNotAllowed
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	r.Status = ReturnStatusSettled
 	return nil
 }

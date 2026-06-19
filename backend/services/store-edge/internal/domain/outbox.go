@@ -13,6 +13,7 @@ const (
 	OutboxAggregateFiscalDocument = "fiscal_document"
 	OutboxAggregateCashMovement   = "cash_movement"
 	OutboxAggregateOperationalDay = "operational_day"
+	OutboxAggregateReturn         = "return"
 )
 
 const (
@@ -22,6 +23,7 @@ const (
 	OutboxEventFiscalDocumentCreated = "fiscal.document.created"
 	OutboxEventCashMovementPosted    = "cash.movement.posted"
 	OutboxEventOperationalDayClosed  = "operational_day.closed"
+	OutboxEventReturnSettled         = "return.settled"
 )
 
 type OutboxEvent struct {

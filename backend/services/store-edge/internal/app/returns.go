@@ -13,6 +13,8 @@ var (
 	ErrReturnNotFound           = errors.New("return not found")
 	ErrInvalidReturnCommand     = errors.New("invalid return command")
 	ErrReceiptNotReturnable     = errors.New("receipt is not returnable")
+	ErrReturnAlreadySettled     = errors.New("return is already settled")
+	ErrReturnSettlementNotAllowed = errors.New("return settlement is not allowed")
 )
 
 type ReturnRepository interface {

@@ -152,6 +152,9 @@ The Store Edge service has the first checkout and terminal monitoring paths:
 - `POST /v1/receipts/{receiptId}/payments/{paymentId}/refund` - refunds a captured payment after fiscalization or on a later business date; same-day pre-fiscal payments must use cancel instead. Supports `card_mock` (hardware-agent `refund` when enabled) and `cash` (posts `cash_sale_reversal` ledger movement).
 - `POST /v1/receipts/{receiptId}/fiscal-documents` - creates a mock fiscal document for a fully paid receipt.
 - `GET /v1/receipts/{receiptId}/fiscal-documents` - lists receipt fiscal documents.
+- `POST /v1/receipts/{receiptId}/returns` - creates a with-receipt return against a fiscalized receipt.
+- `POST /v1/stores/{storeId}/returns/no-receipt` - creates a no-receipt return with approval.
+- `POST /v1/returns/{returnId}/settle` - settles a with-receipt return by refunding all captured payments on the original receipt. MVP supports full receipt returns only; partial returns and no-receipt returns are rejected.
 - `POST /v1/stores/{storeId}/cash-movements` - posts an immutable cash movement between cash containers.
 - `GET /v1/stores/{storeId}/cash-movements` - lists cash movements posted for the store.
 - `GET /v1/stores/{storeId}/cash-balances` - derives current cash container balances from posted movements.
@@ -173,6 +176,7 @@ Same-day card payment cancel uses the hardware-agent `cancel` command when a ter
 Same-day cash payment cancel posts a compensating `cash_sale_reversal` movement from the receipt drawer back to the external customer container.
 Post-sale card refunds use the hardware-agent `refund` command with the original provider reference.
 Post-fiscal cash refunds post a compensating `cash_sale_reversal` movement from the receipt drawer back to the external customer container.
+Return settlement refunds all captured payments on the original receipt through the existing refund paths (card via hardware-agent when enabled, cash via ledger reversal) and transitions the return to `settled`. Only full with-receipt returns against fiscalized receipts are supported in the current MVP.
 
 Command endpoints require `Idempotency-Key`. Reusing the same key for the same command returns
 the same result; reusing it with a different command payload returns an idempotency conflict.

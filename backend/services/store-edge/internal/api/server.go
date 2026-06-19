@@ -673,6 +673,10 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	}
 	terminalMonitoring := app.NewTerminalMonitoringService(store, store, store, store, cash, monitoringOptions...)
 	returns := app.NewReturnsService(store, store, store, auth, app.WithReturnsJournal(journal))
+	returnSettlement := app.NewReturnSettlementService(store, store, store, payments, store,
+		app.WithReturnSettlementOutboxRecorder(outbox),
+		app.WithReturnSettlementJournal(journal),
+	)
 	discounts := app.NewDiscountService(store, store, auth, app.WithDiscountJournal(journal))
 	marking := app.NewMarkingService(store)
 
@@ -688,7 +692,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	httpapi.MountSystemRoutes(mux, spec, info, systemOptions...)
 	mountRoutes(mux, spec, outbox, config.brokerConnected, operationalDays, checkout, catalog, payments, fiscalization, cash, shifts, terminals)
 	mountMonitoringRoutes(mux, spec, terminalMonitoring)
-	mountDomainRoutes(mux, spec, auth, returns, discounts, marking, journal)
+	mountDomainRoutes(mux, spec, auth, returns, returnSettlement, discounts, marking, journal)
 	mountCatalogSyncRoute(mux, spec, config.catalogSync)
 	mountTerminalEventsRoute(mux, terminalEvents)
 
@@ -1963,6 +1967,11 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusForbidden, "permission_denied", "Permission denied", err.Error())
 	case errors.Is(err, app.ErrInvalidReturnCommand), errors.Is(err, app.ErrReceiptNotReturnable):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_return_command", "Invalid return command", err.Error())
+	case errors.Is(err, app.ErrReturnNotFound):
+		httpapi.WriteProblem(w, http.StatusNotFound, "return_not_found", "Return was not found", err.Error())
+	case errors.Is(err, app.ErrReturnAlreadySettled), errors.Is(err, app.ErrReturnSettlementNotAllowed),
+		errors.Is(err, app.ErrReturnSettlementRequiresFullReceiptReturn), errors.Is(err, app.ErrReturnSettlementPaymentMismatch):
+		httpapi.WriteProblem(w, http.StatusConflict, "return_settlement_conflict", "Return settlement conflict", err.Error())
 	case errors.Is(err, app.ErrInvalidDiscountCommand):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_discount_command", "Invalid discount command", err.Error())
 	case errors.Is(err, app.ErrInvalidMarkingCommand):
