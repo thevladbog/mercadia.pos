@@ -8,8 +8,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { getApiErrorMessage } from '../auth/api-errors.js';
-import { CENTRAL_ROLE_VIEWER } from '../auth/permissions.js';
+import { getApiErrorMessage } from '@/auth/api-errors.js';
+import { CENTRAL_ROLE_VIEWER } from '@/auth/permissions.js';
 import { CentralRoleFields, PageBackLink } from './users-shared.js';
 
 export function CreateCentralUserPage() {

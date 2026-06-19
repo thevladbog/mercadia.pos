@@ -4,7 +4,7 @@ import {
   CENTRAL_ROLE_ADMIN,
   CENTRAL_ROLE_OPTIONS,
   CENTRAL_ROLE_VIEWER,
-} from '../auth/permissions.js';
+} from '@/auth/permissions.js';
 
 type CentralRoleFieldsProps = {
   roles: string[];

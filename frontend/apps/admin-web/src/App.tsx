@@ -1,19 +1,19 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import { AuthProvider } from './auth/AuthProvider.js';
-import { LoginPage } from './auth/LoginPage.js';
-import { ProtectedRoute } from './auth/ProtectedRoute.js';
-import { RequireCentralAdmin } from './auth/RequireCentralAdmin.js';
-import { UnauthorizedBridge } from './auth/UnauthorizedBridge.js';
-import { AppLayout } from './layout/AppLayout.js';
-import { CentralReportingPage } from './pages/CentralReportingPage.js';
-import { CentralStoresPage } from './pages/CentralStoresPage.js';
-import { CentralSyncExplorerPage } from './pages/CentralSyncExplorerPage.js';
-import { CentralUsersPage } from './pages/CentralUsersPage.js';
-import { CreateCentralUserPage } from './pages/CreateCentralUserPage.js';
-import { EditCentralUserPage } from './pages/EditCentralUserPage.js';
-import { RegisterStorePage } from './pages/RegisterStorePage.js';
-import { StoreMonitoringPage } from './pages/StoreMonitoringPage.js';
+import { AuthProvider } from '@/auth/AuthProvider.js';
+import { LoginPage } from '@/auth/LoginPage.js';
+import { ProtectedRoute } from '@/auth/ProtectedRoute.js';
+import { RequireCentralAdmin } from '@/auth/RequireCentralAdmin.js';
+import { UnauthorizedBridge } from '@/auth/UnauthorizedBridge.js';
+import { AppLayout } from '@/layout/AppLayout.js';
+import { CentralReportingPage } from '@/pages/CentralReportingPage.js';
+import { CentralStoresPage } from '@/pages/CentralStoresPage.js';
+import { CentralSyncExplorerPage } from '@/pages/CentralSyncExplorerPage.js';
+import { CentralUsersPage } from '@/pages/CentralUsersPage.js';
+import { CreateCentralUserPage } from '@/pages/CreateCentralUserPage.js';
+import { EditCentralUserPage } from '@/pages/EditCentralUserPage.js';
+import { RegisterStorePage } from '@/pages/RegisterStorePage.js';
+import { StoreMonitoringPage } from '@/pages/StoreMonitoringPage.js';
 
 export function App() {
   return (

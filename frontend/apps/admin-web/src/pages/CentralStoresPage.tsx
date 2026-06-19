@@ -1,9 +1,9 @@
 import { useListStores } from '@mercadia/api-clients-central';
 import { Link } from 'react-router-dom';
 
-import { getApiErrorMessage } from '../auth/api-errors.js';
-import { useAuth } from '../auth/useAuth.js';
-import { canManageCentralUsers } from '../auth/permissions.js';
+import { getApiErrorMessage } from '@/auth/api-errors.js';
+import { useAuth } from '@/auth/useAuth.js';
+import { canManageCentralUsers } from '@/auth/permissions.js';
 import { formatTimestamp } from './reporting-utils.js';
 
 export function CentralStoresPage() {
