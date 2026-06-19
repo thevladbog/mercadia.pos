@@ -48,6 +48,7 @@ type SyncService struct {
 	catalog       CatalogProductRepository
 	payments      SyncedPaymentRepository
 	cashMovements SyncedCashMovementRepository
+	fiscalDocs    SyncedFiscalDocumentRepository
 	idempotency   IdempotencyStore
 	now           func() time.Time
 	newID         func(prefix string) string
@@ -59,6 +60,7 @@ func NewSyncService(
 	catalog CatalogProductRepository,
 	payments SyncedPaymentRepository,
 	cashMovements SyncedCashMovementRepository,
+	fiscalDocs SyncedFiscalDocumentRepository,
 	idempotency IdempotencyStore,
 ) *SyncService {
 	return &SyncService{
@@ -67,6 +69,7 @@ func NewSyncService(
 		catalog:       catalog,
 		payments:      payments,
 		cashMovements: cashMovements,
+		fiscalDocs:    fiscalDocs,
 		idempotency:   idempotency,
 		now:           time.Now,
 		newID:         defaultNewID,
@@ -172,6 +175,8 @@ func (s *SyncService) applySyncEvent(ctx context.Context, event domain.SyncEvent
 		return s.updatePaymentRefundedFromPayload(ctx, event)
 	case "cash.movement.posted":
 		return s.upsertCashMovementFromPayload(ctx, event)
+	case "fiscal.document.created":
+		return s.upsertFiscalDocumentFromPayload(ctx, event)
 	default:
 		return nil
 	}
@@ -397,6 +402,40 @@ func (s *SyncService) upsertCashMovementFromPayload(ctx context.Context, event d
 		return ErrInvalidSyncCommand
 	}
 	return s.cashMovements.SaveCashMovement(ctx, movement)
+}
+
+func (s *SyncService) upsertFiscalDocumentFromPayload(ctx context.Context, event domain.SyncEvent) error {
+	var payload struct {
+		FiscalDocumentID string    `json:"fiscalDocumentId"`
+		ReceiptID        string    `json:"receiptId"`
+		Kind             string    `json:"kind"`
+		AmountMinor      int64     `json:"amountMinor"`
+		DeviceID         string    `json:"deviceId"`
+		FiscalSign       string    `json:"fiscalSign"`
+		FiscalizedAt     time.Time `json:"fiscalizedAt"`
+		ReturnID         string    `json:"returnId"`
+	}
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		return ErrInvalidSyncCommand
+	}
+
+	document, err := domain.NewSyncedFiscalDocument(domain.SyncedFiscalDocument{
+		ID:            payload.FiscalDocumentID,
+		StoreID:       event.StoreID,
+		ReceiptID:     payload.ReceiptID,
+		Kind:          payload.Kind,
+		AmountMinor:   payload.AmountMinor,
+		DeviceID:      payload.DeviceID,
+		FiscalSign:    payload.FiscalSign,
+		FiscalizedAt:  payload.FiscalizedAt.UTC(),
+		ReturnID:      payload.ReturnID,
+		SourceEventID: event.SourceEventID,
+		SyncedAt:      event.ReceivedAt,
+	})
+	if err != nil {
+		return ErrInvalidSyncCommand
+	}
+	return s.fiscalDocs.SaveFiscalDocument(ctx, document)
 }
 
 func (s *SyncService) findSyncIdempotency(ctx context.Context, operation string, key string, targetID string, fingerprint string) (SyncEventsResult, bool, error) {

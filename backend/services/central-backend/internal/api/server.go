@@ -22,7 +22,8 @@ type Services struct {
 	Sync          *app.SyncService
 	Catalog       *app.CatalogService
 	Payments      *app.PaymentsService
-	CashMovements *app.CashMovementsService
+	CashMovements    *app.CashMovementsService
+	FiscalDocuments  *app.FiscalDocumentsService
 }
 
 type StatusResponse struct {
@@ -149,6 +150,25 @@ type PaginatedSyncedCashMovementsResponse struct {
 	TotalCount int                          `json:"totalCount"`
 }
 
+type SyncedFiscalDocumentResponse struct {
+	ID            string    `json:"id"`
+	StoreID       string    `json:"storeId"`
+	ReceiptID     string    `json:"receiptId"`
+	Kind          string    `json:"kind"`
+	AmountMinor   int64     `json:"amountMinor"`
+	DeviceID      string    `json:"deviceId"`
+	FiscalSign    string    `json:"fiscalSign"`
+	FiscalizedAt  time.Time `json:"fiscalizedAt"`
+	ReturnID      string    `json:"returnId,omitempty"`
+	SourceEventID string    `json:"sourceEventId"`
+	SyncedAt      time.Time `json:"syncedAt"`
+}
+
+type PaginatedSyncedFiscalDocumentsResponse struct {
+	Items      []SyncedFiscalDocumentResponse `json:"items"`
+	TotalCount int                            `json:"totalCount"`
+}
+
 type ServerOptions struct {
 	ReadinessChecks []func(context.Context) error
 }
@@ -184,10 +204,11 @@ func NewServerBundle(opts ServerOptions) (*ServerBundle, error) {
 func newServices(repo infra.Repository) Services {
 	return Services{
 		StoreRegistry: app.NewStoreRegistryService(repo, repo),
-		Sync:          app.NewSyncService(repo, repo, repo, repo, repo, repo),
-		Catalog:       app.NewCatalogService(repo, repo),
-		Payments:      app.NewPaymentsService(repo, repo),
-		CashMovements: app.NewCashMovementsService(repo, repo),
+		Sync:            app.NewSyncService(repo, repo, repo, repo, repo, repo, repo),
+		Catalog:         app.NewCatalogService(repo, repo),
+		Payments:        app.NewPaymentsService(repo, repo),
+		CashMovements:   app.NewCashMovementsService(repo, repo),
+		FiscalDocuments: app.NewFiscalDocumentsService(repo, repo),
 	}
 }
 
@@ -543,6 +564,50 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		}
 		httpapi.WriteJSON(w, http.StatusOK, syncedCashMovementResponse(movement))
 	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:          http.MethodGet,
+		Path:            "/v1/stores/{storeId}/fiscal-documents",
+		OperationID:     "listStoreFiscalDocuments",
+		Summary:         "List synchronized fiscal documents for a store",
+		Tags:            []string{"sync"},
+		QueryParameters: paginationQueryParams(),
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Synchronized fiscal documents", Schema: paginatedSyncedFiscalDocumentsResponseSchema()},
+			"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := services.FiscalDocuments.ListFiscalDocuments(r.Context(), r.PathValue("storeId"), params)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedSyncedFiscalDocumentsResponse{
+			Items:      syncedFiscalDocumentResponses(result.Items),
+			TotalCount: result.TotalCount,
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:      http.MethodGet,
+		Path:        "/v1/stores/{storeId}/fiscal-documents/{fiscalDocumentId}",
+		OperationID: "getStoreFiscalDocument",
+		Summary:     "Get a synchronized fiscal document",
+		Tags:        []string{"sync"},
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Synchronized fiscal document", Schema: syncedFiscalDocumentResponseSchema()},
+			"404": {Description: "Store or fiscal document not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		document, err := services.FiscalDocuments.GetFiscalDocument(r.Context(), r.PathValue("storeId"), r.PathValue("fiscalDocumentId"))
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, syncedFiscalDocumentResponse(document))
+	})
 }
 
 func writeAppError(w http.ResponseWriter, err error) {
@@ -555,6 +620,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusNotFound, "payment_not_found", "Payment was not found", err.Error())
 	case errors.Is(err, app.ErrCashMovementNotFound):
 		httpapi.WriteProblem(w, http.StatusNotFound, "cash_movement_not_found", "Cash movement was not found", err.Error())
+	case errors.Is(err, app.ErrFiscalDocumentNotFound):
+		httpapi.WriteProblem(w, http.StatusNotFound, "fiscal_document_not_found", "Fiscal document was not found", err.Error())
 	case errors.Is(err, app.ErrIdempotencyKeyRequired):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 	case errors.Is(err, app.ErrIdempotencyKeyReused):
@@ -569,6 +636,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_payment_query", "Invalid payment query", err.Error())
 	case errors.Is(err, app.ErrInvalidCashMovementQuery), errors.Is(err, domain.ErrInvalidSyncedCashMovementInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_cash_movement_query", "Invalid cash movement query", err.Error())
+	case errors.Is(err, app.ErrInvalidFiscalDocumentQuery), errors.Is(err, domain.ErrInvalidSyncedFiscalDocumentInput):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_fiscal_document_query", "Invalid fiscal document query", err.Error())
 	default:
 		httpapi.WriteProblem(w, http.StatusInternalServerError, "internal_error", "Unexpected server error", err.Error())
 	}
@@ -850,6 +919,53 @@ func syncedCashMovementResponseSchema() httpapi.Schema {
 func paginatedSyncedCashMovementsResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"items":      httpapi.ArraySchema(syncedCashMovementResponseSchema()),
+		"totalCount": {"type": "integer"},
+	}, "items", "totalCount")
+}
+
+func syncedFiscalDocumentResponse(document domain.SyncedFiscalDocument) SyncedFiscalDocumentResponse {
+	return SyncedFiscalDocumentResponse{
+		ID:            document.ID,
+		StoreID:       document.StoreID,
+		ReceiptID:     document.ReceiptID,
+		Kind:          document.Kind,
+		AmountMinor:   document.AmountMinor,
+		DeviceID:      document.DeviceID,
+		FiscalSign:    document.FiscalSign,
+		FiscalizedAt:  document.FiscalizedAt,
+		ReturnID:      document.ReturnID,
+		SourceEventID: document.SourceEventID,
+		SyncedAt:      document.SyncedAt,
+	}
+}
+
+func syncedFiscalDocumentResponses(documents []domain.SyncedFiscalDocument) []SyncedFiscalDocumentResponse {
+	responses := make([]SyncedFiscalDocumentResponse, 0, len(documents))
+	for _, document := range documents {
+		responses = append(responses, syncedFiscalDocumentResponse(document))
+	}
+	return responses
+}
+
+func syncedFiscalDocumentResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"id":            httpapi.StringSchema(),
+		"storeId":       httpapi.StringSchema(),
+		"receiptId":     httpapi.StringSchema(),
+		"kind":          httpapi.StringSchema(),
+		"amountMinor":   {"type": "integer"},
+		"deviceId":      httpapi.StringSchema(),
+		"fiscalSign":    httpapi.StringSchema(),
+		"fiscalizedAt":  httpapi.DateTimeSchema(),
+		"returnId":      httpapi.StringSchema(),
+		"sourceEventId": httpapi.StringSchema(),
+		"syncedAt":      httpapi.DateTimeSchema(),
+	}, "id", "storeId", "receiptId", "kind", "amountMinor", "deviceId", "fiscalSign", "fiscalizedAt", "sourceEventId", "syncedAt")
+}
+
+func paginatedSyncedFiscalDocumentsResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"items":      httpapi.ArraySchema(syncedFiscalDocumentResponseSchema()),
 		"totalCount": {"type": "integer"},
 	}, "items", "totalCount")
 }

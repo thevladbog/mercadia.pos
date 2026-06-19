@@ -18,10 +18,11 @@ func newTestServer() http.Handler {
 	repo := store
 	return api.NewServerWithServices(api.Services{
 		StoreRegistry: app.NewStoreRegistryService(repo, repo),
-		Sync:          app.NewSyncService(repo, repo, repo, repo, repo, repo),
-		Catalog:       app.NewCatalogService(repo, repo),
-		Payments:      app.NewPaymentsService(repo, repo),
-		CashMovements: app.NewCashMovementsService(repo, repo),
+		Sync:            app.NewSyncService(repo, repo, repo, repo, repo, repo, repo),
+		Catalog:         app.NewCatalogService(repo, repo),
+		Payments:        app.NewPaymentsService(repo, repo),
+		CashMovements:   app.NewCashMovementsService(repo, repo),
+		FiscalDocuments: app.NewFiscalDocumentsService(repo, repo),
 	})
 }
 
@@ -51,6 +52,8 @@ func TestOpenAPIExposesCentralOperations(t *testing.T) {
 		"/v1/stores/{storeId}/payments/{paymentId}",
 		"/v1/stores/{storeId}/cash-movements",
 		"/v1/stores/{storeId}/cash-movements/{cashMovementId}",
+		"/v1/stores/{storeId}/fiscal-documents",
+		"/v1/stores/{storeId}/fiscal-documents/{fiscalDocumentId}",
 	} {
 		if _, ok := paths[path]; !ok {
 			t.Fatalf("expected %s path", path)
@@ -272,5 +275,46 @@ func TestSyncEventsUpdatePaymentLifecycle(t *testing.T) {
 	}
 	if payment.Status != "cancelled" || payment.LastEventID != "obx-pay-cancel" {
 		t.Fatalf("payment = %+v", payment)
+	}
+}
+
+func TestSyncEventsProjectFiscalDocument(t *testing.T) {
+	server := newTestServer()
+
+	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
+	registerRequest.Header.Set("Content-Type", "application/json")
+	registerRequest.Header.Set("Idempotency-Key", "register-fiscal-http")
+	registerResponse := httptest.NewRecorder()
+	server.ServeHTTP(registerResponse, registerRequest)
+	if registerResponse.Code != http.StatusAccepted {
+		t.Fatalf("register status = %d", registerResponse.Code)
+	}
+
+	fiscalizedAt := time.Date(2026, 6, 19, 16, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	syncBody := bytes.NewBufferString(`{"events":[` +
+		`{"eventId":"obx-fisc-1","eventType":"fiscal.document.created","payload":{"storeId":"store-1","fiscalDocumentId":"fisc-1","receiptId":"rcpt-1","kind":"sale","amountMinor":150000,"deviceId":"kkt-1","fiscalSign":"sign-abc","fiscalizedAt":"` + fiscalizedAt + `"}}` +
+		`]}`)
+	syncRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/sync-events", syncBody)
+	syncRequest.Header.Set("Content-Type", "application/json")
+	syncRequest.Header.Set("Idempotency-Key", "sync-fiscal-http")
+	syncResponse := httptest.NewRecorder()
+	server.ServeHTTP(syncResponse, syncRequest)
+	if syncResponse.Code != http.StatusAccepted {
+		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
+	}
+
+	documentResponse := httptest.NewRecorder()
+	documentRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/fiscal-documents/fisc-1", nil)
+	server.ServeHTTP(documentResponse, documentRequest)
+	if documentResponse.Code != http.StatusOK {
+		t.Fatalf("get fiscal document status = %d body=%s", documentResponse.Code, documentResponse.Body.String())
+	}
+
+	var document api.SyncedFiscalDocumentResponse
+	if err := json.Unmarshal(documentResponse.Body.Bytes(), &document); err != nil {
+		t.Fatalf("decode fiscal document: %v", err)
+	}
+	if document.Kind != "sale" || document.FiscalSign != "sign-abc" {
+		t.Fatalf("fiscal document = %+v", document)
 	}
 }

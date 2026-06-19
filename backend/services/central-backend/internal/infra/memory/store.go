@@ -18,8 +18,9 @@ type Store struct {
 	syncByStore   map[string]map[string]string
 	products      map[string]domain.CatalogProduct
 	payments      map[string]domain.SyncedPayment
-	cashMovements map[string]domain.SyncedCashMovement
-	users         map[string]domain.CentralUser
+	cashMovements  map[string]domain.SyncedCashMovement
+	fiscalDocuments map[string]domain.SyncedFiscalDocument
+	users          map[string]domain.CentralUser
 	idempotency   map[string]app.IdempotencyRecord
 }
 
@@ -32,8 +33,9 @@ func NewStore(options ...StoreOption) *Store {
 		syncByStore:   map[string]map[string]string{},
 		products:    map[string]domain.CatalogProduct{},
 		payments:      map[string]domain.SyncedPayment{},
-		cashMovements: map[string]domain.SyncedCashMovement{},
-		users:         map[string]domain.CentralUser{},
+		cashMovements:  map[string]domain.SyncedCashMovement{},
+		fiscalDocuments: map[string]domain.SyncedFiscalDocument{},
+		users:          map[string]domain.CentralUser{},
 		idempotency:   map[string]app.IdempotencyRecord{},
 	}
 	for _, option := range options {
@@ -298,6 +300,53 @@ func (s *Store) ListCashMovements(ctx context.Context, storeID string, limit, of
 	return append([]domain.SyncedCashMovement(nil), movements[offset:end]...), total, nil
 }
 
+func (s *Store) SaveFiscalDocument(ctx context.Context, document domain.SyncedFiscalDocument) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.fiscalDocuments[productKey(document.StoreID, document.ID)] = cloneSyncedFiscalDocument(document)
+	return nil
+}
+
+func (s *Store) FindFiscalDocument(ctx context.Context, storeID string, fiscalDocumentID string) (domain.SyncedFiscalDocument, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	document, ok := s.fiscalDocuments[productKey(storeID, fiscalDocumentID)]
+	if !ok {
+		return domain.SyncedFiscalDocument{}, app.ErrFiscalDocumentNotFound
+	}
+	return cloneSyncedFiscalDocument(document), nil
+}
+
+func (s *Store) ListFiscalDocuments(ctx context.Context, storeID string, limit, offset int) ([]domain.SyncedFiscalDocument, int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	documents := make([]domain.SyncedFiscalDocument, 0)
+	for _, document := range s.fiscalDocuments {
+		if document.StoreID == storeID {
+			documents = append(documents, cloneSyncedFiscalDocument(document))
+		}
+	}
+	sort.Slice(documents, func(i, j int) bool {
+		if documents[i].FiscalizedAt.Equal(documents[j].FiscalizedAt) {
+			return documents[i].ID > documents[j].ID
+		}
+		return documents[i].FiscalizedAt.After(documents[j].FiscalizedAt)
+	})
+
+	total := len(documents)
+	if offset >= total {
+		return []domain.SyncedFiscalDocument{}, total, nil
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	return append([]domain.SyncedFiscalDocument(nil), documents[offset:end]...), total, nil
+}
+
 func (s *Store) Find(ctx context.Context, operation string, key string) (app.IdempotencyRecord, bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -340,4 +389,8 @@ func cloneSyncedPayment(payment domain.SyncedPayment) domain.SyncedPayment {
 
 func cloneSyncedCashMovement(movement domain.SyncedCashMovement) domain.SyncedCashMovement {
 	return movement
+}
+
+func cloneSyncedFiscalDocument(document domain.SyncedFiscalDocument) domain.SyncedFiscalDocument {
+	return document
 }

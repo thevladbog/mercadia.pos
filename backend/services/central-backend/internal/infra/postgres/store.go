@@ -357,6 +357,64 @@ func (s *Store) ListCashMovements(ctx context.Context, storeID string, limit, of
 	return scanSyncedCashMovements(rows, total)
 }
 
+func (s *Store) SaveFiscalDocument(ctx context.Context, document domain.SyncedFiscalDocument) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO synced_fiscal_documents (
+			store_id, id, receipt_id, kind, amount_minor, device_id, fiscal_sign,
+			fiscalized_at, return_id, source_event_id, synced_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		ON CONFLICT (store_id, id) DO UPDATE SET
+			receipt_id = EXCLUDED.receipt_id,
+			kind = EXCLUDED.kind,
+			amount_minor = EXCLUDED.amount_minor,
+			device_id = EXCLUDED.device_id,
+			fiscal_sign = EXCLUDED.fiscal_sign,
+			fiscalized_at = EXCLUDED.fiscalized_at,
+			return_id = EXCLUDED.return_id,
+			source_event_id = EXCLUDED.source_event_id,
+			synced_at = EXCLUDED.synced_at
+	`, document.StoreID, document.ID, document.ReceiptID, document.Kind, document.AmountMinor,
+		document.DeviceID, document.FiscalSign, document.FiscalizedAt, document.ReturnID,
+		document.SourceEventID, document.SyncedAt)
+	return err
+}
+
+func (s *Store) FindFiscalDocument(ctx context.Context, storeID string, fiscalDocumentID string) (domain.SyncedFiscalDocument, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT store_id, id, receipt_id, kind, amount_minor, device_id, fiscal_sign,
+			fiscalized_at, return_id, source_event_id, synced_at
+		FROM synced_fiscal_documents
+		WHERE store_id = $1 AND id = $2
+	`, storeID, fiscalDocumentID)
+	return scanSyncedFiscalDocument(row)
+}
+
+func (s *Store) ListFiscalDocuments(ctx context.Context, storeID string, limit, offset int) ([]domain.SyncedFiscalDocument, int, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM synced_fiscal_documents
+		WHERE store_id = $1
+	`, storeID)
+	var total int
+	if err := row.Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT store_id, id, receipt_id, kind, amount_minor, device_id, fiscal_sign,
+			fiscalized_at, return_id, source_event_id, synced_at
+		FROM synced_fiscal_documents
+		WHERE store_id = $1
+		ORDER BY fiscalized_at DESC, id DESC
+		LIMIT $2 OFFSET $3
+	`, storeID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	return scanSyncedFiscalDocuments(rows, total)
+}
+
 func (s *Store) Find(ctx context.Context, operation string, key string) (app.IdempotencyRecord, bool, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT operation, key, target_id, fingerprint, result, created_at
@@ -545,6 +603,44 @@ func scanSyncedCashMovements(rows pgx.Rows, total int) ([]domain.SyncedCashMovem
 		return nil, 0, err
 	}
 	return movements, total, nil
+}
+
+func scanSyncedFiscalDocument(row rowScanner) (domain.SyncedFiscalDocument, error) {
+	var document domain.SyncedFiscalDocument
+	var returnID *string
+	if err := row.Scan(&document.StoreID, &document.ID, &document.ReceiptID, &document.Kind, &document.AmountMinor,
+		&document.DeviceID, &document.FiscalSign, &document.FiscalizedAt, &returnID,
+		&document.SourceEventID, &document.SyncedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.SyncedFiscalDocument{}, app.ErrFiscalDocumentNotFound
+		}
+		return domain.SyncedFiscalDocument{}, err
+	}
+	if returnID != nil {
+		document.ReturnID = *returnID
+	}
+	return document, nil
+}
+
+func scanSyncedFiscalDocuments(rows pgx.Rows, total int) ([]domain.SyncedFiscalDocument, int, error) {
+	documents := make([]domain.SyncedFiscalDocument, 0)
+	for rows.Next() {
+		var document domain.SyncedFiscalDocument
+		var returnID *string
+		if err := rows.Scan(&document.StoreID, &document.ID, &document.ReceiptID, &document.Kind, &document.AmountMinor,
+			&document.DeviceID, &document.FiscalSign, &document.FiscalizedAt, &returnID,
+			&document.SourceEventID, &document.SyncedAt); err != nil {
+			return nil, 0, err
+		}
+		if returnID != nil {
+			document.ReturnID = *returnID
+		}
+		documents = append(documents, document)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return documents, total, nil
 }
 
 func isUniqueViolation(err error) bool {
