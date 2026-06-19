@@ -131,6 +131,70 @@ button.secondary {
   gap: 1rem;
 }
 
+.header-actions-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.button-link {
+  display: inline-block;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: #1d4ed8;
+  color: #fff;
+  text-decoration: none;
+}
+
+.button-link:hover {
+  text-decoration: none;
+  background: #1e40af;
+}
+
+.users-page {
+  gap: 1.5rem;
+}
+
+.role-fieldset {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.role-fieldset legend {
+  margin-bottom: 0.375rem;
+  font-weight: 600;
+}
+
+.role-options {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-back {
+  margin: 0 0 1rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.readonly-field {
+  margin: 0;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+}
+
 .user-meta {
   display: grid;
   gap: 0.125rem;
