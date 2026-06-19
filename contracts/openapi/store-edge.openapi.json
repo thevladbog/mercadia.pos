@@ -1,0 +1,6134 @@
+﻿{
+  "components": {
+    "schemas": {
+      "Problem": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Store-local operational API for POS, SCO/KSO, senior cashier, assistant, and store admin clients.",
+    "title": "Mercadia Store Edge",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "service": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "time": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "service",
+                    "status",
+                    "version",
+                    "time"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Service is alive"
+          }
+        },
+        "summary": "Get service health",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "getReadiness",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "service": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "time": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "service",
+                    "status",
+                    "version",
+                    "time"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Service is ready"
+          }
+        },
+        "summary": "Get service readiness",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/v1/catalog/products/by-barcode/{barcode}": {
+      "get": {
+        "operationId": "findProductByBarcode",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "barcode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "active": {
+                      "type": "boolean"
+                    },
+                    "barcodes": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "taxCategoryId": {
+                      "type": "string"
+                    },
+                    "unitPriceMinor": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "barcodes",
+                    "unitPriceMinor",
+                    "active"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Product"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Product was not found"
+          }
+        },
+        "summary": "Find product by barcode",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/v1/operational-days": {
+      "post": {
+        "operationId": "openOperationalDay",
+        "parameters": [
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "businessDate": {
+                    "type": "string"
+                  },
+                  "openedById": {
+                    "type": "string"
+                  },
+                  "storeId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "storeId",
+                  "businessDate",
+                  "openedById"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Operational day opening command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "operationalDay": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "businessDate": {
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "closedById": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "openedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "openedById": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "businessDate",
+                        "status",
+                        "openedById",
+                        "openedAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "operationalDay"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day opened"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid operational day command"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day or idempotency conflict"
+          }
+        },
+        "summary": "Open operational day",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/operational-days/{operationalDayId}": {
+      "get": {
+        "operationId": "getOperationalDay",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operationalDayId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "businessDate": {
+                      "type": "string"
+                    },
+                    "closedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "closedById": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "openedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "openedById": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "storeId": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "storeId",
+                    "businessDate",
+                    "status",
+                    "openedById",
+                    "openedAt",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day was not found"
+          }
+        },
+        "summary": "Get operational day",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/operational-days/{operationalDayId}/close": {
+      "post": {
+        "operationId": "closeOperationalDay",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operationalDayId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "closedById": {
+                    "type": "string"
+                  },
+                  "overrideActorId": {
+                    "type": "string"
+                  },
+                  "overrideNoSales": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "closedById"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Operational day close command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "operationalDay": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "businessDate": {
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "closedById": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "openedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "openedById": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "businessDate",
+                        "status",
+                        "openedById",
+                        "openedAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "operationalDay"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day closed"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid operational day command"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day close blocked"
+          }
+        },
+        "summary": "Close operational day",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/operational-days/{operationalDayId}/close-check": {
+      "post": {
+        "operationId": "checkOperationalDayCloseReadiness",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operationalDayId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "blockers": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "referenceId": {
+                            "type": "string"
+                          },
+                          "severity": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "severity",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "canClose": {
+                      "type": "boolean"
+                    },
+                    "operationalDay": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "businessDate": {
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "closedById": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "openedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "openedById": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "businessDate",
+                        "status",
+                        "openedById",
+                        "openedAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "operationalDay",
+                    "canClose",
+                    "blockers"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Close readiness"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid operational day query"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day state conflict"
+          }
+        },
+        "summary": "Check operational day close readiness",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/operational-days/{operationalDayId}/receipts": {
+      "get": {
+        "operationId": "listOperationalDayReceipts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operationalDayId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "receipts": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "businessDate": {
+                            "type": "string"
+                          },
+                          "cancelApprovedById": {
+                            "type": "string"
+                          },
+                          "cancelReason": {
+                            "type": "string"
+                          },
+                          "cancelledAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "cancelledById": {
+                            "type": "string"
+                          },
+                          "cashierId": {
+                            "type": "string"
+                          },
+                          "channel": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "drawerId": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "lines": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "addedAt": {
+                                  "format": "date-time",
+                                  "type": "string"
+                                },
+                                "barcode": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "productId": {
+                                  "type": "string"
+                                },
+                                "quantity": {
+                                  "type": "integer"
+                                },
+                                "totalMinor": {
+                                  "type": "integer"
+                                },
+                                "unitPriceMinor": {
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "productId",
+                                "name",
+                                "quantity",
+                                "unitPriceMinor",
+                                "totalMinor",
+                                "addedAt"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "operationalDayId": {
+                            "type": "string"
+                          },
+                          "shiftId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          },
+                          "terminalId": {
+                            "type": "string"
+                          },
+                          "totalMinor": {
+                            "type": "integer"
+                          },
+                          "updatedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storeId",
+                          "terminalId",
+                          "cashierId",
+                          "channel",
+                          "status",
+                          "lines",
+                          "totalMinor",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "receipts"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day receipts"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid operational day receipt query"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day was not found"
+          }
+        },
+        "summary": "List receipts for operational day",
+        "tags": [
+          "checkout",
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/operational-days/{operationalDayId}/shifts": {
+      "get": {
+        "operationId": "listOperationalDayShifts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operationalDayId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "shifts": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "businessDate": {
+                            "type": "string"
+                          },
+                          "cashierId": {
+                            "type": "string"
+                          },
+                          "closedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "closingCashMinor": {
+                            "type": "integer"
+                          },
+                          "drawerId": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "openedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "openingCashMinor": {
+                            "type": "integer"
+                          },
+                          "operationalDayId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          },
+                          "terminalId": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storeId",
+                          "terminalId",
+                          "cashierId",
+                          "drawerId",
+                          "status",
+                          "openingCashMinor",
+                          "closingCashMinor",
+                          "openedAt",
+                          "updatedAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "shifts"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day shifts"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid operational day shift query"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day was not found"
+          }
+        },
+        "summary": "List shifts for operational day",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/operational-days/{operationalDayId}/summary": {
+      "get": {
+        "operationId": "getOperationalDaySummary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operationalDayId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "blockers": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "referenceId": {
+                            "type": "string"
+                          },
+                          "severity": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "severity",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "canClose": {
+                      "type": "boolean"
+                    },
+                    "cash": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "balances": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "balanceMinor": {
+                                "type": "integer"
+                              },
+                              "containerId": {
+                                "type": "string"
+                              },
+                              "containerType": {
+                                "type": "string"
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "lastMovementAt": {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "storeId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "storeId",
+                              "containerId",
+                              "containerType",
+                              "currency",
+                              "balanceMinor",
+                              "lastMovementAt"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "nonZeroDrawerCount": {
+                          "type": "integer"
+                        },
+                        "recounts": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "balancedCount": {
+                              "type": "integer"
+                            },
+                            "discrepancyCount": {
+                              "type": "integer"
+                            },
+                            "openDiscrepancyCount": {
+                              "type": "integer"
+                            },
+                            "resolvedDiscrepancyCount": {
+                              "type": "integer"
+                            },
+                            "totalCount": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "totalCount",
+                            "balancedCount",
+                            "discrepancyCount",
+                            "openDiscrepancyCount",
+                            "resolvedDiscrepancyCount"
+                          ],
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "balances",
+                        "nonZeroDrawerCount",
+                        "recounts"
+                      ],
+                      "type": "object"
+                    },
+                    "fiscal": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "fiscalizedCount": {
+                          "type": "integer"
+                        },
+                        "fiscalizedTotalMinor": {
+                          "type": "integer"
+                        },
+                        "totalCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "totalCount",
+                        "fiscalizedCount",
+                        "fiscalizedTotalMinor"
+                      ],
+                      "type": "object"
+                    },
+                    "operationalDay": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "businessDate": {
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "closedById": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "openedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "openedById": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "businessDate",
+                        "status",
+                        "openedById",
+                        "openedAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    },
+                    "payments": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "capturedCount": {
+                          "type": "integer"
+                        },
+                        "capturedTotalMinor": {
+                          "type": "integer"
+                        },
+                        "methods": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "capturedCount": {
+                                "type": "integer"
+                              },
+                              "capturedTotalMinor": {
+                                "type": "integer"
+                              },
+                              "method": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "capturedCount",
+                              "capturedTotalMinor"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "totalCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "totalCount",
+                        "capturedCount",
+                        "capturedTotalMinor",
+                        "methods"
+                      ],
+                      "type": "object"
+                    },
+                    "receipts": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "cancelledCount": {
+                          "type": "integer"
+                        },
+                        "draftCount": {
+                          "type": "integer"
+                        },
+                        "fiscalizedCount": {
+                          "type": "integer"
+                        },
+                        "fiscalizedSalesMinor": {
+                          "type": "integer"
+                        },
+                        "paidCount": {
+                          "type": "integer"
+                        },
+                        "paymentStartedCount": {
+                          "type": "integer"
+                        },
+                        "totalCount": {
+                          "type": "integer"
+                        },
+                        "unresolvedCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "totalCount",
+                        "draftCount",
+                        "paymentStartedCount",
+                        "paidCount",
+                        "fiscalizedCount",
+                        "cancelledCount",
+                        "unresolvedCount",
+                        "fiscalizedSalesMinor"
+                      ],
+                      "type": "object"
+                    },
+                    "shifts": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "closedCount": {
+                          "type": "integer"
+                        },
+                        "openCount": {
+                          "type": "integer"
+                        },
+                        "totalCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "totalCount",
+                        "openCount",
+                        "closedCount"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "operationalDay",
+                    "canClose",
+                    "blockers",
+                    "shifts",
+                    "cash",
+                    "receipts",
+                    "payments",
+                    "fiscal"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day summary"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid operational day summary query"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Operational day was not found"
+          }
+        },
+        "summary": "Get operational day summary",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/receipts": {
+      "post": {
+        "operationId": "openReceipt",
+        "parameters": [
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "cashierId": {
+                    "type": "string"
+                  },
+                  "channel": {
+                    "type": "string"
+                  },
+                  "storeId": {
+                    "type": "string"
+                  },
+                  "terminalId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "storeId",
+                  "terminalId",
+                  "cashierId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Receipt opening command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "receipt": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "businessDate": {
+                          "type": "string"
+                        },
+                        "cancelApprovedById": {
+                          "type": "string"
+                        },
+                        "cancelReason": {
+                          "type": "string"
+                        },
+                        "cancelledAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "cancelledById": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string"
+                        },
+                        "channel": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "drawerId": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "addedAt": {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "barcode": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "productId": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "totalMinor": {
+                                "type": "integer"
+                              },
+                              "unitPriceMinor": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "productId",
+                              "name",
+                              "quantity",
+                              "unitPriceMinor",
+                              "totalMinor",
+                              "addedAt"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "operationalDayId": {
+                          "type": "string"
+                        },
+                        "shiftId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "terminalId": {
+                          "type": "string"
+                        },
+                        "totalMinor": {
+                          "type": "integer"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "terminalId",
+                        "cashierId",
+                        "channel",
+                        "status",
+                        "lines",
+                        "totalMinor",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "receipt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt command accepted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid command"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Idempotency conflict"
+          }
+        },
+        "summary": "Open a receipt",
+        "tags": [
+          "checkout"
+        ]
+      }
+    },
+    "/v1/receipts/{receiptId}": {
+      "get": {
+        "operationId": "getReceipt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "businessDate": {
+                      "type": "string"
+                    },
+                    "cancelApprovedById": {
+                      "type": "string"
+                    },
+                    "cancelReason": {
+                      "type": "string"
+                    },
+                    "cancelledAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "cancelledById": {
+                      "type": "string"
+                    },
+                    "cashierId": {
+                      "type": "string"
+                    },
+                    "channel": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "drawerId": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "addedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "barcode": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "productId": {
+                            "type": "string"
+                          },
+                          "quantity": {
+                            "type": "integer"
+                          },
+                          "totalMinor": {
+                            "type": "integer"
+                          },
+                          "unitPriceMinor": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "productId",
+                          "name",
+                          "quantity",
+                          "unitPriceMinor",
+                          "totalMinor",
+                          "addedAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "operationalDayId": {
+                      "type": "string"
+                    },
+                    "shiftId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "storeId": {
+                      "type": "string"
+                    },
+                    "terminalId": {
+                      "type": "string"
+                    },
+                    "totalMinor": {
+                      "type": "integer"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "storeId",
+                    "terminalId",
+                    "cashierId",
+                    "channel",
+                    "status",
+                    "lines",
+                    "totalMinor",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt was not found"
+          }
+        },
+        "summary": "Get receipt",
+        "tags": [
+          "checkout"
+        ]
+      }
+    },
+    "/v1/receipts/{receiptId}/cancel": {
+      "post": {
+        "operationId": "cancelReceipt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "approvedById": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "actorId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Receipt cancellation command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "receipt": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "businessDate": {
+                          "type": "string"
+                        },
+                        "cancelApprovedById": {
+                          "type": "string"
+                        },
+                        "cancelReason": {
+                          "type": "string"
+                        },
+                        "cancelledAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "cancelledById": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string"
+                        },
+                        "channel": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "drawerId": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "addedAt": {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "barcode": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "productId": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "totalMinor": {
+                                "type": "integer"
+                              },
+                              "unitPriceMinor": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "productId",
+                              "name",
+                              "quantity",
+                              "unitPriceMinor",
+                              "totalMinor",
+                              "addedAt"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "operationalDayId": {
+                          "type": "string"
+                        },
+                        "shiftId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "terminalId": {
+                          "type": "string"
+                        },
+                        "totalMinor": {
+                          "type": "integer"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "terminalId",
+                        "cashierId",
+                        "channel",
+                        "status",
+                        "lines",
+                        "totalMinor",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "receipt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt cancelled"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid cancellation command"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt or idempotency conflict"
+          }
+        },
+        "summary": "Cancel draft receipt",
+        "tags": [
+          "checkout"
+        ]
+      }
+    },
+    "/v1/receipts/{receiptId}/fiscal-documents": {
+      "get": {
+        "operationId": "listReceiptFiscalDocuments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "documents": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "amountMinor": {
+                            "type": "integer"
+                          },
+                          "createdAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "deviceId": {
+                            "type": "string"
+                          },
+                          "fiscalSign": {
+                            "type": "string"
+                          },
+                          "fiscalizedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "receiptId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "receiptId",
+                          "kind",
+                          "status",
+                          "amountMinor",
+                          "deviceId",
+                          "fiscalSign",
+                          "fiscalizedAt",
+                          "createdAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "documents"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt fiscal documents"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt was not found"
+          }
+        },
+        "summary": "List receipt fiscal documents",
+        "tags": [
+          "fiscalization"
+        ]
+      },
+      "post": {
+        "operationId": "createReceiptFiscalDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "deviceId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "deviceId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Fiscalization command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "document": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "amountMinor": {
+                          "type": "integer"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "deviceId": {
+                          "type": "string"
+                        },
+                        "fiscalSign": {
+                          "type": "string"
+                        },
+                        "fiscalizedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "receiptId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "receiptId",
+                        "kind",
+                        "status",
+                        "amountMinor",
+                        "deviceId",
+                        "fiscalSign",
+                        "fiscalizedAt",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "document"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Fiscal document command accepted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid fiscalization command"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Fiscalization or idempotency conflict"
+          }
+        },
+        "summary": "Create fiscal document for receipt",
+        "tags": [
+          "fiscalization"
+        ]
+      }
+    },
+    "/v1/receipts/{receiptId}/lines": {
+      "post": {
+        "operationId": "addReceiptLine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "barcode": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "productId": {
+                    "type": "string"
+                  },
+                  "quantity": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "unitPriceMinor": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "productId",
+                  "name",
+                  "quantity",
+                  "unitPriceMinor"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Receipt line command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "receipt": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "businessDate": {
+                          "type": "string"
+                        },
+                        "cancelApprovedById": {
+                          "type": "string"
+                        },
+                        "cancelReason": {
+                          "type": "string"
+                        },
+                        "cancelledAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "cancelledById": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string"
+                        },
+                        "channel": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "drawerId": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "addedAt": {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "barcode": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "productId": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "totalMinor": {
+                                "type": "integer"
+                              },
+                              "unitPriceMinor": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "productId",
+                              "name",
+                              "quantity",
+                              "unitPriceMinor",
+                              "totalMinor",
+                              "addedAt"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "operationalDayId": {
+                          "type": "string"
+                        },
+                        "shiftId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "terminalId": {
+                          "type": "string"
+                        },
+                        "totalMinor": {
+                          "type": "integer"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "terminalId",
+                        "cashierId",
+                        "channel",
+                        "status",
+                        "lines",
+                        "totalMinor",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "receipt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt line command accepted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid command"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Idempotency conflict"
+          }
+        },
+        "summary": "Add line to receipt",
+        "tags": [
+          "checkout"
+        ]
+      }
+    },
+    "/v1/receipts/{receiptId}/payments": {
+      "get": {
+        "operationId": "listReceiptPayments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "payments": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "amountMinor": {
+                            "type": "integer"
+                          },
+                          "capturedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "method": {
+                            "type": "string"
+                          },
+                          "providerReference": {
+                            "type": "string"
+                          },
+                          "receiptId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "receiptId",
+                          "method",
+                          "status",
+                          "amountMinor",
+                          "createdAt",
+                          "updatedAt",
+                          "capturedAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "payments"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt payments"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt was not found"
+          }
+        },
+        "summary": "List receipt payments",
+        "tags": [
+          "payments"
+        ]
+      },
+      "post": {
+        "operationId": "createReceiptPayment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "amountMinor": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "method": {
+                    "type": "string"
+                  },
+                  "providerReference": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "method",
+                  "amountMinor"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Captured payment command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "payment": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "amountMinor": {
+                          "type": "integer"
+                        },
+                        "capturedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "method": {
+                          "type": "string"
+                        },
+                        "providerReference": {
+                          "type": "string"
+                        },
+                        "receiptId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "receiptId",
+                        "method",
+                        "status",
+                        "amountMinor",
+                        "createdAt",
+                        "updatedAt",
+                        "capturedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "payment"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Payment command accepted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid payment command"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Payment or idempotency conflict"
+          }
+        },
+        "summary": "Create captured payment for receipt",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/receipts/{receiptId}/scan": {
+      "post": {
+        "operationId": "scanReceiptLine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "barcode": {
+                    "type": "string"
+                  },
+                  "quantity": {
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "barcode",
+                  "quantity"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Scanned barcode command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "receipt": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "businessDate": {
+                          "type": "string"
+                        },
+                        "cancelApprovedById": {
+                          "type": "string"
+                        },
+                        "cancelReason": {
+                          "type": "string"
+                        },
+                        "cancelledAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "cancelledById": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string"
+                        },
+                        "channel": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "drawerId": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "addedAt": {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "barcode": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "productId": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "totalMinor": {
+                                "type": "integer"
+                              },
+                              "unitPriceMinor": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "productId",
+                              "name",
+                              "quantity",
+                              "unitPriceMinor",
+                              "totalMinor",
+                              "addedAt"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "operationalDayId": {
+                          "type": "string"
+                        },
+                        "shiftId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "terminalId": {
+                          "type": "string"
+                        },
+                        "totalMinor": {
+                          "type": "integer"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "terminalId",
+                        "cashierId",
+                        "channel",
+                        "status",
+                        "lines",
+                        "totalMinor",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "receipt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Scanned line command accepted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid command"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt or product was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Idempotency conflict"
+          }
+        },
+        "summary": "Scan product into receipt",
+        "tags": [
+          "checkout"
+        ]
+      }
+    },
+    "/v1/shifts": {
+      "post": {
+        "operationId": "openShift",
+        "parameters": [
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "cashierId": {
+                    "type": "string"
+                  },
+                  "drawerId": {
+                    "type": "string"
+                  },
+                  "openingCashMinor": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "storeId": {
+                    "type": "string"
+                  },
+                  "terminalId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "storeId",
+                  "terminalId",
+                  "cashierId",
+                  "drawerId",
+                  "openingCashMinor"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Shift opening command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "shift": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "businessDate": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "closingCashMinor": {
+                          "type": "integer"
+                        },
+                        "drawerId": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "openedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "openingCashMinor": {
+                          "type": "integer"
+                        },
+                        "operationalDayId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "terminalId": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "terminalId",
+                        "cashierId",
+                        "drawerId",
+                        "status",
+                        "openingCashMinor",
+                        "closingCashMinor",
+                        "openedAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "shift"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Shift opened"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid shift command"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Shift or idempotency conflict"
+          }
+        },
+        "summary": "Open cashier shift",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/shifts/{shiftId}": {
+      "get": {
+        "operationId": "getShift",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shiftId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "businessDate": {
+                      "type": "string"
+                    },
+                    "cashierId": {
+                      "type": "string"
+                    },
+                    "closedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "closingCashMinor": {
+                      "type": "integer"
+                    },
+                    "drawerId": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "openedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "openingCashMinor": {
+                      "type": "integer"
+                    },
+                    "operationalDayId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "storeId": {
+                      "type": "string"
+                    },
+                    "terminalId": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "storeId",
+                    "terminalId",
+                    "cashierId",
+                    "drawerId",
+                    "status",
+                    "openingCashMinor",
+                    "closingCashMinor",
+                    "openedAt",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Shift"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Shift was not found"
+          }
+        },
+        "summary": "Get shift",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/shifts/{shiftId}/close": {
+      "post": {
+        "operationId": "closeShift",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shiftId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "approvedById": {
+                    "type": "string"
+                  },
+                  "closingCashMinor": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "safeId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "closingCashMinor"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Shift close command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "shift": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "businessDate": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "closingCashMinor": {
+                          "type": "integer"
+                        },
+                        "drawerId": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "openedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "openingCashMinor": {
+                          "type": "integer"
+                        },
+                        "operationalDayId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "terminalId": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "terminalId",
+                        "cashierId",
+                        "drawerId",
+                        "status",
+                        "openingCashMinor",
+                        "closingCashMinor",
+                        "openedAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "shift"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Shift closed"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid shift command"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Shift was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Shift or idempotency conflict"
+          }
+        },
+        "summary": "Close cashier shift",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/shifts/{shiftId}/receipts": {
+      "get": {
+        "operationId": "listShiftReceipts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shiftId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "receipts": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "businessDate": {
+                            "type": "string"
+                          },
+                          "cancelApprovedById": {
+                            "type": "string"
+                          },
+                          "cancelReason": {
+                            "type": "string"
+                          },
+                          "cancelledAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "cancelledById": {
+                            "type": "string"
+                          },
+                          "cashierId": {
+                            "type": "string"
+                          },
+                          "channel": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "drawerId": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "lines": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "addedAt": {
+                                  "format": "date-time",
+                                  "type": "string"
+                                },
+                                "barcode": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "productId": {
+                                  "type": "string"
+                                },
+                                "quantity": {
+                                  "type": "integer"
+                                },
+                                "totalMinor": {
+                                  "type": "integer"
+                                },
+                                "unitPriceMinor": {
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "productId",
+                                "name",
+                                "quantity",
+                                "unitPriceMinor",
+                                "totalMinor",
+                                "addedAt"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "operationalDayId": {
+                            "type": "string"
+                          },
+                          "shiftId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          },
+                          "terminalId": {
+                            "type": "string"
+                          },
+                          "totalMinor": {
+                            "type": "integer"
+                          },
+                          "updatedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storeId",
+                          "terminalId",
+                          "cashierId",
+                          "channel",
+                          "status",
+                          "lines",
+                          "totalMinor",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "receipts"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Shift receipts"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid shift receipt query"
+          }
+        },
+        "summary": "List receipts for shift",
+        "tags": [
+          "checkout",
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/store-edge/status": {
+      "get": {
+        "operationId": "getStoreEdgeStatus",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "businessDate": {
+                      "type": "string"
+                    },
+                    "generatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "mode": {
+                      "type": "string"
+                    },
+                    "storeId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "storeId",
+                    "mode",
+                    "businessDate",
+                    "generatedAt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store Edge status"
+          }
+        },
+        "summary": "Get Store Edge operational status",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/cash-balances": {
+      "get": {
+        "operationId": "listCashBalances",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "balances": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "balanceMinor": {
+                            "type": "integer"
+                          },
+                          "containerId": {
+                            "type": "string"
+                          },
+                          "containerType": {
+                            "type": "string"
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "lastMovementAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "storeId",
+                          "containerId",
+                          "containerType",
+                          "currency",
+                          "balanceMinor",
+                          "lastMovementAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "balances"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cash balances"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid cash balance query"
+          }
+        },
+        "summary": "List derived cash container balances",
+        "tags": [
+          "cash-office"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/cash-movements": {
+      "get": {
+        "operationId": "listCashMovements",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "movements": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "actorId": {
+                            "type": "string"
+                          },
+                          "amountMinor": {
+                            "type": "integer"
+                          },
+                          "approvedById": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "fromContainerId": {
+                            "type": "string"
+                          },
+                          "fromContainerType": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          },
+                          "toContainerId": {
+                            "type": "string"
+                          },
+                          "toContainerType": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storeId",
+                          "type",
+                          "fromContainerId",
+                          "fromContainerType",
+                          "toContainerId",
+                          "toContainerType",
+                          "amountMinor",
+                          "currency",
+                          "actorId",
+                          "status",
+                          "createdAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "movements"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cash movements"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid cash movement query"
+          }
+        },
+        "summary": "List immutable cash movements",
+        "tags": [
+          "cash-office"
+        ]
+      },
+      "post": {
+        "operationId": "createCashMovement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "amountMinor": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "approvedById": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "fromContainerId": {
+                    "type": "string"
+                  },
+                  "fromContainerType": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "toContainerId": {
+                    "type": "string"
+                  },
+                  "toContainerType": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "fromContainerId",
+                  "fromContainerType",
+                  "toContainerId",
+                  "toContainerType",
+                  "amountMinor",
+                  "actorId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Cash movement command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "movement": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "actorId": {
+                          "type": "string"
+                        },
+                        "amountMinor": {
+                          "type": "integer"
+                        },
+                        "approvedById": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "fromContainerId": {
+                          "type": "string"
+                        },
+                        "fromContainerType": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "toContainerId": {
+                          "type": "string"
+                        },
+                        "toContainerType": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "type",
+                        "fromContainerId",
+                        "fromContainerType",
+                        "toContainerId",
+                        "toContainerType",
+                        "amountMinor",
+                        "currency",
+                        "actorId",
+                        "status",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "movement"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cash movement posted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid cash movement command"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cash movement or idempotency conflict"
+          }
+        },
+        "summary": "Create immutable cash movement",
+        "tags": [
+          "cash-office"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/cash-recounts": {
+      "get": {
+        "operationId": "listCashRecounts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "recounts": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "actorId": {
+                            "type": "string"
+                          },
+                          "approvedById": {
+                            "type": "string"
+                          },
+                          "containerId": {
+                            "type": "string"
+                          },
+                          "containerType": {
+                            "type": "string"
+                          },
+                          "countedMinor": {
+                            "type": "integer"
+                          },
+                          "createdAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "discrepancyMinor": {
+                            "type": "integer"
+                          },
+                          "expectedMinor": {
+                            "type": "integer"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "resolutionNote": {
+                            "type": "string"
+                          },
+                          "resolutionStatus": {
+                            "type": "string"
+                          },
+                          "resolvedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "resolvedById": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storeId",
+                          "containerId",
+                          "containerType",
+                          "currency",
+                          "expectedMinor",
+                          "countedMinor",
+                          "discrepancyMinor",
+                          "actorId",
+                          "status",
+                          "resolutionStatus",
+                          "createdAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "recounts"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cash recounts"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid cash recount query"
+          }
+        },
+        "summary": "List cash recounts",
+        "tags": [
+          "cash-office"
+        ]
+      },
+      "post": {
+        "operationId": "createCashRecount",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "approvedById": {
+                    "type": "string"
+                  },
+                  "containerId": {
+                    "type": "string"
+                  },
+                  "containerType": {
+                    "type": "string"
+                  },
+                  "countedMinor": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "containerId",
+                  "containerType",
+                  "countedMinor",
+                  "actorId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Cash recount command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "recount": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "actorId": {
+                          "type": "string"
+                        },
+                        "approvedById": {
+                          "type": "string"
+                        },
+                        "containerId": {
+                          "type": "string"
+                        },
+                        "containerType": {
+                          "type": "string"
+                        },
+                        "countedMinor": {
+                          "type": "integer"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "discrepancyMinor": {
+                          "type": "integer"
+                        },
+                        "expectedMinor": {
+                          "type": "integer"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "resolutionNote": {
+                          "type": "string"
+                        },
+                        "resolutionStatus": {
+                          "type": "string"
+                        },
+                        "resolvedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "resolvedById": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "containerId",
+                        "containerType",
+                        "currency",
+                        "expectedMinor",
+                        "countedMinor",
+                        "discrepancyMinor",
+                        "actorId",
+                        "status",
+                        "resolutionStatus",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "recount"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cash recount created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid cash recount command"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cash recount or idempotency conflict"
+          }
+        },
+        "summary": "Create cash recount",
+        "tags": [
+          "cash-office"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/cash-recounts/{recountId}/resolve": {
+      "post": {
+        "operationId": "resolveCashRecount",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recountId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "approvedById": {
+                    "type": "string"
+                  },
+                  "resolutionNote": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resolutionNote",
+                  "actorId",
+                  "approvedById"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Cash recount resolution command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "recount": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "actorId": {
+                          "type": "string"
+                        },
+                        "approvedById": {
+                          "type": "string"
+                        },
+                        "containerId": {
+                          "type": "string"
+                        },
+                        "containerType": {
+                          "type": "string"
+                        },
+                        "countedMinor": {
+                          "type": "integer"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "discrepancyMinor": {
+                          "type": "integer"
+                        },
+                        "expectedMinor": {
+                          "type": "integer"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "resolutionNote": {
+                          "type": "string"
+                        },
+                        "resolutionStatus": {
+                          "type": "string"
+                        },
+                        "resolvedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "resolvedById": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "containerId",
+                        "containerType",
+                        "currency",
+                        "expectedMinor",
+                        "countedMinor",
+                        "discrepancyMinor",
+                        "actorId",
+                        "status",
+                        "resolutionStatus",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "recount"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cash recount resolved"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid cash recount resolution command"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cash recount was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cash recount resolution conflict"
+          }
+        },
+        "summary": "Resolve cash recount discrepancy",
+        "tags": [
+          "cash-office"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/operational-days/current": {
+      "get": {
+        "operationId": "getCurrentOperationalDay",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "businessDate": {
+                      "type": "string"
+                    },
+                    "closedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "closedById": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "openedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "openedById": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "storeId": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "storeId",
+                    "businessDate",
+                    "status",
+                    "openedById",
+                    "openedAt",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Current operational day"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Open operational day was not found"
+          }
+        },
+        "summary": "Get current operational day",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/shifts/open": {
+      "get": {
+        "operationId": "listOpenStoreShifts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "shifts": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "businessDate": {
+                            "type": "string"
+                          },
+                          "cashierId": {
+                            "type": "string"
+                          },
+                          "closedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "closingCashMinor": {
+                            "type": "integer"
+                          },
+                          "drawerId": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "openedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "openingCashMinor": {
+                            "type": "integer"
+                          },
+                          "operationalDayId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          },
+                          "terminalId": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storeId",
+                          "terminalId",
+                          "cashierId",
+                          "drawerId",
+                          "status",
+                          "openingCashMinor",
+                          "closingCashMinor",
+                          "openedAt",
+                          "updatedAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "shifts"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Open shifts"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid shift query"
+          }
+        },
+        "summary": "List open store shifts",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/terminals/{terminalId}": {
+      "get": {
+        "operationId": "getTerminal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "terminalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "lastSeenAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "softwareVersion": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "storeId": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "storeId",
+                    "kind",
+                    "status",
+                    "lastSeenAt",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Terminal state"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Terminal was not found"
+          }
+        },
+        "summary": "Get terminal state",
+        "tags": [
+          "terminals"
+        ]
+      }
+    },
+    "/v1/terminals/{terminalId}/heartbeat": {
+      "post": {
+        "operationId": "recordTerminalHeartbeat",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "terminalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "softwareVersion": {
+                    "type": "string"
+                  },
+                  "storeId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "storeId",
+                  "kind"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Terminal heartbeat command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "terminal": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "lastSeenAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "softwareVersion": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "kind",
+                        "status",
+                        "lastSeenAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "terminal"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Heartbeat accepted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid heartbeat"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Idempotency conflict"
+          }
+        },
+        "summary": "Record terminal heartbeat",
+        "tags": [
+          "terminals"
+        ]
+      }
+    }
+  }
+}
