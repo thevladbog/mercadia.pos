@@ -57,6 +57,10 @@ Environment variables:
 | `MERCADIA_STORE_EDGE_TERMINAL_OFFLINE_AFTER` | `60s` | store-edge terminal list offline threshold from `lastSeenAt` |
 | `MERCADIA_STORE_EDGE_MIGRATIONS_DIR` | walk-up `infra/migrations/store-edge` | store-edge SQL migrations override |
 | `MERCADIA_CENTRAL_BACKEND_MIGRATIONS_DIR` | walk-up `infra/migrations/central-backend` | central-backend SQL migrations override |
+| `MERCADIA_CENTRAL_BACKEND_SEED_ADMIN_EMAIL` | _(empty = disabled)_ | bootstrap first central admin when no users exist |
+| `MERCADIA_CENTRAL_BACKEND_SEED_ADMIN_PASSWORD` | _(empty = disabled)_ | password for seeded central admin |
+| `MERCADIA_CENTRAL_BACKEND_SEED_ADMIN_DISPLAY_NAME` | `Central Admin` | display name for seeded central admin |
+| `MERCADIA_CENTRAL_BACKEND_SEED_ADMIN_USER_ID` | `seed-admin` | id for seeded central admin |
 | `MERCADIA_OTEL_ENABLED` | `false` | all services (enables OpenTelemetry HTTP tracing) |
 
 Example PostgreSQL URL: `postgres://mercadia:mercadia@127.0.0.1:5433/mercadia_pos?sslmode=disable`
@@ -266,11 +270,25 @@ The central backend service exposes store registration, sync ingestion, synced r
 - `GET /v1/stores/{storeId}/returns/{returnId}` - returns a synchronized return.
 - `GET /v1/stores/{storeId}/operational-days` - lists synchronized closed operational days (paginated).
 - `GET /v1/stores/{storeId}/operational-days/{operationalDayId}` - returns a synchronized closed operational day.
-- `GET /v1/stores/{storeId}/reporting/summary?since=&until=` - store KPI snapshot from synced projections (RFC3339 inclusive window).
-- `GET /v1/central/reporting/summary?since=&until=&region=` - network KPI aggregate across registered stores.
-- `GET /v1/central/reporting/stores?since=&until=&region=&limit=&offset=` - paginated per-store reporting rows for drill-down.
+- `GET /v1/stores/{storeId}/reporting/summary?since=&until=` - store KPI snapshot from synced projections (RFC3339 inclusive window). Requires `X-Session-Token` with `reporting.read`.
+- `GET /v1/central/reporting/summary?since=&until=&region=` - network KPI aggregate across registered stores. Requires `X-Session-Token` with `reporting.central.read`.
+- `GET /v1/central/reporting/stores?since=&until=&region=&limit=&offset=` - paginated per-store reporting rows for drill-down. Requires `X-Session-Token` with `reporting.central.read`.
+- `POST /v1/auth/sessions` - creates a central admin session from email and password; returns opaque token for `X-Session-Token`.
+- `GET /v1/central/users` - lists central users (`users.manage`, central admin role).
+- `POST /v1/central/users` - creates a central user (`users.manage`).
+- `GET /v1/central/users/{userId}` - returns a central user (`users.manage`).
+- `PATCH /v1/central/users/{userId}` - updates roles, password, or active state (`users.manage`).
 
 Reporting aggregates use synced fiscal documents (`kind=receipt` for revenue proxy), payments, returns, cash movements, and closed operational days within the requested time window.
+
+Central roles in v1: `central_viewer` (reporting read) and `central_admin` (reporting + user management). Store registration and sync ingestion remain unauthenticated so store-edge NATS sync keeps working without human login.
+
+Auth smoke:
+
+1. Start central-backend with seed env vars, for example `MERCADIA_CENTRAL_BACKEND_SEED_ADMIN_EMAIL=admin@example.com` and `MERCADIA_CENTRAL_BACKEND_SEED_ADMIN_PASSWORD=change-me`
+2. `POST /v1/auth/sessions` with `{"email":"admin@example.com","password":"change-me"}`
+3. Call reporting endpoints with `X-Session-Token: <token from step 2>`
+4. Confirm `GET /v1/central/reporting/summary` returns 401 without the header
 
 After a captured payment or NATS-delivered sync event, use `GET /v1/stores/{storeId}/sync-events`
 to confirm central ingestion without querying Postgres directly. Then query `GET /v1/stores/{storeId}/reporting/summary`
