@@ -4615,6 +4615,184 @@
       }
     },
     "/v1/receipts/{receiptId}/returns": {
+      "get": {
+        "operationId": "listReceiptReturns",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of items to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "actorId": {
+                            "type": "string"
+                          },
+                          "approvedById": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "lines": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "lineId": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "productId": {
+                                  "type": "string"
+                                },
+                                "quantity": {
+                                  "type": "integer"
+                                },
+                                "totalMinor": {
+                                  "type": "integer"
+                                },
+                                "unitPriceMinor": {
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "quantity",
+                                "unitPriceMinor",
+                                "totalMinor"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "receiptId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          },
+                          "totalMinor": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storeId",
+                          "kind",
+                          "lines",
+                          "reason",
+                          "actorId",
+                          "totalMinor",
+                          "status",
+                          "createdAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "totalCount": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "totalCount"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Returns for receipt"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Receipt was not found"
+          }
+        },
+        "summary": "List returns for receipt",
+        "tags": [
+          "returns"
+        ]
+      },
       "post": {
         "operationId": "createReceiptReturn",
         "parameters": [
@@ -5227,6 +5405,158 @@
         "summary": "Scan product into receipt",
         "tags": [
           "checkout"
+        ]
+      }
+    },
+    "/v1/returns/{returnId}": {
+      "get": {
+        "operationId": "getReturn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "returnId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "return": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "actorId": {
+                          "type": "string"
+                        },
+                        "approvedById": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "lineId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "productId": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "totalMinor": {
+                                "type": "integer"
+                              },
+                              "unitPriceMinor": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "quantity",
+                              "unitPriceMinor",
+                              "totalMinor"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "receiptId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "totalMinor": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "kind",
+                        "lines",
+                        "reason",
+                        "actorId",
+                        "totalMinor",
+                        "status",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "return"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return was not found"
+          }
+        },
+        "summary": "Get return",
+        "tags": [
+          "returns"
         ]
       }
     },
@@ -5908,6 +6238,9 @@
                   "openingCashMinor": {
                     "minimum": 0,
                     "type": "integer"
+                  },
+                  "sourceSafeId": {
+                    "type": "string"
                   },
                   "storeId": {
                     "type": "string"

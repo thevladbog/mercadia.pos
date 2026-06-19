@@ -339,6 +339,7 @@ func TestOpenReceiptRequiresOpenOperationalDayAndShiftWhenConfigured(t *testing.
 		TerminalID:       "pos-1",
 		CashierID:        "cashier-1",
 		DrawerID:         "drawer-1",
+		SourceSafeID:     "safe-1",
 		OpeningCashMinor: 100000,
 	})
 	if err != nil {

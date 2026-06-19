@@ -104,6 +104,9 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	if _, ok := paths["/v1/receipts/{receiptId}/returns"]; !ok {
 		t.Fatal("expected /v1/receipts/{receiptId}/returns path")
 	}
+	if _, ok := paths["/v1/returns/{returnId}"]; !ok {
+		t.Fatal("expected /v1/returns/{returnId} path")
+	}
 	if _, ok := paths["/v1/stores/{storeId}/returns/no-receipt"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/returns/no-receipt path")
 	}
@@ -965,6 +968,127 @@ func TestSettleReturnWorkflow(t *testing.T) {
 	}
 }
 
+func TestGetReturnAndListReceiptReturnsWorkflow(t *testing.T) {
+	server := NewServer()
+	openStoreDayAndShiftForDate(t, server, "return-read", time.Now().UTC().Format("2006-01-02"))
+
+	openReceiptResponse := httptest.NewRecorder()
+	openReceiptRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts", bytes.NewBufferString(`{
+		"storeId": "store-1",
+		"terminalId": "pos-1",
+		"cashierId": "cashier-1",
+		"channel": "pos"
+	}`))
+	openReceiptRequest.Header.Set("Content-Type", "application/json")
+	openReceiptRequest.Header.Set("Idempotency-Key", "return-read-receipt-open-1")
+	server.ServeHTTP(openReceiptResponse, openReceiptRequest)
+	if openReceiptResponse.Code != http.StatusAccepted {
+		t.Fatalf("open receipt status = %d body = %s", openReceiptResponse.Code, openReceiptResponse.Body.String())
+	}
+
+	var openedReceipt ReceiptAcceptedResponse
+	if err := json.Unmarshal(openReceiptResponse.Body.Bytes(), &openedReceipt); err != nil {
+		t.Fatalf("decode open receipt response: %v", err)
+	}
+
+	addLineResponse := httptest.NewRecorder()
+	addLineRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/lines", bytes.NewBufferString(`{
+		"productId": "sku-1",
+		"name": "Milk",
+		"quantity": 1,
+		"unitPriceMinor": 50000
+	}`))
+	addLineRequest.Header.Set("Content-Type", "application/json")
+	addLineRequest.Header.Set("Idempotency-Key", "return-read-line-1")
+	server.ServeHTTP(addLineResponse, addLineRequest)
+	if addLineResponse.Code != http.StatusAccepted {
+		t.Fatalf("add line status = %d body = %s", addLineResponse.Code, addLineResponse.Body.String())
+	}
+
+	paymentResponse := httptest.NewRecorder()
+	paymentRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/payments", bytes.NewBufferString(`{
+		"method": "cash",
+		"amountMinor": 50000
+	}`))
+	paymentRequest.Header.Set("Content-Type", "application/json")
+	paymentRequest.Header.Set("Idempotency-Key", "return-read-payment-1")
+	server.ServeHTTP(paymentResponse, paymentRequest)
+	if paymentResponse.Code != http.StatusAccepted {
+		t.Fatalf("create payment status = %d body = %s", paymentResponse.Code, paymentResponse.Body.String())
+	}
+
+	fiscalResponse := httptest.NewRecorder()
+	fiscalRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/fiscal-documents", bytes.NewBufferString(`{
+		"deviceId": "mock-atol-1"
+	}`))
+	fiscalRequest.Header.Set("Content-Type", "application/json")
+	fiscalRequest.Header.Set("Idempotency-Key", "return-read-fiscal-1")
+	server.ServeHTTP(fiscalResponse, fiscalRequest)
+	if fiscalResponse.Code != http.StatusAccepted {
+		t.Fatalf("fiscal status = %d body = %s", fiscalResponse.Code, fiscalResponse.Body.String())
+	}
+
+	getReceiptResponse := httptest.NewRecorder()
+	getReceiptRequest := httptest.NewRequest(http.MethodGet, "/v1/receipts/"+openedReceipt.Receipt.ID, nil)
+	server.ServeHTTP(getReceiptResponse, getReceiptRequest)
+	if getReceiptResponse.Code != http.StatusOK {
+		t.Fatalf("get receipt status = %d body = %s", getReceiptResponse.Code, getReceiptResponse.Body.String())
+	}
+
+	var receipt ReceiptResponse
+	if err := json.Unmarshal(getReceiptResponse.Body.Bytes(), &receipt); err != nil {
+		t.Fatalf("decode receipt response: %v", err)
+	}
+
+	createReturnResponse := httptest.NewRecorder()
+	createReturnRequest := httptest.NewRequest(http.MethodPost, "/v1/receipts/"+openedReceipt.Receipt.ID+"/returns", bytes.NewBufferString(fmt.Sprintf(`{
+		"lines": [{"lineId": %q, "quantity": 1}],
+		"reason": "Customer return",
+		"actorId": "senior-1"
+	}`, receipt.Lines[0].ID)))
+	createReturnRequest.Header.Set("Content-Type", "application/json")
+	createReturnRequest.Header.Set("Idempotency-Key", "return-read-create-1")
+	server.ServeHTTP(createReturnResponse, createReturnRequest)
+	if createReturnResponse.Code != http.StatusAccepted {
+		t.Fatalf("create return status = %d body = %s", createReturnResponse.Code, createReturnResponse.Body.String())
+	}
+
+	var createdReturn ReturnAcceptedResponse
+	if err := json.Unmarshal(createReturnResponse.Body.Bytes(), &createdReturn); err != nil {
+		t.Fatalf("decode create return response: %v", err)
+	}
+
+	getReturnResponse := httptest.NewRecorder()
+	getReturnRequest := httptest.NewRequest(http.MethodGet, "/v1/returns/"+createdReturn.Return.ID, nil)
+	server.ServeHTTP(getReturnResponse, getReturnRequest)
+	if getReturnResponse.Code != http.StatusOK {
+		t.Fatalf("get return status = %d body = %s", getReturnResponse.Code, getReturnResponse.Body.String())
+	}
+
+	var fetchedReturn ReturnAcceptedResponse
+	if err := json.Unmarshal(getReturnResponse.Body.Bytes(), &fetchedReturn); err != nil {
+		t.Fatalf("decode get return response: %v", err)
+	}
+	if fetchedReturn.Return.ID != createdReturn.Return.ID || fetchedReturn.Return.Status != "completed" {
+		t.Fatalf("fetched return = %+v", fetchedReturn.Return)
+	}
+
+	listReturnsResponse := httptest.NewRecorder()
+	listReturnsRequest := httptest.NewRequest(http.MethodGet, "/v1/receipts/"+openedReceipt.Receipt.ID+"/returns", nil)
+	server.ServeHTTP(listReturnsResponse, listReturnsRequest)
+	if listReturnsResponse.Code != http.StatusOK {
+		t.Fatalf("list returns status = %d body = %s", listReturnsResponse.Code, listReturnsResponse.Body.String())
+	}
+
+	var listed PaginatedReturnsResponse
+	if err := json.Unmarshal(listReturnsResponse.Body.Bytes(), &listed); err != nil {
+		t.Fatalf("decode list returns response: %v", err)
+	}
+	if listed.TotalCount != 1 || len(listed.Items) != 1 || listed.Items[0].ID != createdReturn.Return.ID {
+		t.Fatalf("listed returns = %+v", listed)
+	}
+}
+
 func TestCreateReturnFiscalDocumentWorkflow(t *testing.T) {
 	server := NewServer()
 	openStoreDayAndShiftForDate(t, server, "return-fiscal", time.Now().UTC().Format("2006-01-02"))
@@ -1623,6 +1747,7 @@ func TestShiftWorkflow(t *testing.T) {
 		"terminalId": "pos-1",
 		"cashierId": "cashier-1",
 		"drawerId": "drawer-1",
+		"sourceSafeId": "safe-1",
 		"openingCashMinor": 100000
 	}`))
 	openRequest.Header.Set("Idempotency-Key", "shift-open-1")
@@ -1701,7 +1826,7 @@ func TestShiftWorkflow(t *testing.T) {
 	for _, balance := range cashBalances.Balances {
 		shiftBalances[balance.ContainerID] = balance.BalanceMinor
 	}
-	if shiftBalances["drawer-1"] != -125000 || shiftBalances["safe-1"] != 125000 {
+	if shiftBalances["drawer-1"] != -25000 || shiftBalances["safe-1"] != 25000 {
 		t.Fatalf("cash balances = %+v", cashBalances.Balances)
 	}
 
@@ -1899,6 +2024,7 @@ func TestShiftRejectsDuplicateOpenTerminal(t *testing.T) {
 		"terminalId": "pos-1",
 		"cashierId": "cashier-1",
 		"drawerId": "drawer-1",
+		"sourceSafeId": "safe-1",
 		"openingCashMinor": 100000
 	}`))
 	firstRequest.Header.Set("Idempotency-Key", "shift-open-1")
@@ -1914,6 +2040,7 @@ func TestShiftRejectsDuplicateOpenTerminal(t *testing.T) {
 		"terminalId": "pos-1",
 		"cashierId": "cashier-2",
 		"drawerId": "drawer-2",
+		"sourceSafeId": "safe-1",
 		"openingCashMinor": 100000
 	}`))
 	secondRequest.Header.Set("Idempotency-Key", "shift-open-2")
@@ -1933,6 +2060,7 @@ func TestOpenShiftRequiresOpenOperationalDay(t *testing.T) {
 		"terminalId": "pos-1",
 		"cashierId": "cashier-1",
 		"drawerId": "drawer-1",
+		"sourceSafeId": "safe-1",
 		"openingCashMinor": 100000
 	}`))
 	openRequest.Header.Set("Idempotency-Key", "shift-open-without-day-1")
@@ -2353,9 +2481,13 @@ func TestOperationalDaySummary(t *testing.T) {
 		summary.Fiscal.FiscalizedTotalMinor != 50000 {
 		t.Fatalf("fiscal summary = %+v", summary.Fiscal)
 	}
-	if len(summary.Cash.Balances) != 1 ||
-		summary.Cash.Balances[0].ContainerID != "drawer-1" ||
-		summary.Cash.Balances[0].BalanceMinor != 50000 ||
+	cashByContainer := map[string]int64{}
+	for _, balance := range summary.Cash.Balances {
+		cashByContainer[balance.ContainerID] = balance.BalanceMinor
+	}
+	if len(summary.Cash.Balances) != 2 ||
+		cashByContainer["drawer-1"] != 150000 ||
+		cashByContainer["safe-1"] != -100000 ||
 		summary.Cash.NonZeroDrawerCount != 1 {
 		t.Fatalf("cash summary = %+v", summary.Cash)
 	}
@@ -2513,7 +2645,13 @@ func TestScanReceiptWorkflow(t *testing.T) {
 	if err := json.Unmarshal(cashBalanceResponse.Body.Bytes(), &cashBalances); err != nil {
 		t.Fatalf("decode cash balances response: %v", err)
 	}
-	if len(cashBalances.Balances) != 1 || cashBalances.Balances[0].ContainerID != "drawer-1" || cashBalances.Balances[0].BalanceMinor != 39998 {
+	cashByContainer := map[string]int64{}
+	for _, balance := range cashBalances.Balances {
+		cashByContainer[balance.ContainerID] = balance.BalanceMinor
+	}
+	if len(cashBalances.Balances) != 2 ||
+		cashByContainer["drawer-1"] != 139998 ||
+		cashByContainer["safe-1"] != -100000 {
 		t.Fatalf("cash balances = %+v", cashBalances.Balances)
 	}
 
@@ -2605,6 +2743,7 @@ func openStoreDayAndShiftForDate(t *testing.T, server http.Handler, keyPrefix st
 		"terminalId": "pos-1",
 		"cashierId": "cashier-1",
 		"drawerId": "drawer-1",
+		"sourceSafeId": "safe-1",
 		"openingCashMinor": 100000
 	}`))
 	shiftRequest.Header.Set("Idempotency-Key", keyPrefix+"-shift-open-1")

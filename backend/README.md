@@ -136,7 +136,7 @@ The Store Edge service has the first checkout and terminal monitoring paths:
 - `GET /v1/stores/{storeId}/operational-days/current` - returns the current open operational day for the store.
 - `POST /v1/operational-days/{operationalDayId}/close-check` - returns EoD close readiness and blockers.
 - `POST /v1/operational-days/{operationalDayId}/close` - closes the operational day when blockers are resolved or overridden.
-- `POST /v1/shifts` - opens a personal cashier shift for a terminal and cash drawer.
+- `POST /v1/shifts` - opens a personal cashier shift for a terminal and cash drawer. When `openingCashMinor > 0`, `sourceSafeId` is required and posts a `change_fund` movement from the safe into the drawer.
 - `GET /v1/shifts/{shiftId}` - returns shift state.
 - `GET /v1/shifts/{shiftId}/receipts` - lists receipts opened during the shift.
 - `POST /v1/shifts/{shiftId}/close` - closes an open cashier shift with closing cash amount.
@@ -155,6 +155,8 @@ The Store Edge service has the first checkout and terminal monitoring paths:
 - `POST /v1/receipts/{receiptId}/fiscal-documents` - creates a mock fiscal document for a fully paid receipt.
 - `GET /v1/receipts/{receiptId}/fiscal-documents` - lists receipt fiscal documents.
 - `POST /v1/receipts/{receiptId}/returns` - creates a with-receipt return against a fiscalized receipt. Per-line quantities are capped across prior with-receipt returns in `completed` or `settled` status on the same receipt.
+- `GET /v1/receipts/{receiptId}/returns` - lists returns for the receipt (paginated, newest first).
+- `GET /v1/returns/{returnId}` - returns return state.
 - `POST /v1/stores/{storeId}/returns/no-receipt` - creates a no-receipt return with approval.
 - `POST /v1/returns/{returnId}/settle` - settles a with-receipt return by refunding captured payments on the original receipt proportionally across payment methods, or disburses cash for an approved no-receipt return. Supports partial line returns when the return total is less than the receipt total. Optional `drawerId` selects the payout drawer for no-receipt returns (otherwise resolved from the actor's open shift). Cumulative settled return totals for a receipt cannot exceed the receipt total.
 - `POST /v1/returns/{returnId}/fiscal-documents` - creates a mock fiscal return/correction document for a settled with-receipt return. One fiscal document per return; requires the original receipt to be fiscalized.
@@ -208,18 +210,19 @@ fiscal documents only after the receipt is fully paid.
 Shift operations are the first Store Operations foundation. The current implementation enforces
 one open shift per terminal and one open shift per cashier. Shifts are linked to a cash drawer,
 the current operational day, and the business date. In the Store Edge API runtime, opening a
-shift requires an open operational day for the store. Closed shifts are removed from the
-open-shift read model. A shift cannot be closed while it has unresolved receipts. Closing a
-shift with `closingCashMinor > 0` requires final collection details and posts a
-`drawer_to_safe` cash movement from the shift drawer to the selected safe. The final collection
-requires two-person control through separate `actorId` and `approvedById` values.
+shift requires an open operational day for the store. When `openingCashMinor > 0`, shift open
+requires `sourceSafeId` and posts a `change_fund` ledger movement from the safe into the drawer.
+Closed shifts are removed from the open-shift read model. A shift cannot be closed while it has
+unresolved receipts. Closing a shift with `closingCashMinor > 0` requires final collection details
+and posts a `drawer_to_safe` cash movement from the shift drawer to the selected safe. On PostgreSQL,
+shift open and close persist shift state, cash movements, and idempotency in a single transaction.
+The final collection requires two-person control through separate `actorId` and `approvedById` values.
 Cash operations are modeled as an append-only ledger. Posted cash movements are not edited in
 place; corrections must be represented by a new movement. The first control rule is separation
 of duties: the actor posting a cash movement cannot approve the same movement.
-Cash balances are a derived read model calculated from posted cash movements. The current
-in-memory implementation intentionally allows negative balances because initial safe/drawer
-opening balances are not modeled yet; production persistence should maintain the same derivation
-or an auditable materialized read model backed by the ledger.
+Cash balances are a derived read model calculated from posted cash movements. Drawer and safe
+balances reflect posted movements including shift opening `change_fund` and closing collection.
+The in-memory implementation uses the same derivation as PostgreSQL.
 Cash recounts compare a counted amount with the derived expected balance. Balanced recounts can
 be recorded by one actor. Recounts with a discrepancy require a second approving actor, and the
 same actor cannot approve their own discrepancy. A discrepancy remains open until it is resolved
