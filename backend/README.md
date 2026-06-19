@@ -220,7 +220,7 @@ unresolved receipts. Closing a shift with `closingCashMinor > 0` requires final 
 and posts a `drawer_to_safe` cash movement from the shift drawer to the selected safe. On PostgreSQL,
 shift open and close persist shift state, cash movements, and idempotency in a single transaction.
 The final collection requires two-person control through separate `actorId` and `approvedById` values.
-Mid-shift cash in and cash out are shift-scoped commands that post `cash_in` and `cash_out` ledger movements with journal entries inside the same PostgreSQL transaction as idempotency when persistence is enabled.
+Mid-shift cash in and cash out are shift-scoped commands that post `cash_in` and `cash_out` ledger movements with journal entries inside the same PostgreSQL transaction as idempotency when persistence is enabled. Shift-scoped cash movements also enqueue `cash.movement.posted` outbox events for central sync.
 Cash operations are modeled as an append-only ledger. Posted cash movements are not edited in
 place; corrections must be represented by a new movement. The first control rule is separation
 of duties: the actor posting a cash movement cannot approve the same movement.

@@ -41,6 +41,7 @@ type ShiftService struct {
 	days         OperationalDayRepository
 	idempotency  IdempotencyStore
 	journal      OperationJournalRecorder
+	outbox       OutboxRecorder
 	transactions TransactionRunner
 	now          func() time.Time
 	newID        func(prefix string) string
@@ -102,6 +103,12 @@ func WithShiftTransactionRunner(runner TransactionRunner) ShiftOption {
 func WithShiftJournal(journal OperationJournalRecorder) ShiftOption {
 	return func(service *ShiftService) {
 		service.journal = journal
+	}
+}
+
+func WithShiftOutbox(outbox OutboxRecorder) ShiftOption {
+	return func(service *ShiftService) {
+		service.outbox = outbox
 	}
 }
 
@@ -234,7 +241,7 @@ func (s *ShiftService) OpenShift(ctx context.Context, command OpenShiftCommand) 
 			if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
 				return err
 			}
-			if err := s.recordCashMovementJournal(ctx, movement); err != nil {
+			if err := s.recordShiftCashMovementSideEffects(ctx, movement); err != nil {
 				return err
 			}
 		}
@@ -334,7 +341,7 @@ func (s *ShiftService) CloseShift(ctx context.Context, command CloseShiftCommand
 			if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
 				return err
 			}
-			if err := s.recordCashMovementJournal(ctx, movement); err != nil {
+			if err := s.recordShiftCashMovementSideEffects(ctx, movement); err != nil {
 				return err
 			}
 		}
@@ -440,7 +447,7 @@ func (s *ShiftService) CashIn(ctx context.Context, command ShiftCashInCommand) (
 		if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
 			return err
 		}
-		if err := s.recordCashMovementJournal(ctx, movement); err != nil {
+		if err := s.recordShiftCashMovementSideEffects(ctx, movement); err != nil {
 			return err
 		}
 
@@ -517,7 +524,7 @@ func (s *ShiftService) CashOut(ctx context.Context, command ShiftCashOutCommand)
 		if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
 			return err
 		}
-		if err := s.recordCashMovementJournal(ctx, movement); err != nil {
+		if err := s.recordShiftCashMovementSideEffects(ctx, movement); err != nil {
 			return err
 		}
 
@@ -616,6 +623,15 @@ func (s *ShiftService) recordCashMovementJournal(ctx context.Context, movement d
 		ReferenceID:   movement.ID,
 		Summary: fmt.Sprintf("%s %d from %s to %s",
 			movement.Type, movement.AmountMinor, movement.FromContainerID, movement.ToContainerID),
+	})
+}
+
+func (s *ShiftService) recordShiftCashMovementSideEffects(ctx context.Context, movement domain.CashMovement) error {
+	if err := s.recordCashMovementJournal(ctx, movement); err != nil {
+		return err
+	}
+	return recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
+		return recorder.RecordCashMovementPosted(ctx, movement)
 	})
 }
 

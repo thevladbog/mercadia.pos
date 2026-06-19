@@ -580,3 +580,67 @@ func TestRunRollsBackShiftCloseJournalWhenIdempotencyFails(t *testing.T) {
 		t.Fatalf("expected no cash movements, got %d", len(movements))
 	}
 }
+
+func TestRunRollsBackShiftCashMovementOutboxWhenIdempotencyFails(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	now := time.Date(2026, 6, 19, 16, 0, 0, 0, time.UTC)
+
+	movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
+		ID:                "cash_shift_outbox_tx",
+		StoreID:           "store_test",
+		Type:              domain.CashMovementTypeChangeFund,
+		FromContainerID:   "safe_1",
+		FromContainerType: domain.CashContainerTypeSafe,
+		ToContainerID:     "drawer_1",
+		ToContainerType:   domain.CashContainerTypeDrawer,
+		AmountMinor:       10000,
+		Currency:          "RUB",
+		Reason:            "opening float",
+		ActorID:           "cashier_1",
+		Now:               now,
+	})
+	if err != nil {
+		t.Fatalf("create movement: %v", err)
+	}
+
+	outboxEvent, err := domain.NewOutboxEvent(domain.OutboxEvent{
+		ID:            "outbox_shift_cash_tx",
+		AggregateType: domain.OutboxAggregateCashMovement,
+		AggregateID:   movement.ID,
+		EventType:     domain.OutboxEventCashMovementPosted,
+		CreatedAt:     now,
+	})
+	if err != nil {
+		t.Fatalf("new outbox event: %v", err)
+	}
+
+	err = store.Run(ctx, func(txCtx context.Context) error {
+		if err := store.SaveCashMovement(txCtx, movement); err != nil {
+			return err
+		}
+		if err := store.SaveOutboxEvent(txCtx, outboxEvent); err != nil {
+			return err
+		}
+		return errors.New("simulated idempotency failure")
+	})
+	if err == nil {
+		t.Fatal("expected transaction error")
+	}
+
+	movements, err := store.ListCashMovements(ctx, "store_test")
+	if err != nil {
+		t.Fatalf("list cash movements: %v", err)
+	}
+	if len(movements) != 0 {
+		t.Fatalf("expected no cash movements, got %d", len(movements))
+	}
+
+	pending, published, err := store.CountOutboxEvents(ctx)
+	if err != nil {
+		t.Fatalf("count outbox events: %v", err)
+	}
+	if pending+published != 0 {
+		t.Fatalf("expected no outbox rows, got pending=%d published=%d", pending, published)
+	}
+}

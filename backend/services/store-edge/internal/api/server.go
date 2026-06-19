@@ -698,6 +698,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 		app.WithShiftOperationalDayRepository(store),
 		app.WithShiftTransactionRunner(store),
 		app.WithShiftJournal(journal),
+		app.WithShiftOutbox(outbox),
 	)
 	terminalOptions := []app.TerminalOption{app.WithTerminalEventPublisher(terminalEvents)}
 	if config.terminalOfflineAfter > 0 {

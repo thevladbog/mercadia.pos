@@ -315,6 +315,43 @@ func TestOpenShiftWithOpeningCashPostsChangeFund(t *testing.T) {
 	}
 }
 
+func TestOpenShiftWithOpeningCashEnqueuesOutboxEvent(t *testing.T) {
+	store := memory.NewStore()
+	outbox := app.NewOutboxService(store)
+	var counter int
+	service := app.NewShiftService(store, store,
+		app.WithShiftCashLedger(store),
+		app.WithShiftOutbox(outbox),
+		app.WithShiftClock(func() time.Time {
+			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+		}),
+		app.WithShiftIDGenerator(func(prefix string) string {
+			counter++
+			return fmt.Sprintf("%s-test-%d", prefix, counter)
+		}),
+	)
+
+	if _, err := service.OpenShift(context.Background(), testOpenShiftCommand()); err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+
+	pending, published, err := store.CountOutboxEvents(context.Background())
+	if err != nil {
+		t.Fatalf("count outbox events: %v", err)
+	}
+	if pending != 1 || published != 0 {
+		t.Fatalf("outbox counts = pending %d published %d", pending, published)
+	}
+
+	events, err := store.ListPendingOutboxEvents(context.Background(), 10)
+	if err != nil {
+		t.Fatalf("list pending outbox events: %v", err)
+	}
+	if len(events) != 1 || events[0].EventType != domain.OutboxEventCashMovementPosted {
+		t.Fatalf("outbox events = %+v", events)
+	}
+}
+
 func TestOpenShiftRejectsOpeningCashWithoutSafe(t *testing.T) {
 	service := newTestShiftService()
 	command := testOpenShiftCommand()
