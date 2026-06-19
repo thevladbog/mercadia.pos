@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - packages/api-clients/*
+
+onlyBuiltDependencies:
+  - esbuild
+allowBuilds:
+  esbuild: true

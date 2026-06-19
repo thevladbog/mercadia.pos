@@ -1,0 +1,17 @@
+{
+  "name": "@mercadia/frontend",
+  "private": true,
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=11.5.2"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "orval:central": "orval --config packages/api-clients/central/orval.config.ts"
+  },
+  "devDependencies": {
+    "orval": "^8.15.0",
+    "typescript": "^6.0.3"
+  }
+}
