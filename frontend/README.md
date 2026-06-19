@@ -133,6 +133,10 @@ Requires central-backend (store list) and store-edge (store-operations APIs):
 2. Select a store with an open operational day — overview KPIs, blockers, open shifts, and
    operation journal tabs should load.
 3. If no operational day is open, confirm the empty state message appears (not an error panel).
+4. As `central_admin`, when the day can close (or only `no_sales_receipts` requires override),
+   use **Close operational day** — confirm in the modal; success notice appears and the page
+   shows the no-open-day state.
+5. Sign in as `central_viewer` — the close action panel is hidden (read-only).
 
 Optional env vars when APIs are not same-origin (bypass Vite proxy):
 

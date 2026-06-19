@@ -290,11 +290,11 @@
   },
   "eod": {
     "title": "Закрытие операционного дня",
-    "subtitle": "Обзор операционного дня и готовность к закрытию (только просмотр).",
+    "subtitle": "Обзор операционного дня, готовность к закрытию и закрытие дня для central admin.",
     "selectStore": "Выберите магазин для просмотра операционного дня.",
     "noOpenDay": "Нет открытого операционного дня для этого магазина.",
     "loadingDay": "Загрузка операционного дня…",
-    "blockerDisclaimer": "Список блокеров отражает правила store-edge; полная спецификация EoD ещё не реализована.",
+    "blockerDisclaimer": "Список блокеров отражает правила закрытия store-edge.",
     "tabs": {
       "overview": "Обзор",
       "openShifts": "Открытые смены",
@@ -336,7 +336,40 @@
     "noJournal": "Нет записей журнала.",
     "operationType": "Операция",
     "summary": "Описание",
-    "created": "Создано"
+    "created": "Создано",
+    "actions": {
+      "title": "Действия с днём",
+      "closeDay": "Закрыть операционный день",
+      "closeDayHintBlocked": "Устраните все блокирующие проверки перед закрытием дня.",
+      "closeDayHintOverride": "Фискализированных продаж не найдено. Для закрытия нужен override администратора."
+    },
+    "forms": {
+      "confirmTitle": "Закрытие операционного дня",
+      "confirmBody": "Проверьте блокеры ниже и подтвердите закрытие. Это действие необратимо.",
+      "closedById": "Закрыл",
+      "overrideNoSales": "Override отсутствия продаж",
+      "overrideActorId": "ID подтверждающего override",
+      "validation": {
+        "closedByRequired": "Требуется ID текущего пользователя.",
+        "overrideRequired": "Подтвердите override отсутствия продаж для продолжения.",
+        "overrideActorRequired": "Требуется ID подтверждающего override.",
+        "selfOverride": "Закрывающий и подтверждающий override должны быть разными людьми."
+      }
+    },
+    "notices": {
+      "closeSuccess": "Операционный день успешно закрыт."
+    },
+    "severityLabels": {
+      "blocker": "Блокер",
+      "requires_admin_override": "Требует override администратора"
+    },
+    "blockerCodes": {
+      "open_cashier_shift": "Кассовая смена ещё открыта",
+      "unresolved_cash_recount_discrepancy": "Расхождение пересчёта наличных не устранено",
+      "nonzero_drawer_balance": "Остаток в кассовом ящике не равен нулю",
+      "unresolved_receipt": "Чек не завершён и не отменён",
+      "no_sales_receipts": "Фискализированных чеков продаж за операционный день не найдено"
+    }
   },
   "users": {
     "title": "Central-пользователи",
