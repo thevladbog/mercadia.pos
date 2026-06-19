@@ -290,7 +290,7 @@
   },
   "eod": {
     "title": "End of Day",
-    "subtitle": "Operational day overview, close readiness, and day closure for central admins.",
+    "subtitle": "Operational day overview, open/close commands for central admins.",
     "selectStore": "Select a store to view the operational day.",
     "noOpenDay": "No open operational day for this store.",
     "loadingDay": "Loading operational day…",
@@ -339,6 +339,8 @@
     "created": "Created",
     "actions": {
       "title": "Day actions",
+      "openDayTitle": "Open day",
+      "openDay": "Open operational day",
       "closeShift": "Close shift",
       "closeShiftColumn": "Actions",
       "closeDay": "Close operational day",
@@ -346,6 +348,9 @@
       "closeDayHintOverride": "No fiscalized sales were found. Admin override is required to close."
     },
     "forms": {
+      "openConfirmTitle": "Open operational day",
+      "openConfirmBody": "Choose the business date and confirm opening a new operational day for this store.",
+      "openedById": "Opened by",
       "closeShiftTitle": "Close cashier shift",
       "closeShiftBody": "Enter the final cash collection amount. When cash is collected, safe and actor fields are required.",
       "closingCash": "Closing cash (RUB)",
@@ -355,6 +360,9 @@
       "overrideNoSales": "Override no-sales requirement",
       "overrideActorId": "Override approver ID",
       "validation": {
+        "businessDateRequired": "Business date is required.",
+        "businessDateFormat": "Business date must be YYYY-MM-DD.",
+        "openedByRequired": "Signed-in user ID is required.",
         "closingCashRequired": "Enter a valid non-negative closing cash amount.",
         "safeRequired": "Select a safe container for final collection.",
         "actorsRequired": "Actor and approver IDs are required when collecting cash.",
@@ -365,6 +373,7 @@
       }
     },
     "notices": {
+      "openSuccess": "Operational day opened successfully.",
       "closeShiftSuccess": "Cashier shift closed successfully.",
       "closeSuccess": "Operational day closed successfully."
     },
