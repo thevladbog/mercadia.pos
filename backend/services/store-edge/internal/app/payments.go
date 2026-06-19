@@ -397,14 +397,17 @@ func (s *PaymentService) RefundPayment(ctx context.Context, command RefundPaymen
 	if payment.ReceiptID != command.ReceiptID {
 		return PaymentResult{}, ErrPaymentNotFound
 	}
-	if payment.Method != domain.PaymentMethodCardMock {
+	switch payment.Method {
+	case domain.PaymentMethodCardMock, domain.PaymentMethodCash:
+	default:
 		return PaymentResult{}, ErrPaymentRefundNotSupported
 	}
 	if payment.Status != domain.PaymentStatusCaptured {
 		return PaymentResult{}, ErrPaymentCannotBeRefunded
 	}
 
-	if s.cardTerminal != nil && s.paymentTerminalID != "" && payment.ProviderReference != "" {
+	if payment.Method == domain.PaymentMethodCardMock &&
+		s.cardTerminal != nil && s.paymentTerminalID != "" && payment.ProviderReference != "" {
 		if err := s.cardTerminal.RefundCardPayment(ctx, s.paymentTerminalID, payment.ProviderReference, payment.AmountMinor); err != nil {
 			if !s.hardwareAgentFallback {
 				return PaymentResult{}, err
@@ -413,6 +416,36 @@ func (s *PaymentService) RefundPayment(ctx context.Context, command RefundPaymen
 	}
 
 	now := s.now()
+	if payment.Method == domain.PaymentMethodCash {
+		if receipt.DrawerID == "" || s.cash == nil {
+			return PaymentResult{}, ErrCashDrawerRequired
+		}
+		actorID := command.ActorID
+		if actorID == "" {
+			actorID = receipt.CashierID
+		}
+		movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
+			ID:                s.newID("cash"),
+			StoreID:           receipt.StoreID,
+			Type:              domain.CashMovementTypeCashSaleReversal,
+			FromContainerID:   receipt.DrawerID,
+			FromContainerType: domain.CashContainerTypeDrawer,
+			ToContainerID:     "external-customer",
+			ToContainerType:   domain.CashContainerTypeExternal,
+			AmountMinor:       payment.AmountMinor,
+			Currency:          "RUB",
+			Reason:            "Cash payment refund for receipt " + receipt.ID,
+			ActorID:           actorID,
+			Now:               now,
+		})
+		if err != nil {
+			return PaymentResult{}, err
+		}
+		if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+			return PaymentResult{}, err
+		}
+	}
+
 	if err := payment.Refund(now); err != nil {
 		return PaymentResult{}, err
 	}

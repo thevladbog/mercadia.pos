@@ -4582,7 +4582,7 @@
             "description": "Payment cannot be refunded"
           }
         },
-        "summary": "Refund captured card payment for receipt",
+        "summary": "Refund captured card or cash payment for receipt",
         "tags": [
           "payments"
         ]

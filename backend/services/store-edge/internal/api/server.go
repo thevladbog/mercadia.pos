@@ -1622,7 +1622,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 		Method:              http.MethodPost,
 		Path:                "/v1/receipts/{receiptId}/payments/{paymentId}/refund",
 		OperationID:         "refundReceiptPayment",
-		Summary:             "Refund captured card payment for receipt",
+		Summary:             "Refund captured card or cash payment for receipt",
 		Tags:                []string{"payments"},
 		RequiresIdempotency: true,
 		RequestBody: &httpapi.BodySpec{
