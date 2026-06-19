@@ -166,6 +166,7 @@ The Store Edge service has the first checkout and terminal monitoring paths:
 - `GET /v1/returns/{returnId}/fiscal-documents` - lists fiscal documents linked to the return (0 or 1 document).
 - `POST /v1/stores/{storeId}/cash-movements` - posts an immutable cash movement between cash containers.
 - `GET /v1/stores/{storeId}/cash-movements` - lists cash movements posted for the store.
+- `POST /v1/stores/{storeId}/bank-collections` - posts a `safe_to_bank` collection from a safe to a bank container; requires two-person control.
 - `GET /v1/stores/{storeId}/cash-balances` - derives current cash container balances from posted movements.
 - `POST /v1/stores/{storeId}/cash-recounts` - records a cash recount for a drawer or safe.
 - `GET /v1/stores/{storeId}/cash-recounts` - lists cash recounts for the store.

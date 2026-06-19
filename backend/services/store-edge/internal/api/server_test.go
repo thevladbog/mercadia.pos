@@ -56,6 +56,9 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	if _, ok := paths["/v1/stores/{storeId}/cash-movements"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/cash-movements path")
 	}
+	if _, ok := paths["/v1/stores/{storeId}/bank-collections"]; !ok {
+		t.Fatal("expected /v1/stores/{storeId}/bank-collections path")
+	}
 	if _, ok := paths["/v1/stores/{storeId}/cash-balances"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/cash-balances path")
 	}
