@@ -14,6 +14,7 @@ import { CreateCentralUserPage } from '@/pages/CreateCentralUserPage.js';
 import { EditCentralUserPage } from '@/pages/EditCentralUserPage.js';
 import { RegisterStorePage } from '@/pages/RegisterStorePage.js';
 import { StoreMonitoringPage } from '@/pages/StoreMonitoringPage.js';
+import { StoreReportingPage } from '@/pages/StoreReportingPage.js';
 
 export function App() {
   return (
@@ -24,6 +25,7 @@ export function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route element={<CentralReportingPage />} path="/central/reporting" />
+            <Route element={<StoreReportingPage />} path="/central/reporting/stores/:storeId" />
             <Route element={<CentralStoresPage />} path="/central/stores" />
             <Route element={<CentralSyncExplorerPage />} path="/central/sync" />
             <Route element={<StoreMonitoringPage />} path="/store/monitoring" />
