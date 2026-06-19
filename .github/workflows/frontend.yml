@@ -1,0 +1,60 @@
+name: Frontend
+
+on:
+  push:
+    paths:
+      - 'frontend/**'
+      - 'contracts/openapi/**'
+      - '.github/workflows/frontend.yml'
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'contracts/openapi/**'
+      - '.github/workflows/frontend.yml'
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.5.2 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Orval central client
+        run: pnpm orval:central
+
+      - name: Verify generated client is up to date
+        working-directory: ${{ github.workspace }}
+        run: git diff --exit-code frontend/packages/api-clients/central/src/generated/
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Build admin-web
+        run: pnpm --filter admin-web build
+
+      - name: Audit dependencies
+        run: pnpm audit
+        continue-on-error: true
