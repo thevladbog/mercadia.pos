@@ -22,6 +22,8 @@ Run tests from the POS root:
 .\backend\scripts\test.ps1
 ```
 
+CI checks (lint, vulnerability scan, OpenAPI diff) are described in [`docs/development/ci.md`](../docs/development/ci.md).
+
 Regenerate OpenAPI contracts from the POS root:
 
 ```powershell
