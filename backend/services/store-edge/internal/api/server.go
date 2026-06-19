@@ -685,7 +685,10 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 		monitoringOptions = append(monitoringOptions, app.WithTerminalMonitoringOfflineAfter(config.terminalOfflineAfter))
 	}
 	terminalMonitoring := app.NewTerminalMonitoringService(store, store, store, store, cash, monitoringOptions...)
-	returns := app.NewReturnsService(store, store, store, auth, app.WithReturnsJournal(journal))
+	returns := app.NewReturnsService(store, store, store, auth,
+		app.WithReturnsJournal(journal),
+		app.WithReturnsTransactionRunner(store),
+	)
 	returnSettlement := app.NewReturnSettlementService(store, store, store, payments, store,
 		app.WithReturnSettlementOutboxRecorder(outbox),
 		app.WithReturnSettlementJournal(journal),
@@ -693,7 +696,10 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 		app.WithReturnSettlementShiftLookup(store),
 		app.WithReturnSettlementTransactionRunner(store),
 	)
-	discounts := app.NewDiscountService(store, store, auth, app.WithDiscountJournal(journal))
+	discounts := app.NewDiscountService(store, store, auth,
+		app.WithDiscountJournal(journal),
+		app.WithDiscountTransactionRunner(store),
+	)
 	marking := app.NewMarkingService(store)
 
 	info := httpapi.ServiceInfo{

@@ -12,11 +12,12 @@ import (
 var ErrInvalidDiscountCommand = errors.New("invalid discount command")
 
 type DiscountService struct {
-	receipts    ReceiptRepository
-	idempotency IdempotencyStore
-	roles       ActorRoleLookup
-	journal     OperationJournalRecorder
-	now         func() time.Time
+	receipts     ReceiptRepository
+	idempotency  IdempotencyStore
+	roles        ActorRoleLookup
+	journal      OperationJournalRecorder
+	transactions TransactionRunner
+	now          func() time.Time
 }
 
 type DiscountOption func(*DiscountService)
@@ -39,6 +40,12 @@ func NewDiscountService(receipts ReceiptRepository, idempotency IdempotencyStore
 func WithDiscountJournal(journal OperationJournalRecorder) DiscountOption {
 	return func(service *DiscountService) {
 		service.journal = journal
+	}
+}
+
+func WithDiscountTransactionRunner(runner TransactionRunner) DiscountOption {
+	return func(service *DiscountService) {
+		service.transactions = runner
 	}
 }
 
@@ -85,28 +92,33 @@ func (s *DiscountService) ApplyLineDiscount(ctx context.Context, command ApplyLi
 		return ReceiptResult{}, ErrInvalidDiscountCommand
 	}
 
-	if err := s.receipts.SaveReceipt(ctx, receipt); err != nil {
-		return ReceiptResult{}, err
-	}
+	var result ReceiptResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if err := s.receipts.SaveReceipt(ctx, receipt); err != nil {
+			return err
+		}
 
-	if s.journal != nil {
-		_ = s.journal.RecordOperation(ctx, RecordOperationCommand{
-			StoreID:       receipt.StoreID,
-			OperationType: "discount.applied",
-			ActorID:       command.ActorID,
-			ReferenceID:   receipt.ID,
-			Summary:       fmt.Sprintf("line %s discount %d reason=%s", command.LineID, command.AmountMinor, command.Reason),
+		if s.journal != nil {
+			if err := s.journal.RecordOperation(ctx, RecordOperationCommand{
+				StoreID:       receipt.StoreID,
+				OperationType: "discount.applied",
+				ActorID:       command.ActorID,
+				ReferenceID:   receipt.ID,
+				Summary:       fmt.Sprintf("line %s discount %d reason=%s", command.LineID, command.AmountMinor, command.Reason),
+			}); err != nil {
+				return err
+			}
+		}
+
+		result = ReceiptResult{Receipt: receipt}
+		return s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.ReceiptID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
 		})
-	}
-
-	result := ReceiptResult{Receipt: receipt}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    command.ReceiptID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   s.now(),
 	}); err != nil {
 		return ReceiptResult{}, err
 	}

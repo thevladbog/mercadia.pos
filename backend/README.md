@@ -85,7 +85,7 @@ store-edge command -> outbox row -> JetStream (mercadia.store-edge.sync.{storeId
   -> central-backend consumer -> POST-equivalent AcceptEvents -> sync_events table
 ```
 
-On PostgreSQL, command handlers that emit outbox events persist business state and the outbox row in a single database transaction (ADR-0004 transactional outbox). In-memory mode remains single-process and does not use multi-statement transactions.
+On PostgreSQL, command handlers that emit outbox events persist business state and the outbox row in a single database transaction (ADR-0004 transactional outbox). Command paths that write the operation journal (returns, discounts, cash recounts, and related cash movements) commit journal entries atomically with business state and idempotency on PostgreSQL as well. In-memory mode remains single-process and does not use multi-statement transactions.
 
 Local smoke:
 

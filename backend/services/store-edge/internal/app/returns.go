@@ -24,13 +24,14 @@ type ReturnRepository interface {
 }
 
 type ReturnsService struct {
-	receipts    ReceiptRepository
-	returns     ReturnRepository
-	idempotency IdempotencyStore
-	roles       ActorRoleLookup
-	journal     OperationJournalRecorder
-	now         func() time.Time
-	newID       func(prefix string) string
+	receipts     ReceiptRepository
+	returns      ReturnRepository
+	idempotency  IdempotencyStore
+	roles        ActorRoleLookup
+	journal      OperationJournalRecorder
+	transactions TransactionRunner
+	now          func() time.Time
+	newID        func(prefix string) string
 }
 
 type ReturnsOption func(*ReturnsService)
@@ -55,6 +56,12 @@ func NewReturnsService(receipts ReceiptRepository, returns ReturnRepository, ide
 func WithReturnsJournal(journal OperationJournalRecorder) ReturnsOption {
 	return func(service *ReturnsService) {
 		service.journal = journal
+	}
+}
+
+func WithReturnsTransactionRunner(runner TransactionRunner) ReturnsOption {
+	return func(service *ReturnsService) {
+		service.transactions = runner
 	}
 }
 
@@ -134,19 +141,24 @@ func (s *ReturnsService) CreateReceiptReturn(ctx context.Context, command Create
 		return ReturnResult{}, ErrInvalidReturnCommand
 	}
 
-	if err := s.returns.SaveReturn(ctx, ret); err != nil {
-		return ReturnResult{}, err
-	}
-	s.recordJournal(ctx, ret)
+	var result ReturnResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if err := s.returns.SaveReturn(ctx, ret); err != nil {
+			return err
+		}
+		if err := s.recordJournal(ctx, ret); err != nil {
+			return err
+		}
 
-	result := ReturnResult{Return: ret}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    command.ReceiptID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   s.now(),
+		result = ReturnResult{Return: ret}
+		return s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.ReceiptID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		})
 	}); err != nil {
 		return ReturnResult{}, err
 	}
@@ -189,30 +201,35 @@ func (s *ReturnsService) CreateNoReceiptReturn(ctx context.Context, command Crea
 		return ReturnResult{}, ErrInvalidReturnCommand
 	}
 
-	if err := s.returns.SaveReturn(ctx, ret); err != nil {
-		return ReturnResult{}, err
-	}
-	s.recordJournal(ctx, ret)
+	var result ReturnResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if err := s.returns.SaveReturn(ctx, ret); err != nil {
+			return err
+		}
+		if err := s.recordJournal(ctx, ret); err != nil {
+			return err
+		}
 
-	result := ReturnResult{Return: ret}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    command.StoreID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   s.now(),
+		result = ReturnResult{Return: ret}
+		return s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.StoreID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		})
 	}); err != nil {
 		return ReturnResult{}, err
 	}
 	return result, nil
 }
 
-func (s *ReturnsService) recordJournal(ctx context.Context, ret domain.Return) {
+func (s *ReturnsService) recordJournal(ctx context.Context, ret domain.Return) error {
 	if s.journal == nil {
-		return
+		return nil
 	}
-	_ = s.journal.RecordOperation(ctx, RecordOperationCommand{
+	return s.journal.RecordOperation(ctx, RecordOperationCommand{
 		StoreID:       ret.StoreID,
 		OperationType: "return.completed",
 		ActorID:       ret.ActorID,

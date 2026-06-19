@@ -186,8 +186,10 @@ func (s *CashService) CreateCashMovement(ctx context.Context, command CreateCash
 			return err
 		}
 
-		s.recordCashJournal(ctx, movement.StoreID, "cash.movement.created", movement.ActorID, movement.ID,
-			fmt.Sprintf("%s %d from %s to %s", movement.Type, movement.AmountMinor, movement.FromContainerID, movement.ToContainerID))
+		if err := s.recordCashJournal(ctx, movement.StoreID, "cash.movement.created", movement.ActorID, movement.ID,
+			fmt.Sprintf("%s %d from %s to %s", movement.Type, movement.AmountMinor, movement.FromContainerID, movement.ToContainerID)); err != nil {
+			return err
+		}
 
 		result = CashMovementResult{Movement: movement}
 		if err := s.idempotency.Save(ctx, IdempotencyRecord{
@@ -263,21 +265,26 @@ func (s *CashService) CreateCashRecount(ctx context.Context, command CreateCashR
 		return CashRecountResult{}, err
 	}
 
-	if err := s.cash.SaveCashRecount(ctx, recount); err != nil {
-		return CashRecountResult{}, err
-	}
+	var result CashRecountResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if err := s.cash.SaveCashRecount(ctx, recount); err != nil {
+			return err
+		}
 
-	s.recordCashJournal(ctx, recount.StoreID, "cash.recount.created", recount.ActorID, recount.ID,
-		fmt.Sprintf("recount %s expected=%d counted=%d", recount.ContainerID, recount.ExpectedMinor, recount.CountedMinor))
+		if err := s.recordCashJournal(ctx, recount.StoreID, "cash.recount.created", recount.ActorID, recount.ID,
+			fmt.Sprintf("recount %s expected=%d counted=%d", recount.ContainerID, recount.ExpectedMinor, recount.CountedMinor)); err != nil {
+			return err
+		}
 
-	result := CashRecountResult{Recount: recount}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    command.StoreID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   s.now(),
+		result = CashRecountResult{Recount: recount}
+		return s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.StoreID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		})
 	}); err != nil {
 		return CashRecountResult{}, err
 	}
@@ -326,20 +333,25 @@ func (s *CashService) ResolveCashRecount(ctx context.Context, command ResolveCas
 		return CashRecountResult{}, err
 	}
 
-	if err := s.cash.SaveCashRecount(ctx, recount); err != nil {
-		return CashRecountResult{}, err
-	}
+	var result CashRecountResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if err := s.cash.SaveCashRecount(ctx, recount); err != nil {
+			return err
+		}
 
-	s.recordCashJournal(ctx, recount.StoreID, "cash.recount.resolved", command.ActorID, recount.ID, command.ResolutionNote)
+		if err := s.recordCashJournal(ctx, recount.StoreID, "cash.recount.resolved", command.ActorID, recount.ID, command.ResolutionNote); err != nil {
+			return err
+		}
 
-	result := CashRecountResult{Recount: recount}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    command.RecountID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   s.now(),
+		result = CashRecountResult{Recount: recount}
+		return s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.RecountID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		})
 	}); err != nil {
 		return CashRecountResult{}, err
 	}
@@ -369,11 +381,11 @@ func (s *CashService) ListCashRecounts(ctx context.Context, storeID string, para
 	return PaginateSlice(recounts, params), nil
 }
 
-func (s *CashService) recordCashJournal(ctx context.Context, storeID string, operationType string, actorID string, referenceID string, summary string) {
+func (s *CashService) recordCashJournal(ctx context.Context, storeID string, operationType string, actorID string, referenceID string, summary string) error {
 	if s.journal == nil {
-		return
+		return nil
 	}
-	_ = s.journal.RecordOperation(ctx, RecordOperationCommand{
+	return s.journal.RecordOperation(ctx, RecordOperationCommand{
 		StoreID:       storeID,
 		OperationType: operationType,
 		ActorID:       actorID,

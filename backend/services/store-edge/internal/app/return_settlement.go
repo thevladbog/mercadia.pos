@@ -335,7 +335,9 @@ func (s *ReturnSettlementService) finishSettledReturn(
 			return SettleReturnResult{}, err
 		}
 	}
-	s.recordJournal(ctx, ret, paymentIDs, cashMovementID)
+	if err := s.recordJournal(ctx, ret, paymentIDs, cashMovementID); err != nil {
+		return SettleReturnResult{}, err
+	}
 
 	result := SettleReturnResult{
 		Return:   ret,
@@ -439,15 +441,15 @@ func mapReturnSettlementDomainError(err error) error {
 	}
 }
 
-func (s *ReturnSettlementService) recordJournal(ctx context.Context, ret domain.Return, paymentIDs []string, cashMovementID string) {
+func (s *ReturnSettlementService) recordJournal(ctx context.Context, ret domain.Return, paymentIDs []string, cashMovementID string) error {
 	if s.journal == nil {
-		return
+		return nil
 	}
 	summary := fmt.Sprintf("settled return %s payments=%d total=%d", ret.ID, len(paymentIDs), ret.TotalMinor)
 	if cashMovementID != "" {
 		summary = fmt.Sprintf("settled no-receipt return %s cashMovement=%s total=%d", ret.ID, cashMovementID, ret.TotalMinor)
 	}
-	_ = s.journal.RecordOperation(ctx, RecordOperationCommand{
+	return s.journal.RecordOperation(ctx, RecordOperationCommand{
 		StoreID:       ret.StoreID,
 		OperationType: "return.settled",
 		ActorID:       ret.ActorID,

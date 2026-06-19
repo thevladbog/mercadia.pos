@@ -52,6 +52,7 @@ func newTestStore(t *testing.T) *postgres.Store {
 	_, err = store.Pool().Exec(ctx, `
 		TRUNCATE TABLE
 			outbox_events,
+			operation_journal_entries,
 			products,
 			terminals,
 			cash_recounts,
@@ -338,5 +339,42 @@ func TestPaymentCapturePersistsPaymentAndOutboxAtomically(t *testing.T) {
 	}
 	if pending != 1 || published != 0 {
 		t.Fatalf("expected one pending outbox event, got pending=%d published=%d", pending, published)
+	}
+}
+
+func TestRunRollsBackJournalWhenCallbackFails(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	now := time.Date(2026, 6, 19, 13, 0, 0, 0, time.UTC)
+
+	entry, err := domain.NewOperationJournalEntry(domain.CreateOperationJournalEntryInput{
+		ID:            "oj_tx_rollback",
+		StoreID:       "store_test",
+		OperationType: "test.journal.rollback",
+		ActorID:       "cashier_1",
+		ReferenceID:   "ref_1",
+		Summary:       "simulated failure",
+		Now:           now,
+	})
+	if err != nil {
+		t.Fatalf("new journal entry: %v", err)
+	}
+
+	err = store.Run(ctx, func(txCtx context.Context) error {
+		if err := store.SaveOperationJournalEntry(txCtx, entry); err != nil {
+			return err
+		}
+		return errors.New("simulated idempotency failure")
+	})
+	if err == nil {
+		t.Fatal("expected transaction error")
+	}
+
+	result, err := store.ListOperationJournalEntries(ctx, "store_test", app.PageParams{Limit: 10, Offset: 0})
+	if err != nil {
+		t.Fatalf("list journal entries: %v", err)
+	}
+	if result.TotalCount != 0 || len(result.Items) != 0 {
+		t.Fatalf("expected no journal rows, got total=%d items=%d", result.TotalCount, len(result.Items))
 	}
 }
