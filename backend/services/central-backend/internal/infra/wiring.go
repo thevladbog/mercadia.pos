@@ -19,6 +19,7 @@ type Repository interface {
 	app.SyncedFiscalDocumentRepository
 	app.SyncedReturnRepository
 	app.SyncedOperationalDayRepository
+	app.ReportingRepository
 	app.IdempotencyStore
 }
 

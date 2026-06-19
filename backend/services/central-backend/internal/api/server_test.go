@@ -3,6 +3,7 @@ package api_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -25,6 +26,7 @@ func newTestServer() http.Handler {
 		FiscalDocuments:   app.NewFiscalDocumentsService(repo, repo),
 		Returns:           app.NewReturnsService(repo, repo),
 		OperationalDays:   app.NewOperationalDaysService(repo, repo),
+		Reporting:         app.NewReportingService(repo, repo),
 	})
 }
 
@@ -60,6 +62,9 @@ func TestOpenAPIExposesCentralOperations(t *testing.T) {
 		"/v1/stores/{storeId}/returns/{returnId}",
 		"/v1/stores/{storeId}/operational-days",
 		"/v1/stores/{storeId}/operational-days/{operationalDayId}",
+		"/v1/stores/{storeId}/reporting/summary",
+		"/v1/central/reporting/summary",
+		"/v1/central/reporting/stores",
 	} {
 		if _, ok := paths[path]; !ok {
 			t.Fatalf("expected %s path", path)
@@ -404,5 +409,146 @@ func TestSyncEventsProjectOperationalDay(t *testing.T) {
 	}
 	if day.BusinessDate != "2026-06-19" || day.ClosedByID != "manager-1" {
 		t.Fatalf("operational day = %+v", day)
+	}
+}
+
+func TestStoreReportingSummaryEndpoint(t *testing.T) {
+	server := newTestServer()
+
+	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
+	registerRequest.Header.Set("Content-Type", "application/json")
+	registerRequest.Header.Set("Idempotency-Key", "register-reporting-http")
+	registerResponse := httptest.NewRecorder()
+	server.ServeHTTP(registerResponse, registerRequest)
+	if registerResponse.Code != http.StatusAccepted {
+		t.Fatalf("register status = %d", registerResponse.Code)
+	}
+
+	capturedAt := time.Date(2026, 6, 19, 14, 30, 0, 0, time.UTC).Format(time.RFC3339)
+	fiscalizedAt := time.Date(2026, 6, 19, 15, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	syncBody := bytes.NewBufferString(`{"events":[` +
+		`{"eventId":"obx-pay-1","eventType":"payment.captured","payload":{"storeId":"store-1","paymentId":"pay-1","receiptId":"rcpt-1","method":"card","amountMinor":150000,"capturedAt":"` + capturedAt + `"}},` +
+		`{"eventId":"obx-fisc-1","eventType":"fiscal.document.created","payload":{"storeId":"store-1","fiscalDocumentId":"fisc-1","receiptId":"rcpt-1","kind":"receipt","amountMinor":150000,"deviceId":"kkt-1","fiscalSign":"sign-abc","fiscalizedAt":"` + fiscalizedAt + `"}}` +
+		`]}`)
+	syncRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/sync-events", syncBody)
+	syncRequest.Header.Set("Content-Type", "application/json")
+	syncRequest.Header.Set("Idempotency-Key", "sync-reporting-http")
+	syncResponse := httptest.NewRecorder()
+	server.ServeHTTP(syncResponse, syncRequest)
+	if syncResponse.Code != http.StatusAccepted {
+		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
+	}
+
+	since := time.Date(2026, 6, 19, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	until := time.Date(2026, 6, 19, 23, 59, 59, 0, time.UTC).Format(time.RFC3339)
+	summaryResponse := httptest.NewRecorder()
+	summaryRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/reporting/summary?since="+since+"&until="+until, nil)
+	server.ServeHTTP(summaryResponse, summaryRequest)
+	if summaryResponse.Code != http.StatusOK {
+		t.Fatalf("reporting summary status = %d body=%s", summaryResponse.Code, summaryResponse.Body.String())
+	}
+
+	var summary api.StoreReportingSummaryResponse
+	if err := json.Unmarshal(summaryResponse.Body.Bytes(), &summary); err != nil {
+		t.Fatalf("decode reporting summary: %v", err)
+	}
+	if summary.FiscalReceiptCount != 1 || summary.FiscalReceiptAmountMinor != 150000 {
+		t.Fatalf("fiscal summary = %+v", summary)
+	}
+	if summary.PaymentsCapturedAmountMinor != 150000 {
+		t.Fatalf("payment summary = %+v", summary)
+	}
+}
+
+func TestCentralReportingSummaryEndpoint(t *testing.T) {
+	server := newTestServer()
+
+	for _, fixture := range []struct {
+		body            string
+		idempotencyKey  string
+	}{
+		{`{"storeId":"store-west","name":"West","region":"west"}`, "register-west-http"},
+		{`{"storeId":"store-east","name":"East","region":"east"}`, "register-east-http"},
+	} {
+		registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(fixture.body))
+		registerRequest.Header.Set("Content-Type", "application/json")
+		registerRequest.Header.Set("Idempotency-Key", fixture.idempotencyKey)
+		registerResponse := httptest.NewRecorder()
+		server.ServeHTTP(registerResponse, registerRequest)
+		if registerResponse.Code != http.StatusAccepted {
+			t.Fatalf("register status = %d body=%s", registerResponse.Code, registerResponse.Body.String())
+		}
+	}
+
+	capturedAt := time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	for _, fixture := range []struct {
+		storeID        string
+		paymentID      string
+		eventID        string
+		amount         int
+		idempotencyKey string
+	}{
+		{storeID: "store-west", paymentID: "pay-west", eventID: "obx-west-http", amount: 100000, idempotencyKey: "sync-west-http"},
+		{storeID: "store-east", paymentID: "pay-east", eventID: "obx-east-http", amount: 200000, idempotencyKey: "sync-east-http"},
+	} {
+		syncBody := bytes.NewBufferString(`{"events":[` +
+			`{"eventId":"` + fixture.eventID + `","eventType":"payment.captured","payload":{"storeId":"` + fixture.storeID + `","paymentId":"` + fixture.paymentID + `","receiptId":"rcpt-1","method":"card","amountMinor":` + fmt.Sprintf("%d", fixture.amount) + `,"capturedAt":"` + capturedAt + `"}}` +
+			`]}`)
+		syncRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/"+fixture.storeID+"/sync-events", syncBody)
+		syncRequest.Header.Set("Content-Type", "application/json")
+		syncRequest.Header.Set("Idempotency-Key", fixture.idempotencyKey)
+		syncResponse := httptest.NewRecorder()
+		server.ServeHTTP(syncResponse, syncRequest)
+		if syncResponse.Code != http.StatusAccepted {
+			t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
+		}
+	}
+
+	since := time.Date(2026, 6, 19, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	until := time.Date(2026, 6, 19, 23, 59, 59, 0, time.UTC).Format(time.RFC3339)
+
+	centralResponse := httptest.NewRecorder()
+	centralRequest := httptest.NewRequest(http.MethodGet, "/v1/central/reporting/summary?since="+since+"&until="+until, nil)
+	server.ServeHTTP(centralResponse, centralRequest)
+	if centralResponse.Code != http.StatusOK {
+		t.Fatalf("central summary status = %d body=%s", centralResponse.Code, centralResponse.Body.String())
+	}
+
+	var central api.CentralReportingSummaryResponse
+	if err := json.Unmarshal(centralResponse.Body.Bytes(), &central); err != nil {
+		t.Fatalf("decode central summary: %v", err)
+	}
+	if central.StoreCount != 2 || central.PaymentsCapturedAmountMinor != 300000 {
+		t.Fatalf("central summary = %+v", central)
+	}
+
+	westResponse := httptest.NewRecorder()
+	westRequest := httptest.NewRequest(http.MethodGet, "/v1/central/reporting/summary?since="+since+"&until="+until+"&region=west", nil)
+	server.ServeHTTP(westResponse, westRequest)
+	if westResponse.Code != http.StatusOK {
+		t.Fatalf("west summary status = %d body=%s", westResponse.Code, westResponse.Body.String())
+	}
+
+	var west api.CentralReportingSummaryResponse
+	if err := json.Unmarshal(westResponse.Body.Bytes(), &west); err != nil {
+		t.Fatalf("decode west summary: %v", err)
+	}
+	if west.StoreCount != 1 || west.PaymentsCapturedAmountMinor != 100000 {
+		t.Fatalf("west summary = %+v", west)
+	}
+
+	storesResponse := httptest.NewRecorder()
+	storesRequest := httptest.NewRequest(http.MethodGet, "/v1/central/reporting/stores?since="+since+"&until="+until, nil)
+	server.ServeHTTP(storesResponse, storesRequest)
+	if storesResponse.Code != http.StatusOK {
+		t.Fatalf("stores summary status = %d body=%s", storesResponse.Code, storesResponse.Body.String())
+	}
+
+	var stores api.PaginatedStoreReportingSummariesResponse
+	if err := json.Unmarshal(storesResponse.Body.Bytes(), &stores); err != nil {
+		t.Fatalf("decode stores summaries: %v", err)
+	}
+	if stores.TotalCount != 2 || len(stores.Items) != 2 {
+		t.Fatalf("stores summaries = %+v", stores)
 	}
 }

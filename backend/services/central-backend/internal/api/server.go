@@ -26,6 +26,7 @@ type Services struct {
 	FiscalDocuments  *app.FiscalDocumentsService
 	Returns           *app.ReturnsService
 	OperationalDays   *app.OperationalDaysService
+	Reporting         *app.ReportingService
 }
 
 type StatusResponse struct {
@@ -204,6 +205,46 @@ type PaginatedSyncedOperationalDaysResponse struct {
 	TotalCount int                            `json:"totalCount"`
 }
 
+type StoreReportingSummaryResponse struct {
+	StoreID                     string    `json:"storeId"`
+	Since                       time.Time `json:"since"`
+	Until                       time.Time `json:"until"`
+	FiscalReceiptCount          int       `json:"fiscalReceiptCount"`
+	FiscalReceiptAmountMinor    int64     `json:"fiscalReceiptAmountMinor"`
+	FiscalReturnCount           int       `json:"fiscalReturnCount"`
+	FiscalReturnAmountMinor     int64     `json:"fiscalReturnAmountMinor"`
+	PaymentsCapturedAmountMinor int64     `json:"paymentsCapturedAmountMinor"`
+	PaymentsCancelledCount      int       `json:"paymentsCancelledCount"`
+	PaymentsRefundedAmountMinor int64     `json:"paymentsRefundedAmountMinor"`
+	ReturnsSettledCount         int       `json:"returnsSettledCount"`
+	ReturnsSettledAmountMinor   int64     `json:"returnsSettledAmountMinor"`
+	CashMovementsPostedCount    int       `json:"cashMovementsPostedCount"`
+	OperationalDaysClosedCount  int       `json:"operationalDaysClosedCount"`
+}
+
+type CentralReportingSummaryResponse struct {
+	Region                      string    `json:"region,omitempty"`
+	Since                       time.Time `json:"since"`
+	Until                       time.Time `json:"until"`
+	StoreCount                  int       `json:"storeCount"`
+	FiscalReceiptCount          int       `json:"fiscalReceiptCount"`
+	FiscalReceiptAmountMinor    int64     `json:"fiscalReceiptAmountMinor"`
+	FiscalReturnCount           int       `json:"fiscalReturnCount"`
+	FiscalReturnAmountMinor     int64     `json:"fiscalReturnAmountMinor"`
+	PaymentsCapturedAmountMinor int64     `json:"paymentsCapturedAmountMinor"`
+	PaymentsCancelledCount      int       `json:"paymentsCancelledCount"`
+	PaymentsRefundedAmountMinor int64     `json:"paymentsRefundedAmountMinor"`
+	ReturnsSettledCount         int       `json:"returnsSettledCount"`
+	ReturnsSettledAmountMinor   int64     `json:"returnsSettledAmountMinor"`
+	CashMovementsPostedCount    int       `json:"cashMovementsPostedCount"`
+	OperationalDaysClosedCount  int       `json:"operationalDaysClosedCount"`
+}
+
+type PaginatedStoreReportingSummariesResponse struct {
+	Items      []StoreReportingSummaryResponse `json:"items"`
+	TotalCount int                             `json:"totalCount"`
+}
+
 type ServerOptions struct {
 	ReadinessChecks []func(context.Context) error
 }
@@ -246,6 +287,7 @@ func newServices(repo infra.Repository) Services {
 		FiscalDocuments:   app.NewFiscalDocumentsService(repo, repo),
 		Returns:           app.NewReturnsService(repo, repo),
 		OperationalDays:   app.NewOperationalDaysService(repo, repo),
+		Reporting:         app.NewReportingService(repo, repo),
 	}
 }
 
@@ -733,6 +775,101 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		}
 		httpapi.WriteJSON(w, http.StatusOK, syncedOperationalDayResponse(day))
 	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:          http.MethodGet,
+		Path:            "/v1/stores/{storeId}/reporting/summary",
+		OperationID:     "getStoreReportingSummary",
+		Summary:         "Get store reporting summary for a time window",
+		Description:     "Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window).",
+		Tags:            []string{"reporting"},
+		QueryParameters: reportingWindowQueryParams(),
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Store reporting summary", Schema: storeReportingSummaryResponseSchema()},
+			"400": {Description: "Invalid reporting query", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		window, err := app.ParseReportingWindow(r.URL.Query().Get("since"), r.URL.Query().Get("until"))
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		summary, err := services.Reporting.GetStoreSummary(r.Context(), r.PathValue("storeId"), window)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, storeReportingSummaryResponse(summary))
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:          http.MethodGet,
+		Path:            "/v1/central/reporting/summary",
+		OperationID:     "getCentralReportingSummary",
+		Summary:         "Get cross-store reporting summary for a time window",
+		Description:     "Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window). Optional `region` filters registered stores.",
+		Tags:            []string{"reporting"},
+		QueryParameters: append(reportingWindowQueryParams(), httpapi.QueryParamSpec{
+			Name:        "region",
+			Description: "Optional store region filter",
+			Schema:      httpapi.StringSchema(),
+		}),
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Central reporting summary", Schema: centralReportingSummaryResponseSchema()},
+			"400": {Description: "Invalid reporting query", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		window, err := app.ParseReportingWindow(r.URL.Query().Get("since"), r.URL.Query().Get("until"))
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		summary, err := services.Reporting.GetCentralSummary(r.Context(), window, r.URL.Query().Get("region"))
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, centralReportingSummaryResponse(summary))
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:      http.MethodGet,
+		Path:        "/v1/central/reporting/stores",
+		OperationID: "listCentralStoreReportingSummaries",
+		Summary:     "List per-store reporting summaries for a time window",
+		Description: "Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window). Optional `region` filters registered stores.",
+		Tags:        []string{"reporting"},
+		QueryParameters: append(append(reportingWindowQueryParams(), httpapi.QueryParamSpec{
+			Name:        "region",
+			Description: "Optional store region filter",
+			Schema:      httpapi.StringSchema(),
+		}), paginationQueryParams()...),
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Per-store reporting summaries", Schema: paginatedStoreReportingSummariesResponseSchema()},
+			"400": {Description: "Invalid reporting query", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		window, err := app.ParseReportingWindow(r.URL.Query().Get("since"), r.URL.Query().Get("until"))
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := services.Reporting.ListStoreSummaries(r.Context(), window, r.URL.Query().Get("region"), params)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		items := make([]StoreReportingSummaryResponse, 0, len(result.Items))
+		for _, summary := range result.Items {
+			items = append(items, storeReportingSummaryResponse(summary))
+		}
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedStoreReportingSummariesResponse{
+			Items:      items,
+			TotalCount: result.TotalCount,
+		})
+	})
 }
 
 func writeAppError(w http.ResponseWriter, err error) {
@@ -771,6 +908,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_return_query", "Invalid return query", err.Error())
 	case errors.Is(err, app.ErrInvalidOperationalDayQuery), errors.Is(err, domain.ErrInvalidSyncedOperationalDayInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_operational_day_query", "Invalid operational day query", err.Error())
+	case errors.Is(err, app.ErrInvalidReportingQuery):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_reporting_query", "Invalid reporting query", err.Error())
 	default:
 		httpapi.WriteProblem(w, http.StatusInternalServerError, "internal_error", "Unexpected server error", err.Error())
 	}
@@ -895,6 +1034,52 @@ func paginationQueryParams() []httpapi.QueryParamSpec {
 	return []httpapi.QueryParamSpec{
 		{Name: "limit", Description: "Maximum number of items to return", Schema: httpapi.Schema{"type": "integer", "minimum": 1, "maximum": app.MaxPageLimit}},
 		{Name: "offset", Description: "Number of items to skip", Schema: httpapi.Schema{"type": "integer", "minimum": 0}},
+	}
+}
+
+func reportingWindowQueryParams() []httpapi.QueryParamSpec {
+	return []httpapi.QueryParamSpec{
+		{Name: "since", Description: "Inclusive window start (RFC3339)", Required: true, Schema: httpapi.DateTimeSchema()},
+		{Name: "until", Description: "Inclusive window end (RFC3339)", Required: true, Schema: httpapi.DateTimeSchema()},
+	}
+}
+
+func storeReportingSummaryResponse(summary app.StoreReportingSummary) StoreReportingSummaryResponse {
+	return StoreReportingSummaryResponse{
+		StoreID:                     summary.StoreID,
+		Since:                       summary.Since,
+		Until:                       summary.Until,
+		FiscalReceiptCount:          summary.FiscalReceiptCount,
+		FiscalReceiptAmountMinor:    summary.FiscalReceiptAmountMinor,
+		FiscalReturnCount:           summary.FiscalReturnCount,
+		FiscalReturnAmountMinor:     summary.FiscalReturnAmountMinor,
+		PaymentsCapturedAmountMinor: summary.PaymentsCapturedAmountMinor,
+		PaymentsCancelledCount:      summary.PaymentsCancelledCount,
+		PaymentsRefundedAmountMinor: summary.PaymentsRefundedAmountMinor,
+		ReturnsSettledCount:         summary.ReturnsSettledCount,
+		ReturnsSettledAmountMinor:   summary.ReturnsSettledAmountMinor,
+		CashMovementsPostedCount:    summary.CashMovementsPostedCount,
+		OperationalDaysClosedCount:  summary.OperationalDaysClosedCount,
+	}
+}
+
+func centralReportingSummaryResponse(summary app.CentralReportingSummary) CentralReportingSummaryResponse {
+	return CentralReportingSummaryResponse{
+		Region:                      summary.Region,
+		Since:                       summary.Since,
+		Until:                       summary.Until,
+		StoreCount:                  summary.StoreCount,
+		FiscalReceiptCount:          summary.FiscalReceiptCount,
+		FiscalReceiptAmountMinor:    summary.FiscalReceiptAmountMinor,
+		FiscalReturnCount:           summary.FiscalReturnCount,
+		FiscalReturnAmountMinor:     summary.FiscalReturnAmountMinor,
+		PaymentsCapturedAmountMinor: summary.PaymentsCapturedAmountMinor,
+		PaymentsCancelledCount:      summary.PaymentsCancelledCount,
+		PaymentsRefundedAmountMinor: summary.PaymentsRefundedAmountMinor,
+		ReturnsSettledCount:         summary.ReturnsSettledCount,
+		ReturnsSettledAmountMinor:   summary.ReturnsSettledAmountMinor,
+		CashMovementsPostedCount:    summary.CashMovementsPostedCount,
+		OperationalDaysClosedCount:  summary.OperationalDaysClosedCount,
 	}
 }
 
@@ -1183,6 +1368,52 @@ func syncedOperationalDayResponseSchema() httpapi.Schema {
 func paginatedSyncedOperationalDaysResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"items":      httpapi.ArraySchema(syncedOperationalDayResponseSchema()),
+		"totalCount": {"type": "integer"},
+	}, "items", "totalCount")
+}
+
+func storeReportingSummaryResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"storeId":                     httpapi.StringSchema(),
+		"since":                       httpapi.DateTimeSchema(),
+		"until":                       httpapi.DateTimeSchema(),
+		"fiscalReceiptCount":          {"type": "integer"},
+		"fiscalReceiptAmountMinor":    {"type": "integer"},
+		"fiscalReturnCount":           {"type": "integer"},
+		"fiscalReturnAmountMinor":     {"type": "integer"},
+		"paymentsCapturedAmountMinor": {"type": "integer"},
+		"paymentsCancelledCount":      {"type": "integer"},
+		"paymentsRefundedAmountMinor": {"type": "integer"},
+		"returnsSettledCount":         {"type": "integer"},
+		"returnsSettledAmountMinor":   {"type": "integer"},
+		"cashMovementsPostedCount":    {"type": "integer"},
+		"operationalDaysClosedCount":  {"type": "integer"},
+	}, "storeId", "since", "until", "fiscalReceiptCount", "fiscalReceiptAmountMinor", "fiscalReturnCount", "fiscalReturnAmountMinor", "paymentsCapturedAmountMinor", "paymentsCancelledCount", "paymentsRefundedAmountMinor", "returnsSettledCount", "returnsSettledAmountMinor", "cashMovementsPostedCount", "operationalDaysClosedCount")
+}
+
+func centralReportingSummaryResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"region":                      httpapi.StringSchema(),
+		"since":                       httpapi.DateTimeSchema(),
+		"until":                       httpapi.DateTimeSchema(),
+		"storeCount":                  {"type": "integer"},
+		"fiscalReceiptCount":          {"type": "integer"},
+		"fiscalReceiptAmountMinor":    {"type": "integer"},
+		"fiscalReturnCount":           {"type": "integer"},
+		"fiscalReturnAmountMinor":     {"type": "integer"},
+		"paymentsCapturedAmountMinor": {"type": "integer"},
+		"paymentsCancelledCount":      {"type": "integer"},
+		"paymentsRefundedAmountMinor": {"type": "integer"},
+		"returnsSettledCount":         {"type": "integer"},
+		"returnsSettledAmountMinor":   {"type": "integer"},
+		"cashMovementsPostedCount":    {"type": "integer"},
+		"operationalDaysClosedCount":  {"type": "integer"},
+	}, "since", "until", "storeCount", "fiscalReceiptCount", "fiscalReceiptAmountMinor", "fiscalReturnCount", "fiscalReturnAmountMinor", "paymentsCapturedAmountMinor", "paymentsCancelledCount", "paymentsRefundedAmountMinor", "returnsSettledCount", "returnsSettledAmountMinor", "cashMovementsPostedCount", "operationalDaysClosedCount")
+}
+
+func paginatedStoreReportingSummariesResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"items":      httpapi.ArraySchema(storeReportingSummaryResponseSchema()),
 		"totalCount": {"type": "integer"},
 	}, "items", "totalCount")
 }
