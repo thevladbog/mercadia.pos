@@ -736,3 +736,95 @@ func TestSyncEventsRequireAPIKeyWhenConfigured(t *testing.T) {
 		t.Fatalf("sync with key status = %d body=%s", authorizedResponse.Code, authorizedResponse.Body.String())
 	}
 }
+
+type registerTestStoreAuth struct {
+	sessionToken string
+	syncAPIKey   string
+}
+
+func registerTestStore(t *testing.T, server http.Handler, body, idempotencyKey string, auth registerTestStoreAuth) {
+	t.Helper()
+
+	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(body))
+	registerRequest.Header.Set("Content-Type", "application/json")
+	registerRequest.Header.Set("Idempotency-Key", idempotencyKey)
+	if auth.sessionToken != "" {
+		registerRequest.Header.Set("X-Session-Token", auth.sessionToken)
+	}
+	if auth.syncAPIKey != "" {
+		registerRequest.Header.Set("X-Sync-Api-Key", auth.syncAPIKey)
+	}
+	registerResponse := httptest.NewRecorder()
+	server.ServeHTTP(registerResponse, registerRequest)
+	if registerResponse.Code != http.StatusAccepted {
+		t.Fatalf("register status = %d body=%s", registerResponse.Code, registerResponse.Body.String())
+	}
+}
+
+func TestRegisterStoreRequiresAdminSessionWhenSyncKeyUnset(t *testing.T) {
+	store := memory.NewStore()
+	if err := seedHTTPTestAdmin(store); err != nil {
+		t.Fatalf("seed admin: %v", err)
+	}
+	if err := seedHTTPTestViewer(store); err != nil {
+		t.Fatalf("seed viewer: %v", err)
+	}
+	server := api.NewServerWithServices(newTestServices(store))
+	body := `{"storeId":"store-1","name":"Main Street","region":"west"}`
+
+	unauthorizedRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(body))
+	unauthorizedRequest.Header.Set("Content-Type", "application/json")
+	unauthorizedRequest.Header.Set("Idempotency-Key", "register-unauthorized")
+	unauthorizedResponse := httptest.NewRecorder()
+	server.ServeHTTP(unauthorizedResponse, unauthorizedRequest)
+	if unauthorizedResponse.Code != http.StatusUnauthorized {
+		t.Fatalf("register without auth status = %d body=%s", unauthorizedResponse.Code, unauthorizedResponse.Body.String())
+	}
+
+	viewerToken := loginTestSession(t, server, "viewer@example.com", "viewer-pass")
+	forbiddenRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(body))
+	forbiddenRequest.Header.Set("Content-Type", "application/json")
+	forbiddenRequest.Header.Set("Idempotency-Key", "register-forbidden")
+	forbiddenRequest.Header.Set("X-Session-Token", viewerToken)
+	forbiddenResponse := httptest.NewRecorder()
+	server.ServeHTTP(forbiddenResponse, forbiddenRequest)
+	if forbiddenResponse.Code != http.StatusForbidden {
+		t.Fatalf("register viewer status = %d body=%s", forbiddenResponse.Code, forbiddenResponse.Body.String())
+	}
+
+	adminToken := loginTestSession(t, server, "admin@example.com", "admin-pass")
+	registerTestStore(t, server, body, "register-admin", registerTestStoreAuth{sessionToken: adminToken})
+}
+
+func TestRegisterStoreAcceptsSyncAPIKeyWhenConfigured(t *testing.T) {
+	store := memory.NewStore()
+	server := api.NewServerWithServices(newTestServicesWithSyncAPIKey(store, "test-key"))
+	body := `{"storeId":"store-1","name":"Main Street"}`
+
+	unauthorizedRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(body))
+	unauthorizedRequest.Header.Set("Content-Type", "application/json")
+	unauthorizedRequest.Header.Set("Idempotency-Key", "register-no-key")
+	unauthorizedResponse := httptest.NewRecorder()
+	server.ServeHTTP(unauthorizedResponse, unauthorizedRequest)
+	if unauthorizedResponse.Code != http.StatusUnauthorized {
+		t.Fatalf("register without key status = %d body=%s", unauthorizedResponse.Code, unauthorizedResponse.Body.String())
+	}
+
+	registerTestStore(t, server, body, "register-with-key", registerTestStoreAuth{syncAPIKey: "test-key"})
+}
+
+func TestRegisterStoreAcceptsAdminSessionWhenSyncKeyConfigured(t *testing.T) {
+	store := memory.NewStore()
+	if err := seedHTTPTestAdmin(store); err != nil {
+		t.Fatalf("seed admin: %v", err)
+	}
+	server := api.NewServerWithServices(newTestServicesWithSyncAPIKey(store, "test-key"))
+	adminToken := loginTestSession(t, server, "admin@example.com", "admin-pass")
+	registerTestStore(
+		t,
+		server,
+		`{"storeId":"store-1","name":"Main Street"}`,
+		"register-admin-with-key",
+		registerTestStoreAuth{sessionToken: adminToken},
+	)
+}

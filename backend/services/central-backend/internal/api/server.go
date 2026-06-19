@@ -402,6 +402,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		Path:                "/v1/stores",
 		OperationID:         "registerStore",
 		Summary:             "Register a store",
+		Description:         storeRegistrationProtectedDescription("Registers a store in the central registry."),
 		Tags:                []string{"stores"},
 		RequiresIdempotency: true,
 		RequestBody: &httpapi.BodySpec{
@@ -412,9 +413,11 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		Responses: map[string]httpapi.ResponseSpec{
 			"202": {Description: "Store registered", Schema: storeAcceptedResponseSchema()},
 			"400": {Description: "Invalid store command", Schema: httpapi.ProblemSchema()},
+			"401": {Description: "Sync API key or session is missing or invalid", Schema: httpapi.ProblemSchema()},
+			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
 			"409": {Description: "Idempotency conflict", Schema: httpapi.ProblemSchema()},
 		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+	}, RequireSyncAPIKeyOrSession(services.Auth, services.SyncAPIKey, app.PermissionUsersManage, func(w http.ResponseWriter, r *http.Request) {
 		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
 			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 			return
@@ -435,7 +438,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			return
 		}
 		httpapi.WriteJSON(w, http.StatusAccepted, StoreAcceptedResponse{Store: storeResponse(result.Store)})
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:              http.MethodPost,
