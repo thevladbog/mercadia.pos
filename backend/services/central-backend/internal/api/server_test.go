@@ -47,6 +47,10 @@ func TestOpenAPIExposesCentralOperations(t *testing.T) {
 		"/v1/stores/{storeId}/sync-events",
 		"/v1/stores/{storeId}/catalog/products",
 		"/v1/stores/{storeId}/catalog/delta",
+		"/v1/stores/{storeId}/payments",
+		"/v1/stores/{storeId}/payments/{paymentId}",
+		"/v1/stores/{storeId}/cash-movements",
+		"/v1/stores/{storeId}/cash-movements/{cashMovementId}",
 	} {
 		if _, ok := paths[path]; !ok {
 			t.Fatalf("expected %s path", path)
@@ -168,5 +172,62 @@ func TestListStoreSyncEventsReturnsAcceptedEvents(t *testing.T) {
 	}
 	if listed.Items[0].SourceEventID != "evt-list-1" || listed.Items[0].EventType != "catalog.product.upserted" {
 		t.Fatalf("sync event = %+v", listed.Items[0])
+	}
+}
+
+func TestSyncEventsProjectPaymentsAndCashMovements(t *testing.T) {
+	server := newTestServer()
+
+	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
+	registerRequest.Header.Set("Content-Type", "application/json")
+	registerRequest.Header.Set("Idempotency-Key", "register-projection-1")
+	registerResponse := httptest.NewRecorder()
+	server.ServeHTTP(registerResponse, registerRequest)
+	if registerResponse.Code != http.StatusAccepted {
+		t.Fatalf("register status = %d", registerResponse.Code)
+	}
+
+	capturedAt := time.Date(2026, 6, 19, 14, 30, 0, 0, time.UTC).Format(time.RFC3339)
+	postedAt := time.Date(2026, 6, 19, 15, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	syncBody := bytes.NewBufferString(`{"events":[` +
+		`{"eventId":"obx-pay-1","eventType":"payment.captured","payload":{"storeId":"store-1","paymentId":"pay-1","receiptId":"rcpt-1","method":"card","amountMinor":150000,"capturedAt":"` + capturedAt + `"}},` +
+		`{"eventId":"obx-cash-1","eventType":"cash.movement.posted","payload":{"storeId":"store-1","cashMovementId":"cash-1","type":"safe_to_bank","fromContainerId":"safe-1","fromContainerType":"safe","toContainerId":"bank-1","toContainerType":"bank","amountMinor":200000,"currency":"RUB","actorId":"senior-1","postedAt":"` + postedAt + `"}}` +
+		`]}`)
+	syncRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/sync-events", syncBody)
+	syncRequest.Header.Set("Content-Type", "application/json")
+	syncRequest.Header.Set("Idempotency-Key", "sync-projection-1")
+	syncResponse := httptest.NewRecorder()
+	server.ServeHTTP(syncResponse, syncRequest)
+	if syncResponse.Code != http.StatusAccepted {
+		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
+	}
+
+	paymentResponse := httptest.NewRecorder()
+	paymentRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/payments/pay-1", nil)
+	server.ServeHTTP(paymentResponse, paymentRequest)
+	if paymentResponse.Code != http.StatusOK {
+		t.Fatalf("get payment status = %d body=%s", paymentResponse.Code, paymentResponse.Body.String())
+	}
+
+	movementResponse := httptest.NewRecorder()
+	movementRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/cash-movements/cash-1", nil)
+	server.ServeHTTP(movementResponse, movementRequest)
+	if movementResponse.Code != http.StatusOK {
+		t.Fatalf("get cash movement status = %d body=%s", movementResponse.Code, movementResponse.Body.String())
+	}
+
+	listPaymentsResponse := httptest.NewRecorder()
+	listPaymentsRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/payments", nil)
+	server.ServeHTTP(listPaymentsResponse, listPaymentsRequest)
+	if listPaymentsResponse.Code != http.StatusOK {
+		t.Fatalf("list payments status = %d body=%s", listPaymentsResponse.Code, listPaymentsResponse.Body.String())
+	}
+
+	var listedPayments api.PaginatedSyncedPaymentsResponse
+	if err := json.Unmarshal(listPaymentsResponse.Body.Bytes(), &listedPayments); err != nil {
+		t.Fatalf("decode payments list: %v", err)
+	}
+	if listedPayments.TotalCount != 1 || len(listedPayments.Items) != 1 {
+		t.Fatalf("listed payments = %+v", listedPayments)
 	}
 }
