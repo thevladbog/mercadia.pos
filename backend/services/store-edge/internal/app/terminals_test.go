@@ -79,6 +79,67 @@ func TestGetTerminalReturnsLastHeartbeat(t *testing.T) {
 	}
 }
 
+func TestListStoreTerminalsReturnsSortedPage(t *testing.T) {
+	service := newTestTerminalService()
+	for _, terminalID := range []string{"pos-2", "pos-1"} {
+		_, err := service.RecordHeartbeat(context.Background(), app.RecordTerminalHeartbeatCommand{
+			IdempotencyKey:  "heartbeat-" + terminalID,
+			TerminalID:      terminalID,
+			StoreID:         "store-1",
+			Kind:            domain.TerminalKindPOS,
+			SoftwareVersion: "0.1.0",
+		})
+		if err != nil {
+			t.Fatalf("record heartbeat for %s: %v", terminalID, err)
+		}
+	}
+
+	result, err := service.ListStoreTerminals(context.Background(), "store-1", app.PageParams{Limit: 50, Offset: 0})
+	if err != nil {
+		t.Fatalf("list store terminals: %v", err)
+	}
+	if result.TotalCount != 2 {
+		t.Fatalf("totalCount = %d", result.TotalCount)
+	}
+	if len(result.Items) != 2 || result.Items[0].ID != "pos-1" || result.Items[1].ID != "pos-2" {
+		t.Fatalf("items = %+v", result.Items)
+	}
+}
+
+func TestListStoreTerminalsDerivesOfflineStatus(t *testing.T) {
+	store := memory.NewStore()
+	lastSeen := time.Date(2026, 6, 18, 9, 0, 0, 0, time.UTC)
+	if err := store.SaveTerminal(context.Background(), domain.Terminal{
+		ID:              "pos-1",
+		StoreID:         "store-1",
+		Kind:            domain.TerminalKindPOS,
+		Status:          domain.TerminalStatusOnline,
+		SoftwareVersion: "0.1.0",
+		LastSeenAt:      lastSeen,
+		UpdatedAt:       lastSeen,
+	}); err != nil {
+		t.Fatalf("save terminal: %v", err)
+	}
+
+	service := app.NewTerminalService(store, store,
+		app.WithTerminalClock(func() time.Time {
+			return time.Date(2026, 6, 18, 10, 2, 0, 0, time.UTC)
+		}),
+		app.WithTerminalOfflineAfter(time.Minute),
+	)
+
+	result, err := service.ListStoreTerminals(context.Background(), "store-1", app.PageParams{Limit: 50, Offset: 0})
+	if err != nil {
+		t.Fatalf("list store terminals: %v", err)
+	}
+	if len(result.Items) != 1 {
+		t.Fatalf("items = %+v", result.Items)
+	}
+	if result.Items[0].Status != domain.TerminalStatusOffline {
+		t.Fatalf("terminal status = %s", result.Items[0].Status)
+	}
+}
+
 func newTestTerminalService() *app.TerminalService {
 	store := memory.NewStore()
 	return app.NewTerminalService(store, store, app.WithTerminalClock(func() time.Time {

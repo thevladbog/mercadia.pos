@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"mercadia.dev/pos/services/store-edge/internal/domain"
@@ -17,6 +18,7 @@ var (
 type TerminalRepository interface {
 	SaveTerminal(ctx context.Context, terminal domain.Terminal) error
 	FindTerminal(ctx context.Context, terminalID string) (domain.Terminal, error)
+	ListTerminalsByStore(ctx context.Context, storeID string) ([]domain.Terminal, error)
 }
 
 type TerminalEventPublisher interface {
@@ -24,10 +26,11 @@ type TerminalEventPublisher interface {
 }
 
 type TerminalService struct {
-	terminals   TerminalRepository
-	idempotency IdempotencyStore
-	events      TerminalEventPublisher
-	now         func() time.Time
+	terminals    TerminalRepository
+	idempotency  IdempotencyStore
+	events       TerminalEventPublisher
+	now          func() time.Time
+	offlineAfter time.Duration
 }
 
 type TerminalOption func(*TerminalService)
@@ -55,6 +58,12 @@ func WithTerminalClock(now func() time.Time) TerminalOption {
 func WithTerminalEventPublisher(events TerminalEventPublisher) TerminalOption {
 	return func(service *TerminalService) {
 		service.events = events
+	}
+}
+
+func WithTerminalOfflineAfter(duration time.Duration) TerminalOption {
+	return func(service *TerminalService) {
+		service.offlineAfter = duration
 	}
 }
 
@@ -123,6 +132,34 @@ func (s *TerminalService) GetTerminal(ctx context.Context, terminalID string) (T
 		return TerminalResult{}, err
 	}
 	return TerminalResult{Terminal: terminal}, nil
+}
+
+func (s *TerminalService) ListStoreTerminals(ctx context.Context, storeID string, params PageParams) (PageResult[domain.Terminal], error) {
+	if storeID == "" {
+		return PageResult[domain.Terminal]{}, ErrInvalidTerminalCommand
+	}
+
+	terminals, err := s.terminals.ListTerminalsByStore(ctx, storeID)
+	if err != nil {
+		return PageResult[domain.Terminal]{}, err
+	}
+
+	sort.Slice(terminals, func(i, j int) bool {
+		return terminals[i].ID < terminals[j].ID
+	})
+
+	for i := range terminals {
+		terminals[i].Status = s.deriveListStatus(terminals[i])
+	}
+
+	return PaginateSlice(terminals, params), nil
+}
+
+func (s *TerminalService) deriveListStatus(terminal domain.Terminal) domain.TerminalStatus {
+	if s.offlineAfter > 0 && s.now().Sub(terminal.LastSeenAt) > s.offlineAfter {
+		return domain.TerminalStatusOffline
+	}
+	return terminal.Status
 }
 
 func (s *TerminalService) findTerminalIdempotency(ctx context.Context, operation string, key string, targetID string, fingerprint string) (TerminalResult, bool, error) {

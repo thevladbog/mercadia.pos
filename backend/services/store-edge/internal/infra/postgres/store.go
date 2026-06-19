@@ -208,6 +208,29 @@ func (s *Store) FindTerminal(ctx context.Context, terminalID string) (domain.Ter
 	return terminal, err
 }
 
+func (s *Store) ListTerminalsByStore(ctx context.Context, storeID string) ([]domain.Terminal, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, store_id, kind, status, software_version, last_seen_at, updated_at
+		FROM terminals
+		WHERE store_id = $1
+		ORDER BY id
+	`, storeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	terminals := make([]domain.Terminal, 0)
+	for rows.Next() {
+		terminal, err := scanTerminal(rows)
+		if err != nil {
+			return nil, err
+		}
+		terminals = append(terminals, terminal)
+	}
+	return terminals, rows.Err()
+}
+
 func (s *Store) FindProductByBarcode(ctx context.Context, barcode string) (domain.Product, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT id, name, barcodes, unit_price_minor, tax_category_id, active

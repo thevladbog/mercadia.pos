@@ -16,6 +16,7 @@ const (
 	TerminalKindAssistantStation TerminalKind   = "assistant_station"
 	TerminalKindStoreAdmin       TerminalKind   = "store_admin"
 	TerminalStatusOnline         TerminalStatus = "online"
+	TerminalStatusOffline        TerminalStatus = "offline"
 )
 
 var ErrInvalidTerminalInput = errors.New("invalid terminal input")

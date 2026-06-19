@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"sync"
 	"time"
 
@@ -145,6 +146,22 @@ func (s *Store) FindTerminal(ctx context.Context, terminalID string) (domain.Ter
 		return domain.Terminal{}, app.ErrTerminalNotFound
 	}
 	return terminal, nil
+}
+
+func (s *Store) ListTerminalsByStore(ctx context.Context, storeID string) ([]domain.Terminal, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	terminals := make([]domain.Terminal, 0)
+	for _, terminal := range s.terminals {
+		if terminal.StoreID == storeID {
+			terminals = append(terminals, terminal)
+		}
+	}
+	sort.Slice(terminals, func(i, j int) bool {
+		return terminals[i].ID < terminals[j].ID
+	})
+	return terminals, nil
 }
 
 func (s *Store) FindProductByBarcode(ctx context.Context, barcode string) (domain.Product, error) {

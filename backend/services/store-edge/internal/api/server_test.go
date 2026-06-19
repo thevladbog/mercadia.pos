@@ -42,6 +42,9 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	if _, ok := paths["/v1/terminals/{terminalId}"]; !ok {
 		t.Fatal("expected /v1/terminals/{terminalId} path")
 	}
+	if _, ok := paths["/v1/stores/{storeId}/terminals"]; !ok {
+		t.Fatal("expected /v1/stores/{storeId}/terminals path")
+	}
 	if _, ok := paths["/v1/stores/{storeId}/cash-movements"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/cash-movements path")
 	}
@@ -289,6 +292,50 @@ func TestTerminalHeartbeatWorkflow(t *testing.T) {
 	}
 	if terminal.ID != "pos-1" || terminal.Kind != "pos" || terminal.SoftwareVersion != "0.1.0" {
 		t.Fatalf("terminal = %+v", terminal)
+	}
+}
+
+func TestListStoreTerminalsReturnsHeartbeats(t *testing.T) {
+	server := NewServer()
+
+	for _, spec := range []struct {
+		terminalID      string
+		idempotencyKey  string
+		softwareVersion string
+	}{
+		{terminalID: "pos-1", idempotencyKey: "heartbeat-1", softwareVersion: "0.1.0"},
+		{terminalID: "pos-2", idempotencyKey: "heartbeat-2", softwareVersion: "0.2.0"},
+	} {
+		request := httptest.NewRequest(http.MethodPost, "/v1/terminals/"+spec.terminalID+"/heartbeat", bytes.NewBufferString(`{
+			"storeId": "store-1",
+			"kind": "pos",
+			"softwareVersion": "`+spec.softwareVersion+`"
+		}`))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Idempotency-Key", spec.idempotencyKey)
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+		if response.Code != http.StatusAccepted {
+			t.Fatalf("heartbeat %s status = %d body = %s", spec.terminalID, response.Code, response.Body.String())
+		}
+	}
+
+	listResponse := httptest.NewRecorder()
+	listRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/terminals", nil)
+	server.ServeHTTP(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK {
+		t.Fatalf("list terminals status = %d body = %s", listResponse.Code, listResponse.Body.String())
+	}
+
+	var listed PaginatedTerminalsResponse
+	if err := json.Unmarshal(listResponse.Body.Bytes(), &listed); err != nil {
+		t.Fatalf("decode list terminals response: %v", err)
+	}
+	if listed.TotalCount != 2 || len(listed.Items) != 2 {
+		t.Fatalf("listed terminals = %+v", listed)
+	}
+	if listed.Items[0].ID != "pos-1" || listed.Items[1].ID != "pos-2" {
+		t.Fatalf("terminal order = %+v", listed.Items)
 	}
 }
 

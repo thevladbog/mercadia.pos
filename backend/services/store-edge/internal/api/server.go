@@ -401,6 +401,11 @@ type ReceiptLineResponse struct {
 	AddedAt             time.Time `json:"addedAt"`
 }
 
+type PaginatedTerminalsResponse struct {
+	Items      []TerminalResponse `json:"items"`
+	TotalCount int                `json:"totalCount"`
+}
+
 type TerminalResponse struct {
 	ID              string                `json:"id"`
 	StoreID         string                `json:"storeId"`
@@ -512,6 +517,13 @@ func buildServer(opts ServerOptions) (*http.ServeMux, *httpapi.Spec, app.OutboxR
 		defaultStoreID = "store-1"
 	}
 
+	terminalOfflineAfter := 60 * time.Second
+	if raw := os.Getenv("MERCADIA_STORE_EDGE_TERMINAL_OFFLINE_AFTER"); raw != "" {
+		if parsed, err := time.ParseDuration(raw); err == nil {
+			terminalOfflineAfter = parsed
+		}
+	}
+
 	readinessChecks := append([]func(context.Context) error(nil), opts.ReadinessChecks...)
 
 	var store storeRepositories
@@ -562,6 +574,7 @@ func buildServer(opts ServerOptions) (*http.ServeMux, *httpapi.Spec, app.OutboxR
 		hardwareAgent:         hardwareAgent,
 		useHardwareAgent:      useHardwareAgent,
 		hardwareAgentFallback: hardwareAgentFallback,
+		terminalOfflineAfter:  terminalOfflineAfter,
 	}, systemOptions...)
 	return mux, spec, store, catalogSync, defaultStoreID, nil
 }
@@ -609,6 +622,7 @@ type wireConfig struct {
 	hardwareAgent         *haclient.Client
 	useHardwareAgent      bool
 	hardwareAgentFallback bool
+	terminalOfflineAfter  time.Duration
 }
 
 func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) (*http.ServeMux, *httpapi.Spec) {
@@ -638,7 +652,11 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	fiscalization := app.NewFiscalizationService(store, store, store, store, fiscalOptions...)
 	cash := app.NewCashService(store, store, app.WithCashOutboxRecorder(outbox), app.WithCashJournal(journal))
 	shifts := app.NewShiftService(store, store, app.WithShiftCashLedger(store), app.WithShiftReceiptRepository(store), app.WithShiftOperationalDayRepository(store))
-	terminals := app.NewTerminalService(store, store, app.WithTerminalEventPublisher(terminalEvents))
+	terminalOptions := []app.TerminalOption{app.WithTerminalEventPublisher(terminalEvents)}
+	if config.terminalOfflineAfter > 0 {
+		terminalOptions = append(terminalOptions, app.WithTerminalOfflineAfter(config.terminalOfflineAfter))
+	}
+	terminals := app.NewTerminalService(store, store, terminalOptions...)
 	returns := app.NewReturnsService(store, store, store, auth, app.WithReturnsJournal(journal))
 	discounts := app.NewDiscountService(store, store, auth, app.WithDiscountJournal(journal))
 	marking := app.NewMarkingService(store)
@@ -1647,6 +1665,34 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:          http.MethodGet,
+		Path:            "/v1/stores/{storeId}/terminals",
+		OperationID:     "listStoreTerminals",
+		Summary:         "List terminals for a store",
+		Tags:            []string{"terminals"},
+		QueryParameters: paginationQueryParams(),
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Store terminals", Schema: paginatedTerminalsResponseSchema()},
+			"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := terminals.ListStoreTerminals(r.Context(), r.PathValue("storeId"), params)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		items := make([]TerminalResponse, 0, len(result.Items))
+		for _, terminal := range result.Items {
+			items = append(items, terminalResponse(terminal))
+		}
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedTerminalsResponse{
+			Items:      items,
+			TotalCount: result.TotalCount,
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:              http.MethodPost,
 		Path:                "/v1/terminals/{terminalId}/heartbeat",
 		OperationID:         "recordTerminalHeartbeat",
@@ -2467,6 +2513,13 @@ func terminalResponseSchema() httpapi.Schema {
 		"lastSeenAt":      httpapi.DateTimeSchema(),
 		"updatedAt":       httpapi.DateTimeSchema(),
 	}, "id", "storeId", "kind", "status", "lastSeenAt", "updatedAt")
+}
+
+func paginatedTerminalsResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"items":      httpapi.ArraySchema(terminalResponseSchema()),
+		"totalCount": {"type": "integer"},
+	}, "items", "totalCount")
 }
 
 func shiftAcceptedResponseSchema() httpapi.Schema {
