@@ -21,7 +21,7 @@ func TestAcceptSyncEventsPersistsCashMovement(t *testing.T) {
 		t.Fatalf("register store: %v", err)
 	}
 
-	syncService := app.NewSyncService(store, store, store, store, store, store, store, store)
+	syncService := app.NewSyncService(store, store, store, store, store, store, store, store, store)
 	cashService := app.NewCashMovementsService(store, store)
 
 	postedAt := time.Date(2026, 6, 19, 15, 0, 0, 0, time.UTC)

@@ -21,7 +21,7 @@ func TestAcceptSyncEventsPersistsReturn(t *testing.T) {
 		t.Fatalf("register store: %v", err)
 	}
 
-	syncService := app.NewSyncService(store, store, store, store, store, store, store, store)
+	syncService := app.NewSyncService(store, store, store, store, store, store, store, store, store)
 	returnsService := app.NewReturnsService(store, store)
 
 	settledAt := time.Date(2026, 6, 19, 17, 0, 0, 0, time.UTC)

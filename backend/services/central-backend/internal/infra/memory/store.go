@@ -20,8 +20,9 @@ type Store struct {
 	payments      map[string]domain.SyncedPayment
 	cashMovements  map[string]domain.SyncedCashMovement
 	fiscalDocuments map[string]domain.SyncedFiscalDocument
-	returns         map[string]domain.SyncedReturn
-	users           map[string]domain.CentralUser
+	returns           map[string]domain.SyncedReturn
+	operationalDays   map[string]domain.SyncedOperationalDay
+	users             map[string]domain.CentralUser
 	idempotency   map[string]app.IdempotencyRecord
 }
 
@@ -36,8 +37,9 @@ func NewStore(options ...StoreOption) *Store {
 		payments:      map[string]domain.SyncedPayment{},
 		cashMovements:  map[string]domain.SyncedCashMovement{},
 		fiscalDocuments: map[string]domain.SyncedFiscalDocument{},
-		returns:         map[string]domain.SyncedReturn{},
-		users:           map[string]domain.CentralUser{},
+		returns:           map[string]domain.SyncedReturn{},
+		operationalDays:   map[string]domain.SyncedOperationalDay{},
+		users:             map[string]domain.CentralUser{},
 		idempotency:   map[string]app.IdempotencyRecord{},
 	}
 	for _, option := range options {
@@ -396,6 +398,53 @@ func (s *Store) ListReturns(ctx context.Context, storeID string, limit, offset i
 	return append([]domain.SyncedReturn(nil), returns[offset:end]...), total, nil
 }
 
+func (s *Store) SaveOperationalDay(ctx context.Context, day domain.SyncedOperationalDay) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.operationalDays[productKey(day.StoreID, day.ID)] = cloneSyncedOperationalDay(day)
+	return nil
+}
+
+func (s *Store) FindOperationalDay(ctx context.Context, storeID string, operationalDayID string) (domain.SyncedOperationalDay, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	day, ok := s.operationalDays[productKey(storeID, operationalDayID)]
+	if !ok {
+		return domain.SyncedOperationalDay{}, app.ErrOperationalDayNotFound
+	}
+	return cloneSyncedOperationalDay(day), nil
+}
+
+func (s *Store) ListOperationalDays(ctx context.Context, storeID string, limit, offset int) ([]domain.SyncedOperationalDay, int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	days := make([]domain.SyncedOperationalDay, 0)
+	for _, day := range s.operationalDays {
+		if day.StoreID == storeID {
+			days = append(days, cloneSyncedOperationalDay(day))
+		}
+	}
+	sort.Slice(days, func(i, j int) bool {
+		if days[i].ClosedAt.Equal(days[j].ClosedAt) {
+			return days[i].ID > days[j].ID
+		}
+		return days[i].ClosedAt.After(days[j].ClosedAt)
+	})
+
+	total := len(days)
+	if offset >= total {
+		return []domain.SyncedOperationalDay{}, total, nil
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	return append([]domain.SyncedOperationalDay(nil), days[offset:end]...), total, nil
+}
+
 func (s *Store) Find(ctx context.Context, operation string, key string) (app.IdempotencyRecord, bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -450,4 +499,8 @@ func cloneSyncedReturn(ret domain.SyncedReturn) domain.SyncedReturn {
 		cloned.PaymentIDs = append([]string(nil), ret.PaymentIDs...)
 	}
 	return cloned
+}
+
+func cloneSyncedOperationalDay(day domain.SyncedOperationalDay) domain.SyncedOperationalDay {
+	return day
 }

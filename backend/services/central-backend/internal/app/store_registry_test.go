@@ -46,7 +46,7 @@ func TestRegisterStoreIsIdempotent(t *testing.T) {
 func TestAcceptSyncEventsPersistsCatalogProduct(t *testing.T) {
 	store := memory.NewStore()
 	registry := app.NewStoreRegistryService(store, store)
-	syncService := app.NewSyncService(store, store, store, store, store, store, store, store)
+	syncService := app.NewSyncService(store, store, store, store, store, store, store, store, store)
 	catalogService := app.NewCatalogService(store, store)
 
 	_, err := registry.RegisterStore(context.Background(), app.RegisterStoreCommand{

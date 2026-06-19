@@ -24,7 +24,8 @@ type Services struct {
 	Payments      *app.PaymentsService
 	CashMovements    *app.CashMovementsService
 	FiscalDocuments  *app.FiscalDocumentsService
-	Returns          *app.ReturnsService
+	Returns           *app.ReturnsService
+	OperationalDays   *app.OperationalDaysService
 }
 
 type StatusResponse struct {
@@ -188,6 +189,21 @@ type PaginatedSyncedReturnsResponse struct {
 	TotalCount int                    `json:"totalCount"`
 }
 
+type SyncedOperationalDayResponse struct {
+	ID            string    `json:"id"`
+	StoreID       string    `json:"storeId"`
+	BusinessDate  string    `json:"businessDate"`
+	ClosedByID    string    `json:"closedById"`
+	ClosedAt      time.Time `json:"closedAt"`
+	SourceEventID string    `json:"sourceEventId"`
+	SyncedAt      time.Time `json:"syncedAt"`
+}
+
+type PaginatedSyncedOperationalDaysResponse struct {
+	Items      []SyncedOperationalDayResponse `json:"items"`
+	TotalCount int                            `json:"totalCount"`
+}
+
 type ServerOptions struct {
 	ReadinessChecks []func(context.Context) error
 }
@@ -223,12 +239,13 @@ func NewServerBundle(opts ServerOptions) (*ServerBundle, error) {
 func newServices(repo infra.Repository) Services {
 	return Services{
 		StoreRegistry: app.NewStoreRegistryService(repo, repo),
-		Sync:            app.NewSyncService(repo, repo, repo, repo, repo, repo, repo, repo),
-		Catalog:         app.NewCatalogService(repo, repo),
-		Payments:        app.NewPaymentsService(repo, repo),
-		CashMovements:   app.NewCashMovementsService(repo, repo),
-		FiscalDocuments: app.NewFiscalDocumentsService(repo, repo),
-		Returns:         app.NewReturnsService(repo, repo),
+		Sync:              app.NewSyncService(repo, repo, repo, repo, repo, repo, repo, repo, repo),
+		Catalog:           app.NewCatalogService(repo, repo),
+		Payments:          app.NewPaymentsService(repo, repo),
+		CashMovements:     app.NewCashMovementsService(repo, repo),
+		FiscalDocuments:   app.NewFiscalDocumentsService(repo, repo),
+		Returns:           app.NewReturnsService(repo, repo),
+		OperationalDays:   app.NewOperationalDaysService(repo, repo),
 	}
 }
 
@@ -672,6 +689,50 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		}
 		httpapi.WriteJSON(w, http.StatusOK, syncedReturnResponse(ret))
 	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:          http.MethodGet,
+		Path:            "/v1/stores/{storeId}/operational-days",
+		OperationID:     "listStoreOperationalDays",
+		Summary:         "List synchronized closed operational days for a store",
+		Tags:            []string{"sync"},
+		QueryParameters: paginationQueryParams(),
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Synchronized operational days", Schema: paginatedSyncedOperationalDaysResponseSchema()},
+			"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := services.OperationalDays.ListOperationalDays(r.Context(), r.PathValue("storeId"), params)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedSyncedOperationalDaysResponse{
+			Items:      syncedOperationalDayResponses(result.Items),
+			TotalCount: result.TotalCount,
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:      http.MethodGet,
+		Path:        "/v1/stores/{storeId}/operational-days/{operationalDayId}",
+		OperationID: "getStoreOperationalDay",
+		Summary:     "Get a synchronized closed operational day",
+		Tags:        []string{"sync"},
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Synchronized operational day", Schema: syncedOperationalDayResponseSchema()},
+			"404": {Description: "Store or operational day not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		day, err := services.OperationalDays.GetOperationalDay(r.Context(), r.PathValue("storeId"), r.PathValue("operationalDayId"))
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, syncedOperationalDayResponse(day))
+	})
 }
 
 func writeAppError(w http.ResponseWriter, err error) {
@@ -688,6 +749,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusNotFound, "fiscal_document_not_found", "Fiscal document was not found", err.Error())
 	case errors.Is(err, app.ErrReturnNotFound):
 		httpapi.WriteProblem(w, http.StatusNotFound, "return_not_found", "Return was not found", err.Error())
+	case errors.Is(err, app.ErrOperationalDayNotFound):
+		httpapi.WriteProblem(w, http.StatusNotFound, "operational_day_not_found", "Operational day was not found", err.Error())
 	case errors.Is(err, app.ErrIdempotencyKeyRequired):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 	case errors.Is(err, app.ErrIdempotencyKeyReused):
@@ -706,6 +769,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_fiscal_document_query", "Invalid fiscal document query", err.Error())
 	case errors.Is(err, app.ErrInvalidReturnQuery), errors.Is(err, domain.ErrInvalidSyncedReturnInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_return_query", "Invalid return query", err.Error())
+	case errors.Is(err, app.ErrInvalidOperationalDayQuery), errors.Is(err, domain.ErrInvalidSyncedOperationalDayInput):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_operational_day_query", "Invalid operational day query", err.Error())
 	default:
 		httpapi.WriteProblem(w, http.StatusInternalServerError, "internal_error", "Unexpected server error", err.Error())
 	}
@@ -1079,6 +1144,45 @@ func syncedReturnResponseSchema() httpapi.Schema {
 func paginatedSyncedReturnsResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"items":      httpapi.ArraySchema(syncedReturnResponseSchema()),
+		"totalCount": {"type": "integer"},
+	}, "items", "totalCount")
+}
+
+func syncedOperationalDayResponse(day domain.SyncedOperationalDay) SyncedOperationalDayResponse {
+	return SyncedOperationalDayResponse{
+		ID:            day.ID,
+		StoreID:       day.StoreID,
+		BusinessDate:  day.BusinessDate,
+		ClosedByID:    day.ClosedByID,
+		ClosedAt:      day.ClosedAt,
+		SourceEventID: day.SourceEventID,
+		SyncedAt:      day.SyncedAt,
+	}
+}
+
+func syncedOperationalDayResponses(days []domain.SyncedOperationalDay) []SyncedOperationalDayResponse {
+	responses := make([]SyncedOperationalDayResponse, 0, len(days))
+	for _, day := range days {
+		responses = append(responses, syncedOperationalDayResponse(day))
+	}
+	return responses
+}
+
+func syncedOperationalDayResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"id":            httpapi.StringSchema(),
+		"storeId":       httpapi.StringSchema(),
+		"businessDate":  httpapi.StringSchema(),
+		"closedById":    httpapi.StringSchema(),
+		"closedAt":      httpapi.DateTimeSchema(),
+		"sourceEventId": httpapi.StringSchema(),
+		"syncedAt":      httpapi.DateTimeSchema(),
+	}, "id", "storeId", "businessDate", "closedById", "closedAt", "sourceEventId", "syncedAt")
+}
+
+func paginatedSyncedOperationalDaysResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"items":      httpapi.ArraySchema(syncedOperationalDayResponseSchema()),
 		"totalCount": {"type": "integer"},
 	}, "items", "totalCount")
 }

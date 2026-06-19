@@ -18,12 +18,13 @@ func newTestServer() http.Handler {
 	repo := store
 	return api.NewServerWithServices(api.Services{
 		StoreRegistry: app.NewStoreRegistryService(repo, repo),
-		Sync:            app.NewSyncService(repo, repo, repo, repo, repo, repo, repo, repo),
-		Catalog:         app.NewCatalogService(repo, repo),
-		Payments:        app.NewPaymentsService(repo, repo),
-		CashMovements:   app.NewCashMovementsService(repo, repo),
-		FiscalDocuments: app.NewFiscalDocumentsService(repo, repo),
-		Returns:         app.NewReturnsService(repo, repo),
+		Sync:              app.NewSyncService(repo, repo, repo, repo, repo, repo, repo, repo, repo),
+		Catalog:           app.NewCatalogService(repo, repo),
+		Payments:          app.NewPaymentsService(repo, repo),
+		CashMovements:     app.NewCashMovementsService(repo, repo),
+		FiscalDocuments:   app.NewFiscalDocumentsService(repo, repo),
+		Returns:           app.NewReturnsService(repo, repo),
+		OperationalDays:   app.NewOperationalDaysService(repo, repo),
 	})
 }
 
@@ -358,5 +359,46 @@ func TestSyncEventsProjectReturn(t *testing.T) {
 	}
 	if ret.TotalMinor != 50000 || ret.CashMovementID != "cash-1" || len(ret.PaymentIDs) != 1 {
 		t.Fatalf("return = %+v", ret)
+	}
+}
+
+func TestSyncEventsProjectOperationalDay(t *testing.T) {
+	server := newTestServer()
+
+	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
+	registerRequest.Header.Set("Content-Type", "application/json")
+	registerRequest.Header.Set("Idempotency-Key", "register-od-http")
+	registerResponse := httptest.NewRecorder()
+	server.ServeHTTP(registerResponse, registerRequest)
+	if registerResponse.Code != http.StatusAccepted {
+		t.Fatalf("register status = %d", registerResponse.Code)
+	}
+
+	closedAt := time.Date(2026, 6, 19, 23, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	syncBody := bytes.NewBufferString(`{"events":[` +
+		`{"eventId":"obx-od-1","eventType":"operational_day.closed","payload":{"storeId":"store-1","operationalDayId":"od-1","businessDate":"2026-06-19","closedById":"manager-1","closedAt":"` + closedAt + `"}}` +
+		`]}`)
+	syncRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/sync-events", syncBody)
+	syncRequest.Header.Set("Content-Type", "application/json")
+	syncRequest.Header.Set("Idempotency-Key", "sync-od-http")
+	syncResponse := httptest.NewRecorder()
+	server.ServeHTTP(syncResponse, syncRequest)
+	if syncResponse.Code != http.StatusAccepted {
+		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
+	}
+
+	dayResponse := httptest.NewRecorder()
+	dayRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/operational-days/od-1", nil)
+	server.ServeHTTP(dayResponse, dayRequest)
+	if dayResponse.Code != http.StatusOK {
+		t.Fatalf("get operational day status = %d body=%s", dayResponse.Code, dayResponse.Body.String())
+	}
+
+	var day api.SyncedOperationalDayResponse
+	if err := json.Unmarshal(dayResponse.Body.Bytes(), &day); err != nil {
+		t.Fatalf("decode operational day: %v", err)
+	}
+	if day.BusinessDate != "2026-06-19" || day.ClosedByID != "manager-1" {
+		t.Fatalf("operational day = %+v", day)
 	}
 }

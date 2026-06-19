@@ -49,8 +49,9 @@ type SyncService struct {
 	payments      SyncedPaymentRepository
 	cashMovements SyncedCashMovementRepository
 	fiscalDocs    SyncedFiscalDocumentRepository
-	returns       SyncedReturnRepository
-	idempotency   IdempotencyStore
+	returns           SyncedReturnRepository
+	operationalDays   SyncedOperationalDayRepository
+	idempotency       IdempotencyStore
 	now           func() time.Time
 	newID         func(prefix string) string
 }
@@ -63,17 +64,19 @@ func NewSyncService(
 	cashMovements SyncedCashMovementRepository,
 	fiscalDocs SyncedFiscalDocumentRepository,
 	returns SyncedReturnRepository,
+	operationalDays SyncedOperationalDayRepository,
 	idempotency IdempotencyStore,
 ) *SyncService {
 	return &SyncService{
-		stores:        stores,
-		syncEvents:    syncEvents,
-		catalog:       catalog,
-		payments:      payments,
-		cashMovements: cashMovements,
-		fiscalDocs:    fiscalDocs,
-		returns:       returns,
-		idempotency:   idempotency,
+		stores:          stores,
+		syncEvents:      syncEvents,
+		catalog:         catalog,
+		payments:        payments,
+		cashMovements:   cashMovements,
+		fiscalDocs:      fiscalDocs,
+		returns:         returns,
+		operationalDays: operationalDays,
+		idempotency:     idempotency,
 		now:           time.Now,
 		newID:         defaultNewID,
 	}
@@ -182,6 +185,8 @@ func (s *SyncService) applySyncEvent(ctx context.Context, event domain.SyncEvent
 		return s.upsertFiscalDocumentFromPayload(ctx, event)
 	case "return.settled":
 		return s.upsertReturnFromPayload(ctx, event)
+	case "operational_day.closed":
+		return s.upsertOperationalDayFromPayload(ctx, event)
 	default:
 		return nil
 	}
@@ -473,6 +478,32 @@ func (s *SyncService) upsertReturnFromPayload(ctx context.Context, event domain.
 		return ErrInvalidSyncCommand
 	}
 	return s.returns.SaveReturn(ctx, ret)
+}
+
+func (s *SyncService) upsertOperationalDayFromPayload(ctx context.Context, event domain.SyncEvent) error {
+	var payload struct {
+		OperationalDayID string    `json:"operationalDayId"`
+		BusinessDate     string    `json:"businessDate"`
+		ClosedByID       string    `json:"closedById"`
+		ClosedAt         time.Time `json:"closedAt"`
+	}
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		return ErrInvalidSyncCommand
+	}
+
+	day, err := domain.NewSyncedOperationalDay(domain.SyncedOperationalDay{
+		ID:            payload.OperationalDayID,
+		StoreID:       event.StoreID,
+		BusinessDate:  payload.BusinessDate,
+		ClosedByID:    payload.ClosedByID,
+		ClosedAt:      payload.ClosedAt.UTC(),
+		SourceEventID: event.SourceEventID,
+		SyncedAt:      event.ReceivedAt,
+	})
+	if err != nil {
+		return ErrInvalidSyncCommand
+	}
+	return s.operationalDays.SaveOperationalDay(ctx, day)
 }
 
 func (s *SyncService) findSyncIdempotency(ctx context.Context, operation string, key string, targetID string, fingerprint string) (SyncEventsResult, bool, error) {

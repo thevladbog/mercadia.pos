@@ -475,6 +475,56 @@ func (s *Store) ListReturns(ctx context.Context, storeID string, limit, offset i
 	return scanSyncedReturns(rows, total)
 }
 
+func (s *Store) SaveOperationalDay(ctx context.Context, day domain.SyncedOperationalDay) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO synced_operational_days (
+			store_id, id, business_date, closed_by_id, closed_at, source_event_id, synced_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (store_id, id) DO UPDATE SET
+			business_date = EXCLUDED.business_date,
+			closed_by_id = EXCLUDED.closed_by_id,
+			closed_at = EXCLUDED.closed_at,
+			source_event_id = EXCLUDED.source_event_id,
+			synced_at = EXCLUDED.synced_at
+	`, day.StoreID, day.ID, day.BusinessDate, day.ClosedByID, day.ClosedAt,
+		day.SourceEventID, day.SyncedAt)
+	return err
+}
+
+func (s *Store) FindOperationalDay(ctx context.Context, storeID string, operationalDayID string) (domain.SyncedOperationalDay, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT store_id, id, business_date, closed_by_id, closed_at, source_event_id, synced_at
+		FROM synced_operational_days
+		WHERE store_id = $1 AND id = $2
+	`, storeID, operationalDayID)
+	return scanSyncedOperationalDay(row)
+}
+
+func (s *Store) ListOperationalDays(ctx context.Context, storeID string, limit, offset int) ([]domain.SyncedOperationalDay, int, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM synced_operational_days
+		WHERE store_id = $1
+	`, storeID)
+	var total int
+	if err := row.Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT store_id, id, business_date, closed_by_id, closed_at, source_event_id, synced_at
+		FROM synced_operational_days
+		WHERE store_id = $1
+		ORDER BY closed_at DESC, id DESC
+		LIMIT $2 OFFSET $3
+	`, storeID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	return scanSyncedOperationalDays(rows, total)
+}
+
 func (s *Store) Find(ctx context.Context, operation string, key string) (app.IdempotencyRecord, bool, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT operation, key, target_id, fingerprint, result, created_at
@@ -749,6 +799,34 @@ func scanSyncedReturns(rows pgx.Rows, total int) ([]domain.SyncedReturn, int, er
 		return nil, 0, err
 	}
 	return returns, total, nil
+}
+
+func scanSyncedOperationalDay(row rowScanner) (domain.SyncedOperationalDay, error) {
+	var day domain.SyncedOperationalDay
+	if err := row.Scan(&day.StoreID, &day.ID, &day.BusinessDate, &day.ClosedByID,
+		&day.ClosedAt, &day.SourceEventID, &day.SyncedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.SyncedOperationalDay{}, app.ErrOperationalDayNotFound
+		}
+		return domain.SyncedOperationalDay{}, err
+	}
+	return day, nil
+}
+
+func scanSyncedOperationalDays(rows pgx.Rows, total int) ([]domain.SyncedOperationalDay, int, error) {
+	days := make([]domain.SyncedOperationalDay, 0)
+	for rows.Next() {
+		var day domain.SyncedOperationalDay
+		if err := rows.Scan(&day.StoreID, &day.ID, &day.BusinessDate, &day.ClosedByID,
+			&day.ClosedAt, &day.SourceEventID, &day.SyncedAt); err != nil {
+			return nil, 0, err
+		}
+		days = append(days, day)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return days, total, nil
 }
 
 func isUniqueViolation(err error) bool {
