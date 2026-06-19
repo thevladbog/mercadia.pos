@@ -127,3 +127,44 @@ func TestSyncEventsAndCatalogEndpoints(t *testing.T) {
 		t.Fatalf("delta products = %d", len(products))
 	}
 }
+
+func TestListStoreSyncEventsReturnsAcceptedEvents(t *testing.T) {
+	server := newTestServer()
+
+	registerRequest := httptest.NewRequest(http.MethodPost, "/v1/stores", bytes.NewBufferString(`{"storeId":"store-1","name":"Main Street"}`))
+	registerRequest.Header.Set("Content-Type", "application/json")
+	registerRequest.Header.Set("Idempotency-Key", "register-list-sync")
+	registerResponse := httptest.NewRecorder()
+	server.ServeHTTP(registerResponse, registerRequest)
+	if registerResponse.Code != http.StatusAccepted {
+		t.Fatalf("register status = %d", registerResponse.Code)
+	}
+
+	syncBody := bytes.NewBufferString(`{"events":[{"eventId":"evt-list-1","eventType":"catalog.product.upserted","payload":{"productId":"sku-1","name":"Milk","barcodes":["4600000000000"],"unitPriceMinor":19999,"taxCategoryId":"vat_20"}}]}`)
+	syncRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/sync-events", syncBody)
+	syncRequest.Header.Set("Content-Type", "application/json")
+	syncRequest.Header.Set("Idempotency-Key", "sync-list-1")
+	syncResponse := httptest.NewRecorder()
+	server.ServeHTTP(syncResponse, syncRequest)
+	if syncResponse.Code != http.StatusAccepted {
+		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
+	}
+
+	listResponse := httptest.NewRecorder()
+	listRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/sync-events", nil)
+	server.ServeHTTP(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK {
+		t.Fatalf("list sync events status = %d body=%s", listResponse.Code, listResponse.Body.String())
+	}
+
+	var listed api.PaginatedSyncEventsResponse
+	if err := json.Unmarshal(listResponse.Body.Bytes(), &listed); err != nil {
+		t.Fatalf("decode sync events list: %v", err)
+	}
+	if listed.TotalCount != 1 || len(listed.Items) != 1 {
+		t.Fatalf("listed sync events = %+v", listed)
+	}
+	if listed.Items[0].SourceEventID != "evt-list-1" || listed.Items[0].EventType != "catalog.product.upserted" {
+		t.Fatalf("sync event = %+v", listed.Items[0])
+	}
+}

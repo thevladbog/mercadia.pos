@@ -121,6 +121,34 @@ func (s *Store) ExistsSyncEvent(ctx context.Context, storeID string, sourceEvent
 	return ok, nil
 }
 
+func (s *Store) ListSyncEvents(ctx context.Context, storeID string, limit, offset int) ([]domain.SyncEvent, int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	events := make([]domain.SyncEvent, 0)
+	for _, event := range s.syncEvents {
+		if event.StoreID == storeID {
+			events = append(events, cloneSyncEvent(event))
+		}
+	}
+	sort.Slice(events, func(i, j int) bool {
+		if events[i].ReceivedAt.Equal(events[j].ReceivedAt) {
+			return events[i].ID > events[j].ID
+		}
+		return events[i].ReceivedAt.After(events[j].ReceivedAt)
+	})
+
+	total := len(events)
+	if offset >= total {
+		return []domain.SyncEvent{}, total, nil
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	return append([]domain.SyncEvent(nil), events[offset:end]...), total, nil
+}
+
 func (s *Store) SaveProduct(ctx context.Context, product domain.CatalogProduct) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

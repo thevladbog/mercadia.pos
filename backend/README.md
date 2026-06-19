@@ -54,6 +54,7 @@ Environment variables:
 | `MERCADIA_STORE_EDGE_HARDWARE_AGENT_READINESS_PROBE` | mirrors `USE_HARDWARE_AGENT` | include hardware-agent `/healthz` in store-edge `/readyz` |
 | `MERCADIA_STORE_EDGE_CATALOG_SYNC_INTERVAL` | _(empty = disabled)_ | background catalog sync interval (e.g. `5m`) |
 | `MERCADIA_STORE_EDGE_DEFAULT_STORE_ID` | `store-1` | default store for background catalog sync |
+| `MERCADIA_STORE_EDGE_TERMINAL_OFFLINE_AFTER` | `60s` | store-edge terminal list offline threshold from `lastSeenAt` |
 | `MERCADIA_STORE_EDGE_MIGRATIONS_DIR` | walk-up `infra/migrations/store-edge` | store-edge SQL migrations override |
 | `MERCADIA_CENTRAL_BACKEND_MIGRATIONS_DIR` | walk-up `infra/migrations/central-backend` | central-backend SQL migrations override |
 | `MERCADIA_OTEL_ENABLED` | `false` | all services (enables OpenTelemetry HTTP tracing) |
@@ -91,7 +92,7 @@ Local smoke:
 3. Start central-backend with `MERCADIA_CENTRAL_BACKEND_NATS_URL=nats://127.0.0.1:4222`
 4. Start store-edge with `MERCADIA_STORE_EDGE_NATS_URL=nats://127.0.0.1:4222`
 5. Run a checkout command that records an outbox event (for example a captured payment)
-6. Confirm the event appears in central `sync_events` (via Postgres or future query API)
+6. Confirm the event appears in central sync events: `GET /v1/stores/{storeId}/sync-events`
 
 The consumer uses durable name `central-backend-sync` and idempotency keys `nats:{storeId}:{eventId}` so JetStream redelivery is safe.
 
@@ -157,6 +158,7 @@ The Store Edge service has the first checkout and terminal monitoring paths:
 - `POST /v1/stores/{storeId}/cash-recounts/{recountId}/resolve` - resolves a cash recount discrepancy.
 - `POST /v1/terminals/{terminalId}/heartbeat` - records terminal heartbeat/state.
 - `GET /v1/terminals/{terminalId}` - returns last known terminal state.
+- `GET /v1/stores/{storeId}/terminals` - paginated terminal fleet snapshot with offline derivation from `lastSeenAt`.
 - `GET /v1/stores/{storeId}/terminals/events` - SSE stream of terminal heartbeat events (documented outside OpenAPI).
 
 When `MERCADIA_STORE_EDGE_USE_HARDWARE_AGENT=true`, card payments and fiscalization send commands to
@@ -212,3 +214,18 @@ In the Store Edge API runtime, receipt opening requires an open operational day 
 cashier shift for the same store, terminal, and cashier. Accepted receipts carry
 `operationalDayId`, `businessDate`, `shiftId`, and `drawerId` so sales, payments, fiscalization,
 cash accountability, and EoD checks can be joined without guessing from timestamps.
+
+## Current Central Backend Slice
+
+The central backend service exposes store registration, sync ingestion, and catalog read models:
+
+- `GET /v1/central/status` - returns region status and registered store count.
+- `POST /v1/stores` - registers a store (idempotent).
+- `GET /v1/stores` - lists registered stores.
+- `POST /v1/stores/{storeId}/sync-events` - accepts synchronized Store Edge event batches.
+- `GET /v1/stores/{storeId}/sync-events` - lists accepted sync events (paginated, newest first).
+- `GET /v1/stores/{storeId}/catalog/products` - lists catalog products for a store.
+- `GET /v1/stores/{storeId}/catalog/delta` - returns catalog products updated since a timestamp.
+
+After a captured payment or NATS-delivered sync event, use `GET /v1/stores/{storeId}/sync-events`
+to confirm central ingestion without querying Postgres directly.

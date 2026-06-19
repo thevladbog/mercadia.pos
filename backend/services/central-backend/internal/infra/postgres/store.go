@@ -141,6 +141,40 @@ func (s *Store) ExistsSyncEvent(ctx context.Context, storeID string, sourceEvent
 	return exists, nil
 }
 
+func (s *Store) ListSyncEvents(ctx context.Context, storeID string, limit, offset int) ([]domain.SyncEvent, int, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM sync_events
+		WHERE store_id = $1
+	`, storeID)
+	var total int
+	if err := row.Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, store_id, event_type, source_event_id, payload, occurred_at, received_at
+		FROM sync_events
+		WHERE store_id = $1
+		ORDER BY received_at DESC, id DESC
+		LIMIT $2 OFFSET $3
+	`, storeID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	events := make([]domain.SyncEvent, 0)
+	for rows.Next() {
+		event, err := scanSyncEvent(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		events = append(events, event)
+	}
+	return events, total, rows.Err()
+}
+
 func (s *Store) SaveProduct(ctx context.Context, product domain.CatalogProduct) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO catalog_products (
@@ -284,6 +318,23 @@ func scanProduct(row rowScanner) (domain.CatalogProduct, error) {
 		return domain.CatalogProduct{}, err
 	}
 	return product, nil
+}
+
+func scanSyncEvent(row rowScanner) (domain.SyncEvent, error) {
+	var event domain.SyncEvent
+	var payload []byte
+	if err := row.Scan(&event.ID, &event.StoreID, &event.EventType, &event.SourceEventID, &payload, &event.OccurredAt, &event.ReceivedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.SyncEvent{}, app.ErrInvalidSyncCommand
+		}
+		return domain.SyncEvent{}, err
+	}
+	if len(payload) > 0 {
+		event.Payload = append(json.RawMessage(nil), payload...)
+	} else {
+		event.Payload = json.RawMessage(`{}`)
+	}
+	return event, nil
 }
 
 func scanProducts(rows pgx.Rows) ([]domain.CatalogProduct, error) {

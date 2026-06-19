@@ -673,6 +673,171 @@
       }
     },
     "/v1/stores/{storeId}/sync-events": {
+      "get": {
+        "operationId": "listStoreSyncEvents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of items to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "eventId": {
+                            "type": "string"
+                          },
+                          "eventType": {
+                            "type": "string"
+                          },
+                          "occurredAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "payload": {
+                            "type": "object"
+                          },
+                          "receivedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "sourceEventId": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "eventId",
+                          "eventType",
+                          "sourceEventId",
+                          "occurredAt",
+                          "receivedAt",
+                          "payload"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "totalCount": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "totalCount"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Synchronized events"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid list query"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store not found"
+          }
+        },
+        "summary": "List synchronized Store Edge events",
+        "tags": [
+          "sync"
+        ]
+      },
       "post": {
         "operationId": "acceptStoreSyncEvents",
         "parameters": [

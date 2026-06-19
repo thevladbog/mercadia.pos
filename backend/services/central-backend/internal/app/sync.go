@@ -20,6 +20,7 @@ var (
 type SyncEventRepository interface {
 	SaveSyncEvent(ctx context.Context, event domain.SyncEvent) error
 	ExistsSyncEvent(ctx context.Context, storeID string, sourceEventID string) (bool, error)
+	ListSyncEvents(ctx context.Context, storeID string, limit, offset int) ([]domain.SyncEvent, int, error)
 }
 
 type SyncEventInput struct {
@@ -131,6 +132,21 @@ func (s *SyncService) AcceptEvents(ctx context.Context, command AcceptSyncEvents
 		return SyncEventsResult{}, err
 	}
 	return result, nil
+}
+
+func (s *SyncService) ListEvents(ctx context.Context, storeID string, params PageParams) (PageResult[domain.SyncEvent], error) {
+	if storeID == "" {
+		return PageResult[domain.SyncEvent]{}, ErrInvalidSyncCommand
+	}
+	if _, err := s.stores.FindStore(ctx, storeID); err != nil {
+		return PageResult[domain.SyncEvent]{}, err
+	}
+
+	events, total, err := s.syncEvents.ListSyncEvents(ctx, storeID, params.Limit, params.Offset)
+	if err != nil {
+		return PageResult[domain.SyncEvent]{}, err
+	}
+	return PageResult[domain.SyncEvent]{Items: events, TotalCount: total}, nil
 }
 
 func (s *SyncService) applyCatalogEvent(ctx context.Context, event domain.SyncEvent) error {

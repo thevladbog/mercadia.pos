@@ -69,6 +69,20 @@ type SyncEventsAcceptedResponse struct {
 	Accepted int    `json:"accepted"`
 }
 
+type SyncEventResponse struct {
+	EventID       string          `json:"eventId"`
+	EventType     string          `json:"eventType"`
+	SourceEventID string          `json:"sourceEventId"`
+	OccurredAt    time.Time       `json:"occurredAt"`
+	ReceivedAt    time.Time       `json:"receivedAt"`
+	Payload       json.RawMessage `json:"payload"`
+}
+
+type PaginatedSyncEventsResponse struct {
+	Items      []SyncEventResponse `json:"items"`
+	TotalCount int                 `json:"totalCount"`
+}
+
 type CatalogProductResponse struct {
 	ID             string    `json:"id"`
 	StoreID        string    `json:"storeId"`
@@ -318,6 +332,35 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:          http.MethodGet,
+		Path:            "/v1/stores/{storeId}/sync-events",
+		OperationID:     "listStoreSyncEvents",
+		Summary:         "List synchronized Store Edge events",
+		Tags:            []string{"sync"},
+		QueryParameters: paginationQueryParams(),
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Synchronized events", Schema: paginatedSyncEventsResponseSchema()},
+			"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := services.Sync.ListEvents(r.Context(), r.PathValue("storeId"), params)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		items := make([]SyncEventResponse, 0, len(result.Items))
+		for _, event := range result.Items {
+			items = append(items, syncEventResponse(event))
+		}
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedSyncEventsResponse{
+			Items:      items,
+			TotalCount: result.TotalCount,
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
 		Path:        "/v1/stores/{storeId}/catalog/products",
 		OperationID: "listStoreCatalogProducts",
@@ -435,6 +478,28 @@ func catalogProductResponses(products []domain.CatalogProduct) []CatalogProductR
 	return responses
 }
 
+func syncEventResponse(event domain.SyncEvent) SyncEventResponse {
+	payload := event.Payload
+	if len(payload) == 0 {
+		payload = json.RawMessage(`{}`)
+	}
+	return SyncEventResponse{
+		EventID:       event.ID,
+		EventType:     event.EventType,
+		SourceEventID: event.SourceEventID,
+		OccurredAt:    event.OccurredAt,
+		ReceivedAt:    event.ReceivedAt,
+		Payload:       append(json.RawMessage(nil), payload...),
+	}
+}
+
+func paginationQueryParams() []httpapi.QueryParamSpec {
+	return []httpapi.QueryParamSpec{
+		{Name: "limit", Description: "Maximum number of items to return", Schema: httpapi.Schema{"type": "integer", "minimum": 1, "maximum": app.MaxPageLimit}},
+		{Name: "offset", Description: "Number of items to skip", Schema: httpapi.Schema{"type": "integer", "minimum": 0}},
+	}
+}
+
 func statusResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"region":      httpapi.StringSchema(),
@@ -495,6 +560,24 @@ func syncEventsAcceptedResponseSchema() httpapi.Schema {
 		"status":   httpapi.StringSchema(),
 		"accepted": {"type": "integer"},
 	}, "storeId", "status", "accepted")
+}
+
+func syncEventResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"eventId":       httpapi.StringSchema(),
+		"eventType":     httpapi.StringSchema(),
+		"sourceEventId": httpapi.StringSchema(),
+		"occurredAt":    httpapi.DateTimeSchema(),
+		"receivedAt":    httpapi.DateTimeSchema(),
+		"payload":       {"type": "object"},
+	}, "eventId", "eventType", "sourceEventId", "occurredAt", "receivedAt", "payload")
+}
+
+func paginatedSyncEventsResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"items":      httpapi.ArraySchema(syncEventResponseSchema()),
+		"totalCount": {"type": "integer"},
+	}, "items", "totalCount")
 }
 
 func catalogProductResponseSchema() httpapi.Schema {
