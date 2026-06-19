@@ -14,17 +14,11 @@ import {
   useListStores,
 } from '@mercadia/api-clients-central';
 import { useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { formatMinorAmount, formatTimestamp, PAGE_SIZE } from './reporting-utils.js';
-
-type SyncTab =
-  | 'sync-events'
-  | 'payments'
-  | 'cash-movements'
-  | 'fiscal-documents'
-  | 'returns'
-  | 'operational-days';
+import { parseSyncTab, syncEntityHref, type SyncEntityType, type SyncTab } from './sync-routes.js';
 
 const SYNC_TABS: { id: SyncTab; label: string }[] = [
   { id: 'sync-events', label: 'Sync events' },
@@ -36,11 +30,15 @@ const SYNC_TABS: { id: SyncTab; label: string }[] = [
 ];
 
 export function CentralSyncExplorerPage() {
+  const [searchParams] = useSearchParams();
+  const initialTab = parseSyncTab(searchParams.get('tab')) ?? 'sync-events';
+  const initialStoreId = searchParams.get('store');
+
   const storesQuery = useListStores();
   const stores = storesQuery.data?.status === 200 ? storesQuery.data.data.stores : [];
-  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(initialStoreId);
   const activeStoreId = selectedStoreId ?? stores[0]?.id ?? '';
-  const [activeTab, setActiveTab] = useState<SyncTab>('sync-events');
+  const [activeTab, setActiveTab] = useState<SyncTab>(initialTab);
   const [offset, setOffset] = useState(0);
 
   const listParams = useMemo(() => ({ limit: PAGE_SIZE, offset }), [offset]);
@@ -196,7 +194,13 @@ export function CentralSyncExplorerPage() {
               <div className="table-wrap">
                 <table>
                   <thead>{renderTableHead(activeTab)}</thead>
-                  <tbody>{renderTableBody(activeTab, pageData.items as SyncExplorerItem[])}</tbody>
+                  <tbody>
+                    {renderTableBody(
+                      activeTab,
+                      activeStoreId,
+                      pageData.items as SyncExplorerItem[],
+                    )}
+                  </tbody>
                 </table>
               </div>
               <div className="pagination">
@@ -295,7 +299,11 @@ type SyncExplorerItem =
   | ListStoreReturns200ItemsItem
   | ListStoreOperationalDays200ItemsItem;
 
-function renderTableBody(activeTab: SyncTab, items: SyncExplorerItem[]) {
+function entityIdLink(storeId: string, tab: SyncEntityType, entityId: string) {
+  return <Link to={syncEntityHref(storeId, tab, entityId)}>{entityId}</Link>;
+}
+
+function renderTableBody(activeTab: SyncTab, storeId: string, items: SyncExplorerItem[]) {
   switch (activeTab) {
     case 'sync-events':
       return (items as ListStoreSyncEvents200ItemsItem[]).map((row) => (
@@ -309,7 +317,7 @@ function renderTableBody(activeTab: SyncTab, items: SyncExplorerItem[]) {
     case 'payments':
       return (items as ListStorePayments200ItemsItem[]).map((row) => (
         <tr key={row.id}>
-          <td>{row.id}</td>
+          <td>{entityIdLink(storeId, 'payments', row.id)}</td>
           <td>{row.method}</td>
           <td>{formatMinorAmount(row.amountMinor)}</td>
           <td>{row.status}</td>
@@ -319,7 +327,7 @@ function renderTableBody(activeTab: SyncTab, items: SyncExplorerItem[]) {
     case 'cash-movements':
       return (items as ListStoreCashMovements200ItemsItem[]).map((row) => (
         <tr key={row.id}>
-          <td>{row.id}</td>
+          <td>{entityIdLink(storeId, 'cash-movements', row.id)}</td>
           <td>{row.type}</td>
           <td>{formatMinorAmount(row.amountMinor)}</td>
           <td>{formatTimestamp(row.postedAt)}</td>
@@ -328,7 +336,7 @@ function renderTableBody(activeTab: SyncTab, items: SyncExplorerItem[]) {
     case 'fiscal-documents':
       return (items as ListStoreFiscalDocuments200ItemsItem[]).map((row) => (
         <tr key={row.id}>
-          <td>{row.id}</td>
+          <td>{entityIdLink(storeId, 'fiscal-documents', row.id)}</td>
           <td>{row.kind}</td>
           <td>{formatMinorAmount(row.amountMinor)}</td>
           <td>{formatTimestamp(row.fiscalizedAt)}</td>
@@ -337,7 +345,7 @@ function renderTableBody(activeTab: SyncTab, items: SyncExplorerItem[]) {
     case 'returns':
       return (items as ListStoreReturns200ItemsItem[]).map((row) => (
         <tr key={row.id}>
-          <td>{row.id}</td>
+          <td>{entityIdLink(storeId, 'returns', row.id)}</td>
           <td>{row.receiptId}</td>
           <td>{formatMinorAmount(row.totalMinor)}</td>
           <td>{formatTimestamp(row.settledAt)}</td>
@@ -346,7 +354,7 @@ function renderTableBody(activeTab: SyncTab, items: SyncExplorerItem[]) {
     case 'operational-days':
       return (items as ListStoreOperationalDays200ItemsItem[]).map((row) => (
         <tr key={row.id}>
-          <td>{row.id}</td>
+          <td>{entityIdLink(storeId, 'operational-days', row.id)}</td>
           <td>{row.businessDate}</td>
           <td>{formatTimestamp(row.closedAt)}</td>
           <td>{row.closedById}</td>

@@ -10,6 +10,7 @@ import { CentralDashboardPage } from '@/pages/CentralDashboardPage.js';
 import { CentralReportingPage } from '@/pages/CentralReportingPage.js';
 import { CentralStoresPage } from '@/pages/CentralStoresPage.js';
 import { CentralSyncExplorerPage } from '@/pages/CentralSyncExplorerPage.js';
+import { SyncEntityDetailPage } from '@/pages/SyncEntityDetailPage.js';
 import { CentralUsersPage } from '@/pages/CentralUsersPage.js';
 import { CreateCentralUserPage } from '@/pages/CreateCentralUserPage.js';
 import { EditCentralUserPage } from '@/pages/EditCentralUserPage.js';
@@ -30,6 +31,26 @@ export function App() {
             <Route element={<StoreReportingPage />} path="/central/reporting/stores/:storeId" />
             <Route element={<CentralStoresPage />} path="/central/stores" />
             <Route element={<CentralSyncExplorerPage />} path="/central/sync" />
+            <Route
+              element={<SyncEntityDetailPage />}
+              path="/central/sync/stores/:storeId/payments/:paymentId"
+            />
+            <Route
+              element={<SyncEntityDetailPage />}
+              path="/central/sync/stores/:storeId/cash-movements/:cashMovementId"
+            />
+            <Route
+              element={<SyncEntityDetailPage />}
+              path="/central/sync/stores/:storeId/fiscal-documents/:fiscalDocumentId"
+            />
+            <Route
+              element={<SyncEntityDetailPage />}
+              path="/central/sync/stores/:storeId/returns/:returnId"
+            />
+            <Route
+              element={<SyncEntityDetailPage />}
+              path="/central/sync/stores/:storeId/operational-days/:operationalDayId"
+            />
             <Route element={<StoreMonitoringPage />} path="/store/monitoring" />
             <Route element={<RequireCentralAdmin />}>
               <Route element={<RegisterStorePage />} path="/central/stores/new" />
