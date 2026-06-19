@@ -30,7 +30,13 @@ export function getApiBaseUrl(): string {
   return apiBaseUrl;
 }
 
-export async function customFetch<T>(
+type FetchEnvelope<TData> = {
+  data: TData;
+  status: number;
+  headers: Headers;
+};
+
+export async function customFetch<T extends FetchEnvelope<unknown>>(
   url: string,
   options: RequestInit = {},
 ): Promise<T> {
@@ -78,8 +84,18 @@ export async function customFetch<T>(
   }
 
   if (response.status === 204) {
-    return undefined as T;
+    return {
+      data: undefined,
+      status: response.status,
+      headers: response.headers,
+    } as T;
   }
 
-  return (await response.json()) as T;
+  const data = (await response.json()) as T['data'];
+
+  return {
+    data,
+    status: response.status,
+    headers: response.headers,
+  } as T;
 }
