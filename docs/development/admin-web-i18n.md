@@ -108,6 +108,29 @@ await invalidateEodQueries(queryClient, storeId, operationalDayId);
 
 When the only blocker is `no_sales_receipts` (`requires_admin_override`), send `overrideNoSales: true` and a distinct `overrideActorId`. Hard blockers (`open_cashier_shift`, etc.) must be resolved before close succeeds.
 
+### EoD shift close command
+
+Close cashier shift from the Open Shifts tab via `closeShift()`:
+
+```typescript
+import { createIdempotencyHeaders } from '@/pages/cash-mutation-utils.js';
+import { invalidateShiftCloseQueries } from '@/pages/shift-mutation-utils.js';
+
+await closeShift(
+  shiftId,
+  {
+    closingCashMinor: 0,
+  },
+  { headers: createIdempotencyHeaders() },
+);
+
+// When closingCashMinor > 0, also send safeId, actorId, approvedById (distinct actors).
+
+await invalidateShiftCloseQueries(queryClient, storeId, operationalDayId);
+```
+
+Returns **409** `shift_close_blocked` when the shift has unresolved receipts.
+
 ## Checklist for admin-web PRs
 
 - [ ] No new hardcoded user-facing strings in TSX

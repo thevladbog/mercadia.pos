@@ -339,17 +339,25 @@
     "created": "Created",
     "actions": {
       "title": "Day actions",
+      "closeShift": "Close shift",
+      "closeShiftColumn": "Actions",
       "closeDay": "Close operational day",
       "closeDayHintBlocked": "Resolve all blocking checks before closing the day.",
       "closeDayHintOverride": "No fiscalized sales were found. Admin override is required to close."
     },
     "forms": {
+      "closeShiftTitle": "Close cashier shift",
+      "closeShiftBody": "Enter the final cash collection amount. When cash is collected, safe and actor fields are required.",
+      "closingCash": "Closing cash (RUB)",
       "confirmTitle": "Close operational day",
       "confirmBody": "Review blockers below and confirm closure. This action cannot be undone.",
       "closedById": "Closed by",
       "overrideNoSales": "Override no-sales requirement",
       "overrideActorId": "Override approver ID",
       "validation": {
+        "closingCashRequired": "Enter a valid non-negative closing cash amount.",
+        "safeRequired": "Select a safe container for final collection.",
+        "actorsRequired": "Actor and approver IDs are required when collecting cash.",
         "closedByRequired": "Signed-in user ID is required.",
         "overrideRequired": "Confirm the no-sales override to proceed.",
         "overrideActorRequired": "Override approver ID is required.",
@@ -357,6 +365,7 @@
       }
     },
     "notices": {
+      "closeShiftSuccess": "Cashier shift closed successfully.",
       "closeSuccess": "Operational day closed successfully."
     },
     "severityLabels": {

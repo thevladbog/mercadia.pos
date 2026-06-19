@@ -339,17 +339,25 @@
     "created": "Создано",
     "actions": {
       "title": "Действия с днём",
+      "closeShift": "Закрыть смену",
+      "closeShiftColumn": "Действия",
       "closeDay": "Закрыть операционный день",
       "closeDayHintBlocked": "Устраните все блокирующие проверки перед закрытием дня.",
       "closeDayHintOverride": "Фискализированных продаж не найдено. Для закрытия нужен override администратора."
     },
     "forms": {
+      "closeShiftTitle": "Закрытие кассовой смены",
+      "closeShiftBody": "Укажите сумму финальной инкассации. При ненулевой сумме нужны сейф и акторы.",
+      "closingCash": "Закрывающие наличные (RUB)",
       "confirmTitle": "Закрытие операционного дня",
       "confirmBody": "Проверьте блокеры ниже и подтвердите закрытие. Это действие необратимо.",
       "closedById": "Закрыл",
       "overrideNoSales": "Override отсутствия продаж",
       "overrideActorId": "ID подтверждающего override",
       "validation": {
+        "closingCashRequired": "Укажите корректную неотрицательную сумму закрытия.",
+        "safeRequired": "Выберите сейф для финальной инкассации.",
+        "actorsRequired": "При инкассации нужны ID исполнителя и подтверждающего.",
         "closedByRequired": "Требуется ID текущего пользователя.",
         "overrideRequired": "Подтвердите override отсутствия продаж для продолжения.",
         "overrideActorRequired": "Требуется ID подтверждающего override.",
@@ -357,6 +365,7 @@
       }
     },
     "notices": {
+      "closeShiftSuccess": "Кассовая смена успешно закрыта.",
       "closeSuccess": "Операционный день успешно закрыт."
     },
     "severityLabels": {

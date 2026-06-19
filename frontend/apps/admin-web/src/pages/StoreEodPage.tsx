@@ -3,8 +3,10 @@ import { ApiError } from '@mercadia/api-clients-store-edge';
 import {
   useGetCurrentOperationalDay,
   useGetOperationalDaySummary,
+  useListCashBalances,
   useListOpenStoreShifts,
   useListOperationJournal,
+  type ListOpenStoreShifts200ShiftsItem,
 } from '@mercadia/api-clients-store-edge';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -13,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { canWriteStoreOperations } from '@/auth/permissions.js';
 import { useAuth } from '@/auth/useAuth.js';
+import { CloseShiftModal } from '@/components/eod/CloseShiftModal.js';
 import { EodActionsPanel } from '@/components/eod/EodActionsPanel.js';
 import { PaginationControls } from '@/components/PaginationControls.js';
 import { StorePicker } from '@/components/StorePicker.js';
@@ -43,6 +46,9 @@ export function StoreEodPage() {
   const activeStoreId = selectedStoreId ?? stores[0]?.id ?? '';
   const [activeTab, setActiveTab] = useState<EodTab>('overview');
   const [journalOffset, setJournalOffset] = useState(0);
+  const [closeShiftTarget, setCloseShiftTarget] = useState<ListOpenStoreShifts200ShiftsItem | null>(
+    null,
+  );
 
   const pollOptions = useMemo(
     () => ({
@@ -76,6 +82,15 @@ export function StoreEodPage() {
   });
   const openShifts = openShiftsQuery.data?.status === 200 ? openShiftsQuery.data.data.shifts : null;
 
+  const balancesQuery = useListCashBalances(activeStoreId, {
+    query: {
+      enabled: activeStoreId.length > 0 && activeTab === 'open-shifts' && canWrite,
+      refetchInterval: STORE_POLL_INTERVAL_MS,
+    },
+  });
+  const shiftCloseBalances =
+    balancesQuery.data?.status === 200 ? balancesQuery.data.data.balances : [];
+
   const journalQuery = useListOperationJournal(
     activeStoreId,
     { limit: PAGE_SIZE, offset: journalOffset },
@@ -94,7 +109,7 @@ export function StoreEodPage() {
     (activeStoreId.length > 0 &&
       (currentDayQuery.isFetching ||
         summaryQuery.isFetching ||
-        (activeTab === 'open-shifts' && openShiftsQuery.isFetching) ||
+        (activeTab === 'open-shifts' && (openShiftsQuery.isFetching || balancesQuery.isFetching)) ||
         (activeTab === 'journal' && journalQuery.isFetching)));
 
   const errorMessage =
@@ -106,9 +121,11 @@ export function StoreEodPage() {
           ? getApiErrorMessage(summaryQuery.error)
           : openShiftsQuery.error != null
             ? getApiErrorMessage(openShiftsQuery.error)
-            : journalQuery.error != null
-              ? getApiErrorMessage(journalQuery.error)
-              : null;
+            : balancesQuery.error != null
+              ? getApiErrorMessage(balancesQuery.error)
+              : journalQuery.error != null
+                ? getApiErrorMessage(journalQuery.error)
+                : null;
 
   function refetchAll() {
     void storesQuery.refetch();
@@ -119,6 +136,9 @@ export function StoreEodPage() {
       }
       if (activeTab === 'open-shifts') {
         void openShiftsQuery.refetch();
+        if (canWrite) {
+          void balancesQuery.refetch();
+        }
       }
       if (activeTab === 'journal') {
         void journalQuery.refetch();
@@ -364,6 +384,7 @@ export function StoreEodPage() {
                         <th>{t('monitoring.status')}</th>
                         <th>{t('eod.opened')}</th>
                         <th>{t('eod.openingCash')}</th>
+                        {canWrite ? <th>{t('eod.actions.closeShiftColumn')}</th> : null}
                       </tr>
                     </thead>
                     <tbody>
@@ -375,6 +396,17 @@ export function StoreEodPage() {
                           <td>{shift.status}</td>
                           <td>{formatTimestamp(shift.openedAt)}</td>
                           <td>{formatMinorAmount(shift.openingCashMinor)}</td>
+                          {canWrite ? (
+                            <td>
+                              <button
+                                className="secondary"
+                                onClick={() => setCloseShiftTarget(shift)}
+                                type="button"
+                              >
+                                {t('eod.actions.closeShift')}
+                              </button>
+                            </td>
+                          ) : null}
                         </tr>
                       ))}
                     </tbody>
@@ -383,6 +415,14 @@ export function StoreEodPage() {
               ) : (
                 <p className="muted">{t('eod.noOpenShifts')}</p>
               )}
+              {closeShiftTarget ? (
+                <CloseShiftModal
+                  balances={shiftCloseBalances}
+                  shift={closeShiftTarget}
+                  storeId={activeStoreId}
+                  onClose={() => setCloseShiftTarget(null)}
+                />
+              ) : null}
             </div>
           ) : null}
 

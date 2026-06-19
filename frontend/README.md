@@ -136,7 +136,9 @@ Requires central-backend (store list) and store-edge (store-operations APIs):
 4. As `central_admin`, when the day can close (or only `no_sales_receipts` requires override),
    use **Close operational day** — confirm in the modal; success notice appears and the page
    shows the no-open-day state.
-5. Sign in as `central_viewer` — the close action panel is hidden (read-only).
+5. On the **Open shifts** tab, close an open shift (0.00 cash or with safe + actors when
+   collecting cash) — row disappears and overview blockers refresh.
+6. Sign in as `central_viewer` — close/open action panels and shift row actions are hidden.
 
 Optional env vars when APIs are not same-origin (bypass Vite proxy):
 
