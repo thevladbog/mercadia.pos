@@ -43,8 +43,7 @@ export function CentralReportingPage() {
   });
 
   const summary = summaryQuery.data?.status === 200 ? summaryQuery.data.data : null;
-  const stores =
-    storesQuery.data?.status === 200 ? storesQuery.data.data : null;
+  const stores = storesQuery.data?.status === 200 ? storesQuery.data.data : null;
   const isLoading = summaryQuery.isFetching || storesQuery.isFetching;
   const errorMessage =
     summaryQuery.error != null
@@ -172,7 +171,8 @@ export function CentralReportingPage() {
             <div>
               <dt>Returns settled</dt>
               <dd>
-                {summary.returnsSettledCount} / {formatMinorAmount(summary.returnsSettledAmountMinor)}
+                {summary.returnsSettledCount} /{' '}
+                {formatMinorAmount(summary.returnsSettledAmountMinor)}
               </dd>
             </div>
             <div>

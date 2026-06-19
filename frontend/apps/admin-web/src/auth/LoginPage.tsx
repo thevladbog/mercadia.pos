@@ -33,8 +33,7 @@ export function LoginPage() {
   });
 
   if (isAuthenticated) {
-    const redirectTo =
-      (location.state as { from?: string } | null)?.from ?? '/central/reporting';
+    const redirectTo = (location.state as { from?: string } | null)?.from ?? '/central/reporting';
     return <Navigate to={redirectTo} replace />;
   }
 

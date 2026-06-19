@@ -5,14 +5,7 @@ import {
   setApiBaseUrl,
   setSessionToken,
 } from '@mercadia/api-clients-central';
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
 export type AuthState = {
   userId: string | null;

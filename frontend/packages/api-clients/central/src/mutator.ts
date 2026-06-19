@@ -9,10 +9,7 @@ export class ApiError extends Error {
 
   readonly status: number;
 
-  constructor(
-    status: number,
-    problem: ApiError['problem'],
-  ) {
+  constructor(status: number, problem: ApiError['problem']) {
     super(problem.title);
     this.name = 'ApiError';
     this.status = status;
