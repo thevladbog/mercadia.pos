@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const syncAPIKeyHeader = "X-Sync-Api-Key"
+const syncAPIKeyHeader = "X-Sync-Api-Key" //nolint:gosec // HTTP header name, not a credential
 
 type CatalogProduct struct {
 	ID             string    `json:"id"`
