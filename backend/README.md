@@ -96,7 +96,7 @@ On PostgreSQL, command handlers that emit outbox events persist business state a
 Local smoke:
 
 1. `docker compose -f infra/docker/docker-compose.yml up -d`
-2. Register a store on central-backend: `POST /v1/stores`
+2. Register a store on central-backend: `POST /v1/stores` with `X-Session-Token` (`users.manage`, central admin) or `X-Sync-Api-Key` when `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` is set
 3. Start central-backend with `MERCADIA_CENTRAL_BACKEND_NATS_URL=nats://127.0.0.1:4222`
 4. Start store-edge with `MERCADIA_STORE_EDGE_NATS_URL=nats://127.0.0.1:4222`
 5. Run a checkout command that records an outbox event (for example a captured payment)
@@ -257,8 +257,8 @@ cash accountability, and EoD checks can be joined without guessing from timestam
 The central backend service exposes store registration, sync ingestion, synced read models, and cross-store reporting:
 
 - `GET /v1/central/status` - returns region status and registered store count.
-- `POST /v1/stores` - registers a store (idempotent).
-- `GET /v1/stores` - lists registered stores.
+- `POST /v1/stores` - registers a store (idempotent). Requires `X-Sync-Api-Key` when configured, otherwise `X-Session-Token` with `users.manage`.
+- `GET /v1/stores` - lists registered stores. Requires `X-Session-Token` with `reporting.read`.
 - `POST /v1/stores/{storeId}/sync-events` - accepts synchronized Store Edge event batches. When `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` is set, requires `X-Sync-Api-Key`.
 - `GET /v1/stores/{storeId}/sync-events` - lists accepted sync events (paginated, newest first).
 - `GET /v1/stores/{storeId}/catalog/products` - lists catalog products for a store.
