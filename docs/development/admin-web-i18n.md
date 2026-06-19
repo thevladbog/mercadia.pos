@@ -108,6 +108,30 @@ await invalidateEodQueries(queryClient, storeId, operationalDayId);
 
 When the only blocker is `no_sales_receipts` (`requires_admin_override`), send `overrideNoSales: true` and a distinct `overrideActorId`. Hard blockers (`open_cashier_shift`, etc.) must be resolved before close succeeds.
 
+### EoD open command
+
+Open operational day from the no-open-day empty state via `openOperationalDay()`:
+
+```typescript
+import { createIdempotencyHeaders } from '@/pages/cash-mutation-utils.js';
+import { invalidateEodAfterOpen, todayBusinessDate } from '@/pages/eod-mutation-utils.js';
+
+const response = await openOperationalDay(
+  {
+    storeId,
+    businessDate: todayBusinessDate(),
+    openedById: userId,
+  },
+  { headers: createIdempotencyHeaders() },
+);
+
+if (response.status === 202) {
+  await invalidateEodAfterOpen(queryClient, storeId, response.data.operationalDay.id);
+}
+```
+
+Returns **409** if the store already has an open day.
+
 ## Checklist for admin-web PRs
 
 - [ ] No new hardcoded user-facing strings in TSX

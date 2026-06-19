@@ -14,6 +14,7 @@ import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { canWriteStoreOperations } from '@/auth/permissions.js';
 import { useAuth } from '@/auth/useAuth.js';
 import { EodActionsPanel } from '@/components/eod/EodActionsPanel.js';
+import { EodOpenPanel } from '@/components/eod/EodOpenPanel.js';
 import { PaginationControls } from '@/components/PaginationControls.js';
 import { StorePicker } from '@/components/StorePicker.js';
 import { formatBlockerMessage, formatBlockerSeverity } from './eod-mutation-utils.js';
@@ -165,9 +166,12 @@ export function StoreEodPage() {
           <p className="muted">{t('eod.loadingDay')}</p>
         </div>
       ) : isNoOpenDay || !operationalDay ? (
-        <div className="panel">
-          <p className="muted">{t('eod.noOpenDay')}</p>
-        </div>
+        <>
+          <div className="panel">
+            <p className="muted">{t('eod.noOpenDay')}</p>
+          </div>
+          <EodOpenPanel canWrite={canWrite} storeId={activeStoreId} />
+        </>
       ) : (
         <>
           <div className="panel tab-bar">

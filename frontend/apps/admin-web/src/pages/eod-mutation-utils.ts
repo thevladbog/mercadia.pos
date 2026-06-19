@@ -38,6 +38,32 @@ export async function invalidateEodQueries(
   ]);
 }
 
+export function todayBusinessDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export async function invalidateEodAfterOpen(
+  queryClient: QueryClient,
+  storeId: string,
+  operationalDayId?: string,
+): Promise<void> {
+  const tasks = [
+    queryClient.invalidateQueries({ queryKey: getGetCurrentOperationalDayQueryKey(storeId) }),
+  ];
+  if (operationalDayId) {
+    tasks.push(
+      queryClient.invalidateQueries({
+        queryKey: getGetOperationalDaySummaryQueryKey(operationalDayId),
+      }),
+    );
+  }
+  await Promise.all(tasks);
+}
+
 export function formatBlockerSeverity(severity: string, t: TFunction): string {
   const key = `eod.severityLabels.${severity}`;
   const translated = t(key);
