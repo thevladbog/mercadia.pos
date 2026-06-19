@@ -308,6 +308,7 @@
     "code": "Code",
     "message": "Message",
     "reference": "Reference",
+    "action": "Action",
     "businessDate": "Business date",
     "openedAt": "Opened at",
     "closedAt": "Closed at",
@@ -387,6 +388,44 @@
       "nonzero_drawer_balance": "Cash drawer balance is not zero",
       "unresolved_receipt": "Receipt is not completed or cancelled",
       "no_sales_receipts": "No fiscalized sales receipts were found for the operational day"
+    },
+    "blockerActions": {
+      "viewShift": "View open shifts",
+      "resolveRecount": "Resolve recount",
+      "viewSafe": "View safe",
+      "viewReceipt": "View receipt",
+      "overrideInCloseModal": "Use override in close modal",
+      "none": "—",
+      "referenceLink": "Open details for {{reference}}"
+    },
+    "kpi": {
+      "draftReceipts": "Draft receipts",
+      "paymentStartedReceipts": "Payment started",
+      "unresolvedReceipts": "Unresolved receipts",
+      "cancelledReceipts": "Cancelled receipts",
+      "fiscalizedSales": "Fiscalized sales",
+      "recountTotal": "Cash recounts",
+      "openRecountDiscrepancies": "Open recount discrepancies",
+      "containerId": "Container",
+      "containerType": "Type",
+      "balance": "Balance",
+      "lastMovement": "Last movement",
+      "totalPayments": "Total payments",
+      "paymentMethod": "Method",
+      "paymentCount": "Count",
+      "paymentTotal": "Total",
+      "totalFiscal": "Total fiscal records"
+    },
+    "shiftDetail": {
+      "title": "Shift details",
+      "drawerId": "Drawer",
+      "closingCash": "Closing cash"
+    },
+    "receiptDetail": {
+      "title": "Receipt details",
+      "receiptId": "Receipt ID",
+      "total": "Total",
+      "lineCount": "Line items"
     }
   },
   "users": {

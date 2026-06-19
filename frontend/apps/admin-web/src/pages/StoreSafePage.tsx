@@ -6,7 +6,7 @@ import {
   type ListCashRecounts200ItemsItem,
 } from '@mercadia/api-clients-store-edge';
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
@@ -17,14 +17,21 @@ import { ResolveRecountModal } from '@/components/cash/ResolveRecountModal.js';
 import { PaginationControls } from '@/components/PaginationControls.js';
 import { StorePicker } from '@/components/StorePicker.js';
 import { formatMinorAmount, formatTimestamp, PAGE_SIZE } from './reporting-utils.js';
-import { readStoreFromSearchParams } from './store-routes.js';
+import {
+  readRecountFromSearchParams,
+  readStoreFromSearchParams,
+  storePageHref,
+} from './store-routes.js';
 import { STORE_POLL_INTERVAL_MS } from './store-polling.js';
 
 export function StoreSafePage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { roles } = useAuth();
   const [searchParams] = useSearchParams();
   const initialStoreId = readStoreFromSearchParams(searchParams);
+  const recountDeepLinkId = readRecountFromSearchParams(searchParams);
   const canWrite = canWriteStoreOperations(roles);
 
   const storesQuery = useListStores();
@@ -35,6 +42,9 @@ export function StoreSafePage() {
   const [movementsOffset, setMovementsOffset] = useState(0);
   const [recountsOffset, setRecountsOffset] = useState(0);
   const [resolveRecount, setResolveRecount] = useState<ListCashRecounts200ItemsItem | null>(null);
+  const [dismissedDeepLinkLocationKey, setDismissedDeepLinkLocationKey] = useState<string | null>(
+    null,
+  );
 
   const pollOptions = useMemo(
     () => ({
@@ -64,6 +74,33 @@ export function StoreSafePage() {
 
   const movementsTotal = movementsPage?.totalCount ?? 0;
   const recountsTotal = recountsPage?.totalCount ?? 0;
+
+  const deepLinkRecount = useMemo(() => {
+    if (
+      dismissedDeepLinkLocationKey === location.key ||
+      !recountDeepLinkId ||
+      !canWrite ||
+      !recountsPage
+    ) {
+      return null;
+    }
+
+    return (
+      recountsPage.items.find(
+        (recount) => recount.id === recountDeepLinkId && recount.resolutionStatus === 'open',
+      ) ?? null
+    );
+  }, [canWrite, dismissedDeepLinkLocationKey, location.key, recountDeepLinkId, recountsPage]);
+
+  const activeResolveRecount = resolveRecount ?? deepLinkRecount;
+
+  function handleResolveRecountClose() {
+    setResolveRecount(null);
+    if (recountDeepLinkId) {
+      setDismissedDeepLinkLocationKey(location.key);
+      void navigate(storePageHref('/store/safe', activeStoreId), { replace: true });
+    }
+  }
 
   const isLoading =
     storesQuery.isFetching ||
@@ -277,11 +314,11 @@ export function StoreSafePage() {
             )}
           </div>
 
-          {resolveRecount ? (
+          {activeResolveRecount ? (
             <ResolveRecountModal
-              recount={resolveRecount}
+              recount={activeResolveRecount}
               storeId={activeStoreId}
-              onClose={() => setResolveRecount(null)}
+              onClose={handleResolveRecountClose}
             />
           ) : null}
         </>

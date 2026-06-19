@@ -140,7 +140,11 @@ Requires central-backend (store list) and store-edge (store-operations APIs):
    shows the no-open-day state.
 6. On the **Open shifts** tab, close an open shift (0.00 cash or with safe + actors when
    collecting cash) — row disappears and overview blockers refresh.
-7. Sign in as `central_viewer` — open/close action panels and shift row actions are hidden.
+7. On overview blockers, click a reference ID or action — open shift/receipt detail modals,
+   navigate to Safe (drawer balance / recount), or switch to the Open shifts tab.
+8. Expanded overview KPI panels show receipt, cash, payment, and fiscal rollups from the summary API.
+9. Sign in as `central_viewer` — open/close action panels and shift row actions are hidden;
+   blocker drill-down remains read-only (detail modals, no write CTAs).
 
 Optional env vars when APIs are not same-origin (bypass Vite proxy):
 

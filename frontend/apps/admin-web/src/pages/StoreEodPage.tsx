@@ -16,8 +16,11 @@ import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { canWriteStoreOperations } from '@/auth/permissions.js';
 import { useAuth } from '@/auth/useAuth.js';
 import { CloseShiftModal } from '@/components/eod/CloseShiftModal.js';
+import { BlockerActionCell, BlockerReferenceCell } from '@/components/eod/BlockerReferenceCell.js';
 import { EodActionsPanel } from '@/components/eod/EodActionsPanel.js';
 import { EodOpenPanel } from '@/components/eod/EodOpenPanel.js';
+import { ReceiptDetailModal } from '@/components/eod/ReceiptDetailModal.js';
+import { ShiftDetailModal } from '@/components/eod/ShiftDetailModal.js';
 import { PaginationControls } from '@/components/PaginationControls.js';
 import { StorePicker } from '@/components/StorePicker.js';
 import { formatBlockerMessage, formatBlockerSeverity } from './eod-mutation-utils.js';
@@ -50,6 +53,8 @@ export function StoreEodPage() {
   const [closeShiftTarget, setCloseShiftTarget] = useState<ListOpenStoreShifts200ShiftsItem | null>(
     null,
   );
+  const [detailShiftId, setDetailShiftId] = useState<string | null>(null);
+  const [detailReceiptId, setDetailReceiptId] = useState<string | null>(null);
 
   const pollOptions = useMemo(
     () => ({
@@ -145,6 +150,18 @@ export function StoreEodPage() {
         void journalQuery.refetch();
       }
     }
+  }
+
+  function handleEodTab(tab: 'open-shifts') {
+    setActiveTab(tab);
+  }
+
+  function handleOpenShift(shiftId: string) {
+    setDetailShiftId(shiftId);
+  }
+
+  function handleOpenReceipt(receiptId: string) {
+    setDetailReceiptId(receiptId);
   }
 
   return (
@@ -260,6 +277,7 @@ export function StoreEodPage() {
                   canWrite={canWrite}
                   operationalDayId={operationalDayId}
                   storeId={activeStoreId}
+                  onEodTab={handleEodTab}
                 />
               ) : null}
 
@@ -277,6 +295,7 @@ export function StoreEodPage() {
                           <th>{t('eod.code')}</th>
                           <th>{t('eod.message')}</th>
                           <th>{t('eod.reference')}</th>
+                          <th>{t('eod.action')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -285,7 +304,24 @@ export function StoreEodPage() {
                             <td>{formatBlockerSeverity(blocker.severity, t)}</td>
                             <td>{blocker.code}</td>
                             <td>{formatBlockerMessage(blocker, t)}</td>
-                            <td>{blocker.referenceId ?? t('common.emDash')}</td>
+                            <td>
+                              <BlockerReferenceCell
+                                blocker={blocker}
+                                storeId={activeStoreId}
+                                onEodTab={handleEodTab}
+                                onOpenReceipt={handleOpenReceipt}
+                                onOpenShift={handleOpenShift}
+                              />
+                            </td>
+                            <td>
+                              <BlockerActionCell
+                                blocker={blocker}
+                                storeId={activeStoreId}
+                                onEodTab={handleEodTab}
+                                onOpenReceipt={handleOpenReceipt}
+                                onOpenShift={handleOpenShift}
+                              />
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -305,7 +341,39 @@ export function StoreEodPage() {
                         <dt>{t('eod.nonZeroDrawers')}</dt>
                         <dd>{summary.cash.nonZeroDrawerCount}</dd>
                       </div>
+                      <div>
+                        <dt>{t('eod.kpi.recountTotal')}</dt>
+                        <dd>{summary.cash.recounts.totalCount}</dd>
+                      </div>
+                      <div>
+                        <dt>{t('eod.kpi.openRecountDiscrepancies')}</dt>
+                        <dd>{summary.cash.recounts.openDiscrepancyCount}</dd>
+                      </div>
                     </dl>
+                    {summary.cash.balances.length > 0 ? (
+                      <div className="table-wrap">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>{t('eod.kpi.containerId')}</th>
+                              <th>{t('eod.kpi.containerType')}</th>
+                              <th>{t('eod.kpi.balance')}</th>
+                              <th>{t('eod.kpi.lastMovement')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {summary.cash.balances.map((balance) => (
+                              <tr key={balance.containerId}>
+                                <td>{balance.containerId}</td>
+                                <td>{balance.containerType}</td>
+                                <td>{formatMinorAmount(balance.balanceMinor)}</td>
+                                <td>{formatTimestamp(balance.lastMovementAt)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="panel">
@@ -316,12 +384,32 @@ export function StoreEodPage() {
                         <dd>{summary.receipts.totalCount}</dd>
                       </div>
                       <div>
+                        <dt>{t('eod.kpi.draftReceipts')}</dt>
+                        <dd>{summary.receipts.draftCount}</dd>
+                      </div>
+                      <div>
+                        <dt>{t('eod.kpi.paymentStartedReceipts')}</dt>
+                        <dd>{summary.receipts.paymentStartedCount}</dd>
+                      </div>
+                      <div>
                         <dt>{t('eod.paidReceipts')}</dt>
                         <dd>{summary.receipts.paidCount}</dd>
                       </div>
                       <div>
+                        <dt>{t('eod.kpi.unresolvedReceipts')}</dt>
+                        <dd>{summary.receipts.unresolvedCount}</dd>
+                      </div>
+                      <div>
+                        <dt>{t('eod.kpi.cancelledReceipts')}</dt>
+                        <dd>{summary.receipts.cancelledCount}</dd>
+                      </div>
+                      <div>
                         <dt>{t('eod.fiscalizedReceipts')}</dt>
                         <dd>{summary.receipts.fiscalizedCount}</dd>
+                      </div>
+                      <div>
+                        <dt>{t('eod.kpi.fiscalizedSales')}</dt>
+                        <dd>{formatMinorAmount(summary.receipts.fiscalizedSalesMinor)}</dd>
                       </div>
                     </dl>
                   </div>
@@ -329,6 +417,10 @@ export function StoreEodPage() {
                   <div className="panel">
                     <h3>{t('eod.summaryPayments')}</h3>
                     <dl className="kpi-grid">
+                      <div>
+                        <dt>{t('eod.kpi.totalPayments')}</dt>
+                        <dd>{summary.payments.totalCount}</dd>
+                      </div>
                       <div>
                         <dt>{t('eod.capturedPayments')}</dt>
                         <dd>{summary.payments.capturedCount}</dd>
@@ -338,11 +430,37 @@ export function StoreEodPage() {
                         <dd>{formatMinorAmount(summary.payments.capturedTotalMinor)}</dd>
                       </div>
                     </dl>
+                    {summary.payments.methods.length > 0 ? (
+                      <div className="table-wrap">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>{t('eod.kpi.paymentMethod')}</th>
+                              <th>{t('eod.kpi.paymentCount')}</th>
+                              <th>{t('eod.kpi.paymentTotal')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {summary.payments.methods.map((method) => (
+                              <tr key={method.method}>
+                                <td>{method.method}</td>
+                                <td>{method.capturedCount}</td>
+                                <td>{formatMinorAmount(method.capturedTotalMinor)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="panel">
                     <h3>{t('eod.summaryFiscal')}</h3>
                     <dl className="kpi-grid">
+                      <div>
+                        <dt>{t('eod.kpi.totalFiscal')}</dt>
+                        <dd>{summary.fiscal.totalCount}</dd>
+                      </div>
                       <div>
                         <dt>{t('eod.fiscalizedReceipts')}</dt>
                         <dd>{summary.fiscal.fiscalizedCount}</dd>
@@ -476,6 +594,19 @@ export function StoreEodPage() {
           ) : null}
         </>
       )}
+
+      {detailShiftId ? (
+        <ShiftDetailModal
+          canWrite={canWrite}
+          shiftId={detailShiftId}
+          onClose={() => setDetailShiftId(null)}
+          onEodTab={handleEodTab}
+        />
+      ) : null}
+
+      {detailReceiptId ? (
+        <ReceiptDetailModal receiptId={detailReceiptId} onClose={() => setDetailReceiptId(null)} />
+      ) : null}
     </section>
   );
 }
