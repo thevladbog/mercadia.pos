@@ -16,9 +16,10 @@ type Store struct {
 	stores        map[string]domain.Store
 	syncEvents    map[string]domain.SyncEvent
 	syncByStore   map[string]map[string]string
-	products    map[string]domain.CatalogProduct
-	payments    map[string]domain.SyncedPayment
-	users       map[string]domain.CentralUser
+	products      map[string]domain.CatalogProduct
+	payments      map[string]domain.SyncedPayment
+	cashMovements map[string]domain.SyncedCashMovement
+	users         map[string]domain.CentralUser
 	idempotency   map[string]app.IdempotencyRecord
 }
 
@@ -30,8 +31,9 @@ func NewStore(options ...StoreOption) *Store {
 		syncEvents:    map[string]domain.SyncEvent{},
 		syncByStore:   map[string]map[string]string{},
 		products:    map[string]domain.CatalogProduct{},
-		payments:    map[string]domain.SyncedPayment{},
-		users:       map[string]domain.CentralUser{},
+		payments:      map[string]domain.SyncedPayment{},
+		cashMovements: map[string]domain.SyncedCashMovement{},
+		users:         map[string]domain.CentralUser{},
 		idempotency:   map[string]app.IdempotencyRecord{},
 	}
 	for _, option := range options {
@@ -249,6 +251,53 @@ func (s *Store) ListPayments(ctx context.Context, storeID string, limit, offset 
 	return append([]domain.SyncedPayment(nil), payments[offset:end]...), total, nil
 }
 
+func (s *Store) SaveCashMovement(ctx context.Context, movement domain.SyncedCashMovement) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.cashMovements[productKey(movement.StoreID, movement.ID)] = cloneSyncedCashMovement(movement)
+	return nil
+}
+
+func (s *Store) FindCashMovement(ctx context.Context, storeID string, cashMovementID string) (domain.SyncedCashMovement, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	movement, ok := s.cashMovements[productKey(storeID, cashMovementID)]
+	if !ok {
+		return domain.SyncedCashMovement{}, app.ErrCashMovementNotFound
+	}
+	return cloneSyncedCashMovement(movement), nil
+}
+
+func (s *Store) ListCashMovements(ctx context.Context, storeID string, limit, offset int) ([]domain.SyncedCashMovement, int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	movements := make([]domain.SyncedCashMovement, 0)
+	for _, movement := range s.cashMovements {
+		if movement.StoreID == storeID {
+			movements = append(movements, cloneSyncedCashMovement(movement))
+		}
+	}
+	sort.Slice(movements, func(i, j int) bool {
+		if movements[i].PostedAt.Equal(movements[j].PostedAt) {
+			return movements[i].ID > movements[j].ID
+		}
+		return movements[i].PostedAt.After(movements[j].PostedAt)
+	})
+
+	total := len(movements)
+	if offset >= total {
+		return []domain.SyncedCashMovement{}, total, nil
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	return append([]domain.SyncedCashMovement(nil), movements[offset:end]...), total, nil
+}
+
 func (s *Store) Find(ctx context.Context, operation string, key string) (app.IdempotencyRecord, bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -287,4 +336,8 @@ func cloneSyncEvent(event domain.SyncEvent) domain.SyncEvent {
 
 func cloneSyncedPayment(payment domain.SyncedPayment) domain.SyncedPayment {
 	return payment
+}
+
+func cloneSyncedCashMovement(movement domain.SyncedCashMovement) domain.SyncedCashMovement {
+	return movement
 }

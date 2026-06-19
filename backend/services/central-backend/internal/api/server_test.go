@@ -18,9 +18,10 @@ func newTestServer() http.Handler {
 	repo := store
 	return api.NewServerWithServices(api.Services{
 		StoreRegistry: app.NewStoreRegistryService(repo, repo),
-		Sync:          app.NewSyncService(repo, repo, repo, repo, repo),
+		Sync:          app.NewSyncService(repo, repo, repo, repo, repo, repo),
 		Catalog:       app.NewCatalogService(repo, repo),
 		Payments:      app.NewPaymentsService(repo, repo),
+		CashMovements: app.NewCashMovementsService(repo, repo),
 	})
 }
 

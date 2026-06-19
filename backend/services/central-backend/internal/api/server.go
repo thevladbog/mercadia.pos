@@ -22,6 +22,7 @@ type Services struct {
 	Sync          *app.SyncService
 	Catalog       *app.CatalogService
 	Payments      *app.PaymentsService
+	CashMovements *app.CashMovementsService
 }
 
 type StatusResponse struct {
@@ -121,6 +122,27 @@ type PaginatedSyncedPaymentsResponse struct {
 	TotalCount int                     `json:"totalCount"`
 }
 
+type SyncedCashMovementResponse struct {
+	ID                string    `json:"id"`
+	StoreID           string    `json:"storeId"`
+	Type              string    `json:"type"`
+	FromContainerID   string    `json:"fromContainerId"`
+	FromContainerType string    `json:"fromContainerType"`
+	ToContainerID     string    `json:"toContainerId"`
+	ToContainerType   string    `json:"toContainerType"`
+	AmountMinor       int64     `json:"amountMinor"`
+	Currency          string    `json:"currency"`
+	ActorID           string    `json:"actorId"`
+	PostedAt          time.Time `json:"postedAt"`
+	SourceEventID     string    `json:"sourceEventId"`
+	SyncedAt          time.Time `json:"syncedAt"`
+}
+
+type PaginatedSyncedCashMovementsResponse struct {
+	Items      []SyncedCashMovementResponse `json:"items"`
+	TotalCount int                          `json:"totalCount"`
+}
+
 type ServerOptions struct {
 	ReadinessChecks []func(context.Context) error
 }
@@ -156,9 +178,10 @@ func NewServerBundle(opts ServerOptions) (*ServerBundle, error) {
 func newServices(repo infra.Repository) Services {
 	return Services{
 		StoreRegistry: app.NewStoreRegistryService(repo, repo),
-		Sync:          app.NewSyncService(repo, repo, repo, repo, repo),
+		Sync:          app.NewSyncService(repo, repo, repo, repo, repo, repo),
 		Catalog:       app.NewCatalogService(repo, repo),
 		Payments:      app.NewPaymentsService(repo, repo),
+		CashMovements: app.NewCashMovementsService(repo, repo),
 	}
 }
 
@@ -470,6 +493,50 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		}
 		httpapi.WriteJSON(w, http.StatusOK, syncedPaymentResponse(payment))
 	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:          http.MethodGet,
+		Path:            "/v1/stores/{storeId}/cash-movements",
+		OperationID:     "listStoreCashMovements",
+		Summary:         "List synchronized cash movements for a store",
+		Tags:            []string{"sync"},
+		QueryParameters: paginationQueryParams(),
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Synchronized cash movements", Schema: paginatedSyncedCashMovementsResponseSchema()},
+			"400": {Description: "Invalid list query", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := services.CashMovements.ListCashMovements(r.Context(), r.PathValue("storeId"), params)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedSyncedCashMovementsResponse{
+			Items:      syncedCashMovementResponses(result.Items),
+			TotalCount: result.TotalCount,
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:      http.MethodGet,
+		Path:        "/v1/stores/{storeId}/cash-movements/{cashMovementId}",
+		OperationID: "getStoreCashMovement",
+		Summary:     "Get a synchronized cash movement",
+		Tags:        []string{"sync"},
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Synchronized cash movement", Schema: syncedCashMovementResponseSchema()},
+			"404": {Description: "Store or cash movement not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		movement, err := services.CashMovements.GetCashMovement(r.Context(), r.PathValue("storeId"), r.PathValue("cashMovementId"))
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, syncedCashMovementResponse(movement))
+	})
 }
 
 func writeAppError(w http.ResponseWriter, err error) {
@@ -480,6 +547,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusNotFound, "catalog_product_not_found", "Catalog product was not found", err.Error())
 	case errors.Is(err, app.ErrPaymentNotFound):
 		httpapi.WriteProblem(w, http.StatusNotFound, "payment_not_found", "Payment was not found", err.Error())
+	case errors.Is(err, app.ErrCashMovementNotFound):
+		httpapi.WriteProblem(w, http.StatusNotFound, "cash_movement_not_found", "Cash movement was not found", err.Error())
 	case errors.Is(err, app.ErrIdempotencyKeyRequired):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 	case errors.Is(err, app.ErrIdempotencyKeyReused):
@@ -492,6 +561,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_catalog_query", "Invalid catalog query", err.Error())
 	case errors.Is(err, app.ErrInvalidPaymentQuery), errors.Is(err, domain.ErrInvalidSyncedPaymentInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_payment_query", "Invalid payment query", err.Error())
+	case errors.Is(err, app.ErrInvalidCashMovementQuery), errors.Is(err, domain.ErrInvalidSyncedCashMovementInput):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_cash_movement_query", "Invalid cash movement query", err.Error())
 	default:
 		httpapi.WriteProblem(w, http.StatusInternalServerError, "internal_error", "Unexpected server error", err.Error())
 	}
@@ -576,6 +647,32 @@ func syncedPaymentResponses(payments []domain.SyncedPayment) []SyncedPaymentResp
 	responses := make([]SyncedPaymentResponse, 0, len(payments))
 	for _, payment := range payments {
 		responses = append(responses, syncedPaymentResponse(payment))
+	}
+	return responses
+}
+
+func syncedCashMovementResponse(movement domain.SyncedCashMovement) SyncedCashMovementResponse {
+	return SyncedCashMovementResponse{
+		ID:                movement.ID,
+		StoreID:           movement.StoreID,
+		Type:              movement.Type,
+		FromContainerID:   movement.FromContainerID,
+		FromContainerType: movement.FromContainerType,
+		ToContainerID:     movement.ToContainerID,
+		ToContainerType:   movement.ToContainerType,
+		AmountMinor:       movement.AmountMinor,
+		Currency:          movement.Currency,
+		ActorID:           movement.ActorID,
+		PostedAt:          movement.PostedAt,
+		SourceEventID:     movement.SourceEventID,
+		SyncedAt:          movement.SyncedAt,
+	}
+}
+
+func syncedCashMovementResponses(movements []domain.SyncedCashMovement) []SyncedCashMovementResponse {
+	responses := make([]SyncedCashMovementResponse, 0, len(movements))
+	for _, movement := range movements {
+		responses = append(responses, syncedCashMovementResponse(movement))
 	}
 	return responses
 }
@@ -710,6 +807,31 @@ func syncedPaymentResponseSchema() httpapi.Schema {
 func paginatedSyncedPaymentsResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"items":      httpapi.ArraySchema(syncedPaymentResponseSchema()),
+		"totalCount": {"type": "integer"},
+	}, "items", "totalCount")
+}
+
+func syncedCashMovementResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"id":                httpapi.StringSchema(),
+		"storeId":           httpapi.StringSchema(),
+		"type":              httpapi.StringSchema(),
+		"fromContainerId":   httpapi.StringSchema(),
+		"fromContainerType": httpapi.StringSchema(),
+		"toContainerId":     httpapi.StringSchema(),
+		"toContainerType":   httpapi.StringSchema(),
+		"amountMinor":       {"type": "integer"},
+		"currency":          httpapi.StringSchema(),
+		"actorId":           httpapi.StringSchema(),
+		"postedAt":          httpapi.DateTimeSchema(),
+		"sourceEventId":     httpapi.StringSchema(),
+		"syncedAt":          httpapi.DateTimeSchema(),
+	}, "id", "storeId", "type", "fromContainerId", "fromContainerType", "toContainerId", "toContainerType", "amountMinor", "actorId", "postedAt", "sourceEventId", "syncedAt")
+}
+
+func paginatedSyncedCashMovementsResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"items":      httpapi.ArraySchema(syncedCashMovementResponseSchema()),
 		"totalCount": {"type": "integer"},
 	}, "items", "totalCount")
 }

@@ -21,7 +21,7 @@ func TestAcceptSyncEventsPersistsPayment(t *testing.T) {
 		t.Fatalf("register store: %v", err)
 	}
 
-	syncService := app.NewSyncService(store, store, store, store, store)
+	syncService := app.NewSyncService(store, store, store, store, store, store)
 	paymentsService := app.NewPaymentsService(store, store)
 
 	capturedAt := time.Date(2026, 6, 19, 14, 30, 0, 0, time.UTC)

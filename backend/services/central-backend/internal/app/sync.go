@@ -43,13 +43,14 @@ type SyncEventsResult struct {
 }
 
 type SyncService struct {
-	stores      StoreRepository
-	syncEvents  SyncEventRepository
-	catalog     CatalogProductRepository
-	payments    SyncedPaymentRepository
-	idempotency IdempotencyStore
-	now         func() time.Time
-	newID       func(prefix string) string
+	stores        StoreRepository
+	syncEvents    SyncEventRepository
+	catalog       CatalogProductRepository
+	payments      SyncedPaymentRepository
+	cashMovements SyncedCashMovementRepository
+	idempotency   IdempotencyStore
+	now           func() time.Time
+	newID         func(prefix string) string
 }
 
 func NewSyncService(
@@ -57,16 +58,18 @@ func NewSyncService(
 	syncEvents SyncEventRepository,
 	catalog CatalogProductRepository,
 	payments SyncedPaymentRepository,
+	cashMovements SyncedCashMovementRepository,
 	idempotency IdempotencyStore,
 ) *SyncService {
 	return &SyncService{
-		stores:      stores,
-		syncEvents:  syncEvents,
-		catalog:     catalog,
-		payments:    payments,
-		idempotency: idempotency,
-		now:         time.Now,
-		newID:       defaultNewID,
+		stores:        stores,
+		syncEvents:    syncEvents,
+		catalog:       catalog,
+		payments:      payments,
+		cashMovements: cashMovements,
+		idempotency:   idempotency,
+		now:           time.Now,
+		newID:         defaultNewID,
 	}
 }
 
@@ -163,6 +166,8 @@ func (s *SyncService) applySyncEvent(ctx context.Context, event domain.SyncEvent
 		return s.upsertCatalogProductFromPayload(ctx, event)
 	case "payment.captured":
 		return s.upsertPaymentFromPayload(ctx, event)
+	case "cash.movement.posted":
+		return s.upsertCashMovementFromPayload(ctx, event)
 	default:
 		return nil
 	}
@@ -237,6 +242,44 @@ func (s *SyncService) upsertPaymentFromPayload(ctx context.Context, event domain
 		return ErrInvalidSyncCommand
 	}
 	return s.payments.SavePayment(ctx, payment)
+}
+
+func (s *SyncService) upsertCashMovementFromPayload(ctx context.Context, event domain.SyncEvent) error {
+	var payload struct {
+		CashMovementID    string    `json:"cashMovementId"`
+		Type              string    `json:"type"`
+		FromContainerID   string    `json:"fromContainerId"`
+		FromContainerType string    `json:"fromContainerType"`
+		ToContainerID     string    `json:"toContainerId"`
+		ToContainerType   string    `json:"toContainerType"`
+		AmountMinor       int64     `json:"amountMinor"`
+		Currency          string    `json:"currency"`
+		ActorID           string    `json:"actorId"`
+		PostedAt          time.Time `json:"postedAt"`
+	}
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		return ErrInvalidSyncCommand
+	}
+
+	movement, err := domain.NewSyncedCashMovement(domain.SyncedCashMovement{
+		ID:                payload.CashMovementID,
+		StoreID:           event.StoreID,
+		Type:              payload.Type,
+		FromContainerID:   payload.FromContainerID,
+		FromContainerType: payload.FromContainerType,
+		ToContainerID:     payload.ToContainerID,
+		ToContainerType:   payload.ToContainerType,
+		AmountMinor:       payload.AmountMinor,
+		Currency:          payload.Currency,
+		ActorID:           payload.ActorID,
+		PostedAt:          payload.PostedAt.UTC(),
+		SourceEventID:     event.SourceEventID,
+		SyncedAt:          event.ReceivedAt,
+	})
+	if err != nil {
+		return ErrInvalidSyncCommand
+	}
+	return s.cashMovements.SaveCashMovement(ctx, movement)
 }
 
 func (s *SyncService) findSyncIdempotency(ctx context.Context, operation string, key string, targetID string, fingerprint string) (SyncEventsResult, bool, error) {

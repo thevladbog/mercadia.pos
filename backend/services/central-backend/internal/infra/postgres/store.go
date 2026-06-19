@@ -280,6 +280,69 @@ func (s *Store) ListPayments(ctx context.Context, storeID string, limit, offset 
 	return scanSyncedPayments(rows, total)
 }
 
+func (s *Store) SaveCashMovement(ctx context.Context, movement domain.SyncedCashMovement) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO synced_cash_movements (
+			store_id, id, type, from_container_id, from_container_type,
+			to_container_id, to_container_type, amount_minor, currency,
+			actor_id, posted_at, source_event_id, synced_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		ON CONFLICT (store_id, id) DO UPDATE SET
+			type = EXCLUDED.type,
+			from_container_id = EXCLUDED.from_container_id,
+			from_container_type = EXCLUDED.from_container_type,
+			to_container_id = EXCLUDED.to_container_id,
+			to_container_type = EXCLUDED.to_container_type,
+			amount_minor = EXCLUDED.amount_minor,
+			currency = EXCLUDED.currency,
+			actor_id = EXCLUDED.actor_id,
+			posted_at = EXCLUDED.posted_at,
+			source_event_id = EXCLUDED.source_event_id,
+			synced_at = EXCLUDED.synced_at
+	`, movement.StoreID, movement.ID, movement.Type, movement.FromContainerID, movement.FromContainerType,
+		movement.ToContainerID, movement.ToContainerType, movement.AmountMinor, movement.Currency,
+		movement.ActorID, movement.PostedAt, movement.SourceEventID, movement.SyncedAt)
+	return err
+}
+
+func (s *Store) FindCashMovement(ctx context.Context, storeID string, cashMovementID string) (domain.SyncedCashMovement, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT store_id, id, type, from_container_id, from_container_type,
+			to_container_id, to_container_type, amount_minor, currency,
+			actor_id, posted_at, source_event_id, synced_at
+		FROM synced_cash_movements
+		WHERE store_id = $1 AND id = $2
+	`, storeID, cashMovementID)
+	return scanSyncedCashMovement(row)
+}
+
+func (s *Store) ListCashMovements(ctx context.Context, storeID string, limit, offset int) ([]domain.SyncedCashMovement, int, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM synced_cash_movements
+		WHERE store_id = $1
+	`, storeID)
+	var total int
+	if err := row.Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT store_id, id, type, from_container_id, from_container_type,
+			to_container_id, to_container_type, amount_minor, currency,
+			actor_id, posted_at, source_event_id, synced_at
+		FROM synced_cash_movements
+		WHERE store_id = $1
+		ORDER BY posted_at DESC, id DESC
+		LIMIT $2 OFFSET $3
+	`, storeID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	return scanSyncedCashMovements(rows, total)
+}
+
 func (s *Store) Find(ctx context.Context, operation string, key string) (app.IdempotencyRecord, bool, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT operation, key, target_id, fingerprint, result, created_at
@@ -432,6 +495,36 @@ func scanSyncedPayments(rows pgx.Rows, total int) ([]domain.SyncedPayment, int, 
 		return nil, 0, err
 	}
 	return payments, total, nil
+}
+
+func scanSyncedCashMovement(row rowScanner) (domain.SyncedCashMovement, error) {
+	var movement domain.SyncedCashMovement
+	if err := row.Scan(&movement.StoreID, &movement.ID, &movement.Type, &movement.FromContainerID, &movement.FromContainerType,
+		&movement.ToContainerID, &movement.ToContainerType, &movement.AmountMinor, &movement.Currency,
+		&movement.ActorID, &movement.PostedAt, &movement.SourceEventID, &movement.SyncedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.SyncedCashMovement{}, app.ErrCashMovementNotFound
+		}
+		return domain.SyncedCashMovement{}, err
+	}
+	return movement, nil
+}
+
+func scanSyncedCashMovements(rows pgx.Rows, total int) ([]domain.SyncedCashMovement, int, error) {
+	movements := make([]domain.SyncedCashMovement, 0)
+	for rows.Next() {
+		var movement domain.SyncedCashMovement
+		if err := rows.Scan(&movement.StoreID, &movement.ID, &movement.Type, &movement.FromContainerID, &movement.FromContainerType,
+			&movement.ToContainerID, &movement.ToContainerType, &movement.AmountMinor, &movement.Currency,
+			&movement.ActorID, &movement.PostedAt, &movement.SourceEventID, &movement.SyncedAt); err != nil {
+			return nil, 0, err
+		}
+		movements = append(movements, movement)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return movements, total, nil
 }
 
 func isUniqueViolation(err error) bool {

@@ -15,6 +15,7 @@ type Repository interface {
 	app.SyncEventRepository
 	app.CatalogProductRepository
 	app.SyncedPaymentRepository
+	app.SyncedCashMovementRepository
 	app.IdempotencyStore
 }
 
