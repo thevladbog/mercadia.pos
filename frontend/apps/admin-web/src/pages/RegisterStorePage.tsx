@@ -8,7 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { getApiErrorMessage } from '../auth/AuthProvider.js';
+import { getApiErrorMessage } from '../auth/api-errors.js';
 
 export function RegisterStorePage() {
   const navigate = useNavigate();

@@ -15,7 +15,7 @@ import {
 } from '@mercadia/api-clients-central';
 import { useMemo, useState } from 'react';
 
-import { getApiErrorMessage } from '../auth/AuthProvider.js';
+import { getApiErrorMessage } from '../auth/api-errors.js';
 import { formatMinorAmount, formatTimestamp, PAGE_SIZE } from './reporting-utils.js';
 
 type SyncTab =

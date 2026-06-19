@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
-import { registerUnauthorizedHandler } from '../main.js';
-import { useAuth } from './AuthProvider.js';
+import { registerUnauthorizedHandler } from './unauthorized-handler.js';
+import { useAuth } from './useAuth.js';
 
 export function UnauthorizedBridge() {
   const { handleUnauthorized } = useAuth();
