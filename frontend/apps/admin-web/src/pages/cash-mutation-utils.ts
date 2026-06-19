@@ -14,11 +14,16 @@ export function parseRublesToMinor(value: string): number | null {
   if (normalized.length === 0) {
     return null;
   }
-  const rubles = Number(normalized);
-  if (!Number.isFinite(rubles) || rubles <= 0) {
+  const match = /^(\d+)(?:\.(\d{0,2}))?$/.exec(normalized);
+  if (!match) {
     return null;
   }
-  return Math.round(rubles * 100);
+  const fractionalPart = (match[2] ?? '').padEnd(2, '0');
+  const minor = Number(match[1]) * 100 + Number(fractionalPart);
+  if (!Number.isSafeInteger(minor) || minor <= 0) {
+    return null;
+  }
+  return minor;
 }
 
 export function formatMinorToRublesInput(minor: number): string {
@@ -37,5 +42,7 @@ export async function invalidateSafeQueries(
 }
 
 export function actorsMustDiffer(actorId: string, approvedById: string): boolean {
-  return actorId.trim().length > 0 && approvedById.trim().length > 0 && actorId !== approvedById;
+  const actor = actorId.trim();
+  const approver = approvedById.trim();
+  return actor.length > 0 && approver.length > 0 && actor !== approver;
 }

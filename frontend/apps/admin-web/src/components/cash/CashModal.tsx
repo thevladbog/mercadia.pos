@@ -1,4 +1,4 @@
-import type { FormEvent, ReactNode } from 'react';
+import type { FormEvent, KeyboardEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type CashModalProps = {
@@ -22,14 +22,23 @@ export function CashModal({
 }: CashModalProps) {
   const { t } = useTranslation();
 
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      onClose();
+    }
+  }
+
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
       <div
+        autoFocus
         className="modal-panel panel"
         role="dialog"
         aria-modal="true"
         aria-labelledby="cash-modal-title"
+        tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={handleKeyDown}
       >
         <h3 id="cash-modal-title">{title}</h3>
         <form className="stack" onSubmit={onSubmit}>

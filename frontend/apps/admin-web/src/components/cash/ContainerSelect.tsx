@@ -32,7 +32,7 @@ export function ContainerSelect({
         {containers.length === 0 ? <option value="">{t('safe.forms.noContainers')}</option> : null}
         {containers.map((container) => (
           <option key={container.containerId} value={container.containerId}>
-            {containerOptionLabel(container)}
+            {containerOptionLabel(container, t)}
           </option>
         ))}
       </select>
