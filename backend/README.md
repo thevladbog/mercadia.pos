@@ -167,6 +167,7 @@ The Store Edge service has the first checkout and terminal monitoring paths:
 - `POST /v1/stores/{storeId}/cash-movements` - posts an immutable cash movement between cash containers.
 - `GET /v1/stores/{storeId}/cash-movements` - lists cash movements posted for the store.
 - `POST /v1/stores/{storeId}/bank-collections` - posts a `safe_to_bank` collection from a safe to a bank container; requires two-person control.
+- `POST /v1/stores/{storeId}/business-expenses` - posts an `expense` disbursement from a safe to a payee expense container; requires two-person control.
 - `GET /v1/stores/{storeId}/cash-balances` - derives current cash container balances from posted movements.
 - `POST /v1/stores/{storeId}/cash-recounts` - records a cash recount for a drawer or safe.
 - `GET /v1/stores/{storeId}/cash-recounts` - lists cash recounts for the store.
@@ -221,7 +222,7 @@ unresolved receipts. Closing a shift with `closingCashMinor > 0` requires final 
 and posts a `drawer_to_safe` cash movement from the shift drawer to the selected safe. On PostgreSQL,
 shift open and close persist shift state, cash movements, and idempotency in a single transaction.
 The final collection requires two-person control through separate `actorId` and `approvedById` values.
-Mid-shift cash in and cash out are shift-scoped commands that post `cash_in` and `cash_out` ledger movements with journal entries inside the same PostgreSQL transaction as idempotency when persistence is enabled. Shift-scoped cash movements also enqueue `cash.movement.posted` outbox events for central sync.
+Mid-shift cash in and cash out are shift-scoped commands that post `cash_in` and `cash_out` ledger movements with journal entries inside the same PostgreSQL transaction as idempotency when persistence is enabled. Shift-scoped cash movements also enqueue `cash.movement.posted` outbox events for central sync. Bank collection and business expense commands post typed safe operations with journal and outbox recording.
 Cash operations are modeled as an append-only ledger. Posted cash movements are not edited in
 place; corrections must be represented by a new movement. The first control rule is separation
 of duties: the actor posting a cash movement cannot approve the same movement.

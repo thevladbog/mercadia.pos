@@ -267,6 +267,16 @@ type CreateBankCollectionRequest struct {
 	ApprovedByID    string `json:"approvedById"`
 }
 
+type CreateBusinessExpenseRequest struct {
+	SafeID       string `json:"safeId"`
+	PayeeID      string `json:"payeeId"`
+	AmountMinor  int64  `json:"amountMinor"`
+	Currency     string `json:"currency,omitempty"`
+	Reason       string `json:"reason"`
+	ActorID      string `json:"actorId"`
+	ApprovedByID string `json:"approvedById"`
+}
+
 type CashMovementAcceptedResponse struct {
 	Movement CashMovementResponse `json:"movement"`
 }
@@ -1469,6 +1479,53 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 			Reason:          request.Reason,
 			ActorID:         request.ActorID,
 			ApprovedByID:    request.ApprovedByID,
+		})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusAccepted, CashMovementAcceptedResponse{
+			Movement: cashMovementResponse(result.Movement),
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:              http.MethodPost,
+		Path:                "/v1/stores/{storeId}/business-expenses",
+		OperationID:         "createBusinessExpense",
+		Summary:             "Post business expense disbursement from safe",
+		Tags:                []string{"cash-office"},
+		RequiresIdempotency: true,
+		RequestBody: &httpapi.BodySpec{
+			Description: "Business expense command",
+			Required:    true,
+			Schema:      createBusinessExpenseRequestSchema(),
+		},
+		Responses: map[string]httpapi.ResponseSpec{
+			"202": {Description: "Business expense posted", Schema: cashMovementAcceptedResponseSchema()},
+			"400": {Description: "Invalid business expense command", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Business expense or idempotency conflict", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
+			return
+		}
+		var request CreateBusinessExpenseRequest
+		if err := httpapi.DecodeJSON(r, &request); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_json", "Invalid JSON", err.Error())
+			return
+		}
+		result, err := cash.CreateBusinessExpense(r.Context(), app.CreateBusinessExpenseCommand{
+			IdempotencyKey: r.Header.Get("Idempotency-Key"),
+			StoreID:        r.PathValue("storeId"),
+			SafeID:         request.SafeID,
+			PayeeID:        request.PayeeID,
+			AmountMinor:    request.AmountMinor,
+			Currency:       request.Currency,
+			Reason:         request.Reason,
+			ActorID:        request.ActorID,
+			ApprovedByID:   request.ApprovedByID,
 		})
 		if err != nil {
 			writeAppError(w, err)
@@ -2830,6 +2887,18 @@ func createBankCollectionRequestSchema() httpapi.Schema {
 		"actorId":         httpapi.StringSchema(),
 		"approvedById":    httpapi.StringSchema(),
 	}, "safeId", "bankContainerId", "amountMinor", "actorId", "approvedById")
+}
+
+func createBusinessExpenseRequestSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"safeId":       httpapi.StringSchema(),
+		"payeeId":      httpapi.StringSchema(),
+		"amountMinor":  {"type": "integer", "minimum": 1},
+		"currency":     httpapi.StringSchema(),
+		"reason":       httpapi.StringSchema(),
+		"actorId":      httpapi.StringSchema(),
+		"approvedById": httpapi.StringSchema(),
+	}, "safeId", "payeeId", "amountMinor", "reason", "actorId", "approvedById")
 }
 
 func createCashRecountRequestSchema() httpapi.Schema {

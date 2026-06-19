@@ -117,6 +117,18 @@ type CreateBankCollectionCommand struct {
 	ApprovedByID    string
 }
 
+type CreateBusinessExpenseCommand struct {
+	IdempotencyKey string
+	StoreID        string
+	SafeID         string
+	PayeeID        string
+	AmountMinor    int64
+	Currency       string
+	Reason         string
+	ActorID        string
+	ApprovedByID   string
+}
+
 type CreateCashRecountCommand struct {
 	IdempotencyKey string
 	StoreID        string
@@ -252,6 +264,34 @@ func (s *CashService) CreateBankCollection(ctx context.Context, command CreateBa
 		AmountMinor:       command.AmountMinor,
 		Currency:          command.Currency,
 		Reason:            reason,
+		ActorID:           command.ActorID,
+		ApprovedByID:      command.ApprovedByID,
+	})
+}
+
+func (s *CashService) CreateBusinessExpense(ctx context.Context, command CreateBusinessExpenseCommand) (CashMovementResult, error) {
+	if command.IdempotencyKey == "" {
+		return CashMovementResult{}, ErrIdempotencyKeyRequired
+	}
+	if command.StoreID == "" || command.SafeID == "" || command.PayeeID == "" ||
+		command.AmountMinor <= 0 || command.Reason == "" || command.ActorID == "" || command.ApprovedByID == "" {
+		return CashMovementResult{}, ErrInvalidCashMovementCommand
+	}
+	if command.ActorID == command.ApprovedByID {
+		return CashMovementResult{}, ErrSeparationOfDutiesViolation
+	}
+
+	return s.CreateCashMovement(ctx, CreateCashMovementCommand{
+		IdempotencyKey:    command.IdempotencyKey,
+		StoreID:           command.StoreID,
+		Type:              domain.CashMovementTypeExpense,
+		FromContainerID:   command.SafeID,
+		FromContainerType: domain.CashContainerTypeSafe,
+		ToContainerID:     command.PayeeID,
+		ToContainerType:   domain.CashContainerTypeExpense,
+		AmountMinor:       command.AmountMinor,
+		Currency:          command.Currency,
+		Reason:            command.Reason,
 		ActorID:           command.ActorID,
 		ApprovedByID:      command.ApprovedByID,
 	})

@@ -293,6 +293,53 @@ func TestCreateBankCollectionMovesSafeToBank(t *testing.T) {
 	}
 }
 
+func TestCreateBusinessExpenseMovesSafeToPayee(t *testing.T) {
+	service := newTestCashService()
+	if _, err := service.CreateCashMovement(context.Background(), app.CreateCashMovementCommand{
+		IdempotencyKey:    "seed-safe-2",
+		StoreID:           "store-1",
+		Type:              domain.CashMovementTypeCashIn,
+		FromContainerID:   "external-customer",
+		FromContainerType: domain.CashContainerTypeExternal,
+		ToContainerID:     "safe-1",
+		ToContainerType:   domain.CashContainerTypeSafe,
+		AmountMinor:       100000,
+		Currency:          "RUB",
+		Reason:            "Seed safe balance",
+		ActorID:           "senior-1",
+	}); err != nil {
+		t.Fatalf("seed safe: %v", err)
+	}
+
+	if _, err := service.CreateBusinessExpense(context.Background(), app.CreateBusinessExpenseCommand{
+		IdempotencyKey: "expense-1",
+		StoreID:        "store-1",
+		SafeID:         "safe-1",
+		PayeeID:        "vendor-supplies",
+		AmountMinor:    40000,
+		Reason:         "Office supplies",
+		ActorID:        "senior-1",
+		ApprovedByID:   "admin-1",
+	}); err != nil {
+		t.Fatalf("create business expense: %v", err)
+	}
+
+	balances, err := service.ListCashBalances(context.Background(), "store-1")
+	if err != nil {
+		t.Fatalf("list balances: %v", err)
+	}
+	byContainer := map[string]int64{}
+	for _, balance := range balances {
+		byContainer[balance.ContainerID] = balance.BalanceMinor
+	}
+	if byContainer["safe-1"] != 60000 {
+		t.Fatalf("safe balance = %d", byContainer["safe-1"])
+	}
+	if byContainer["vendor-supplies"] != 40000 {
+		t.Fatalf("expense balance = %d", byContainer["vendor-supplies"])
+	}
+}
+
 func newTestCashService() *app.CashService {
 	store := memory.NewStore()
 	var counter int

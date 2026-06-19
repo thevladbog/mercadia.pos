@@ -59,6 +59,9 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	if _, ok := paths["/v1/stores/{storeId}/bank-collections"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/bank-collections path")
 	}
+	if _, ok := paths["/v1/stores/{storeId}/business-expenses"]; !ok {
+		t.Fatal("expected /v1/stores/{storeId}/business-expenses path")
+	}
 	if _, ok := paths["/v1/stores/{storeId}/cash-balances"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/cash-balances path")
 	}
@@ -1689,6 +1692,76 @@ func TestCashMovementRejectsSelfApproval(t *testing.T) {
 
 	if response.Code != http.StatusConflict {
 		t.Fatalf("self approval status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestBankCollectionAndBusinessExpenseWorkflow(t *testing.T) {
+	server := NewServer()
+
+	seedResponse := httptest.NewRecorder()
+	seedRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/cash-movements", bytes.NewBufferString(`{
+		"type": "cash_in",
+		"fromContainerId": "external-customer",
+		"fromContainerType": "external",
+		"toContainerId": "safe-1",
+		"toContainerType": "safe",
+		"amountMinor": 500000,
+		"reason": "Seed safe balance",
+		"actorId": "senior-1"
+	}`))
+	seedRequest.Header.Set("Idempotency-Key", "seed-safe-1")
+	server.ServeHTTP(seedResponse, seedRequest)
+	if seedResponse.Code != http.StatusAccepted {
+		t.Fatalf("seed safe status = %d, body = %s", seedResponse.Code, seedResponse.Body.String())
+	}
+
+	bankResponse := httptest.NewRecorder()
+	bankRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/bank-collections", bytes.NewBufferString(`{
+		"safeId": "safe-1",
+		"bankContainerId": "bank-collection-1",
+		"amountMinor": 200000,
+		"reason": "Scheduled collection",
+		"actorId": "senior-1",
+		"approvedById": "admin-1"
+	}`))
+	bankRequest.Header.Set("Idempotency-Key", "bank-collection-1")
+	server.ServeHTTP(bankResponse, bankRequest)
+	if bankResponse.Code != http.StatusAccepted {
+		t.Fatalf("bank collection status = %d, body = %s", bankResponse.Code, bankResponse.Body.String())
+	}
+
+	expenseResponse := httptest.NewRecorder()
+	expenseRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/business-expenses", bytes.NewBufferString(`{
+		"safeId": "safe-1",
+		"payeeId": "vendor-supplies",
+		"amountMinor": 50000,
+		"reason": "Office supplies",
+		"actorId": "senior-1",
+		"approvedById": "admin-1"
+	}`))
+	expenseRequest.Header.Set("Idempotency-Key", "expense-1")
+	server.ServeHTTP(expenseResponse, expenseRequest)
+	if expenseResponse.Code != http.StatusAccepted {
+		t.Fatalf("business expense status = %d, body = %s", expenseResponse.Code, expenseResponse.Body.String())
+	}
+
+	balancesResponse := httptest.NewRecorder()
+	balancesRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/cash-balances", nil)
+	server.ServeHTTP(balancesResponse, balancesRequest)
+	if balancesResponse.Code != http.StatusOK {
+		t.Fatalf("cash balances status = %d, body = %s", balancesResponse.Code, balancesResponse.Body.String())
+	}
+
+	var balances CashBalancesResponse
+	if err := json.Unmarshal(balancesResponse.Body.Bytes(), &balances); err != nil {
+		t.Fatalf("decode cash balances response: %v", err)
+	}
+	byContainer := map[string]int64{}
+	for _, balance := range balances.Balances {
+		byContainer[balance.ContainerID] = balance.BalanceMinor
+	}
+	if byContainer["safe-1"] != 250000 || byContainer["bank-collection-1"] != 200000 || byContainer["vendor-supplies"] != 50000 {
+		t.Fatalf("cash balances = %+v", balances.Balances)
 	}
 }
 

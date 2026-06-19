@@ -7555,6 +7555,449 @@
         ]
       }
     },
+    "/v1/stores/{storeId}/bank-collections": {
+      "post": {
+        "operationId": "createBankCollection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "amountMinor": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "approvedById": {
+                    "type": "string"
+                  },
+                  "bankContainerId": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "safeId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "safeId",
+                  "bankContainerId",
+                  "amountMinor",
+                  "actorId",
+                  "approvedById"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Bank collection command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "movement": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "actorId": {
+                          "type": "string"
+                        },
+                        "amountMinor": {
+                          "type": "integer"
+                        },
+                        "approvedById": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "fromContainerId": {
+                          "type": "string"
+                        },
+                        "fromContainerType": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "toContainerId": {
+                          "type": "string"
+                        },
+                        "toContainerType": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "type",
+                        "fromContainerId",
+                        "fromContainerType",
+                        "toContainerId",
+                        "toContainerType",
+                        "amountMinor",
+                        "currency",
+                        "actorId",
+                        "status",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "movement"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bank collection posted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid bank collection command"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bank collection or idempotency conflict"
+          }
+        },
+        "summary": "Post bank collection from safe to bank container",
+        "tags": [
+          "cash-office"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/business-expenses": {
+      "post": {
+        "operationId": "createBusinessExpense",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "amountMinor": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "approvedById": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "payeeId": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "safeId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "safeId",
+                  "payeeId",
+                  "amountMinor",
+                  "reason",
+                  "actorId",
+                  "approvedById"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Business expense command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "movement": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "actorId": {
+                          "type": "string"
+                        },
+                        "amountMinor": {
+                          "type": "integer"
+                        },
+                        "approvedById": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "fromContainerId": {
+                          "type": "string"
+                        },
+                        "fromContainerType": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "toContainerId": {
+                          "type": "string"
+                        },
+                        "toContainerType": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "type",
+                        "fromContainerId",
+                        "fromContainerType",
+                        "toContainerId",
+                        "toContainerType",
+                        "amountMinor",
+                        "currency",
+                        "actorId",
+                        "status",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "movement"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business expense posted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid business expense command"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business expense or idempotency conflict"
+          }
+        },
+        "summary": "Post business expense disbursement from safe",
+        "tags": [
+          "cash-office"
+        ]
+      }
+    },
     "/v1/stores/{storeId}/cash-balances": {
       "get": {
         "operationId": "listCashBalances",
