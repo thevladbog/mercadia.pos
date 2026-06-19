@@ -44,14 +44,15 @@ type OperationalDayCashRepository interface {
 }
 
 type OperationalDayService struct {
-	days        OperationalDayRepository
-	shifts      OperationalDayShiftRepository
-	receipts    OperationalDayReceiptRepository
-	cash        OperationalDayCashRepository
-	idempotency IdempotencyStore
-	outbox      OutboxRecorder
-	now         func() time.Time
-	newID       func(prefix string) string
+	days         OperationalDayRepository
+	shifts       OperationalDayShiftRepository
+	receipts     OperationalDayReceiptRepository
+	cash         OperationalDayCashRepository
+	idempotency  IdempotencyStore
+	outbox       OutboxRecorder
+	transactions TransactionRunner
+	now          func() time.Time
+	newID        func(prefix string) string
 }
 
 type OperationalDayOption func(*OperationalDayService)
@@ -89,6 +90,12 @@ func WithOperationalDayIDGenerator(newID func(prefix string) string) Operational
 func WithOperationalDayOutboxRecorder(outbox OutboxRecorder) OperationalDayOption {
 	return func(service *OperationalDayService) {
 		service.outbox = outbox
+	}
+}
+
+func WithOperationalDayTransactionRunner(runner TransactionRunner) OperationalDayOption {
+	return func(service *OperationalDayService) {
+		service.transactions = runner
 	}
 }
 
@@ -368,23 +375,26 @@ func (s *OperationalDayService) CloseOperationalDay(ctx context.Context, command
 		return OperationalDayResult{}, err
 	}
 
-	if err := s.days.SaveOperationalDay(ctx, day); err != nil {
-		return OperationalDayResult{}, err
-	}
+	var result OperationalDayResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if err := s.days.SaveOperationalDay(ctx, day); err != nil {
+			return err
+		}
 
-	result := OperationalDayResult{Day: day}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    command.DayID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   s.now(),
-	}); err != nil {
-		return OperationalDayResult{}, err
-	}
-	if err := recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
-		return recorder.RecordOperationalDayClosed(ctx, day)
+		result = OperationalDayResult{Day: day}
+		if err := s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.DayID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		}); err != nil {
+			return err
+		}
+		return recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
+			return recorder.RecordOperationalDayClosed(ctx, day)
+		})
 	}); err != nil {
 		return OperationalDayResult{}, err
 	}

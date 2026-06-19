@@ -36,6 +36,7 @@ type FiscalizationService struct {
 	returns               ReturnRepository
 	idempotency           IdempotencyStore
 	outbox                OutboxRecorder
+	transactions          TransactionRunner
 	fiscalPrinter         FiscalReceiptPrinter
 	hardwareAgentFallback bool
 	now                   func() time.Time
@@ -77,6 +78,12 @@ func WithFiscalizationIDGenerator(newID func(prefix string) string) Fiscalizatio
 func WithFiscalizationOutboxRecorder(outbox OutboxRecorder) FiscalizationOption {
 	return func(service *FiscalizationService) {
 		service.outbox = outbox
+	}
+}
+
+func WithFiscalizationTransactionRunner(runner TransactionRunner) FiscalizationOption {
+	return func(service *FiscalizationService) {
+		service.transactions = runner
 	}
 }
 
@@ -165,29 +172,33 @@ func (s *FiscalizationService) CreateFiscalDocument(ctx context.Context, command
 	if err != nil {
 		return FiscalDocumentResult{}, err
 	}
-	if err := s.fiscal.SaveFiscalDocument(ctx, document); err != nil {
-		return FiscalDocumentResult{}, err
-	}
-	if err := receipt.MarkFiscalized(s.now()); err != nil {
-		return FiscalDocumentResult{}, err
-	}
-	if err := s.receipts.SaveReceipt(ctx, receipt); err != nil {
-		return FiscalDocumentResult{}, err
-	}
 
-	result := FiscalDocumentResult{Document: document}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    command.ReceiptID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   s.now(),
-	}); err != nil {
-		return FiscalDocumentResult{}, err
-	}
-	if err := recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
-		return recorder.RecordFiscalDocumentCreated(ctx, document, receipt.StoreID)
+	var result FiscalDocumentResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if err := s.fiscal.SaveFiscalDocument(ctx, document); err != nil {
+			return err
+		}
+		if err := receipt.MarkFiscalized(s.now()); err != nil {
+			return err
+		}
+		if err := s.receipts.SaveReceipt(ctx, receipt); err != nil {
+			return err
+		}
+
+		result = FiscalDocumentResult{Document: document}
+		if err := s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.ReceiptID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		}); err != nil {
+			return err
+		}
+		return recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
+			return recorder.RecordFiscalDocumentCreated(ctx, document, receipt.StoreID)
+		})
 	}); err != nil {
 		return FiscalDocumentResult{}, err
 	}
@@ -273,23 +284,27 @@ func (s *FiscalizationService) CreateReturnFiscalDocument(ctx context.Context, c
 	if err != nil {
 		return FiscalDocumentResult{}, err
 	}
-	if err := s.fiscal.SaveFiscalDocument(ctx, document); err != nil {
-		return FiscalDocumentResult{}, err
-	}
 
-	result := FiscalDocumentResult{Document: document}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    command.ReturnID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   s.now(),
-	}); err != nil {
-		return FiscalDocumentResult{}, err
-	}
-	if err := recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
-		return recorder.RecordFiscalDocumentCreated(ctx, document, receipt.StoreID)
+	var result FiscalDocumentResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if err := s.fiscal.SaveFiscalDocument(ctx, document); err != nil {
+			return err
+		}
+
+		result = FiscalDocumentResult{Document: document}
+		if err := s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.ReturnID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		}); err != nil {
+			return err
+		}
+		return recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
+			return recorder.RecordFiscalDocumentCreated(ctx, document, receipt.StoreID)
+		})
 	}); err != nil {
 		return FiscalDocumentResult{}, err
 	}

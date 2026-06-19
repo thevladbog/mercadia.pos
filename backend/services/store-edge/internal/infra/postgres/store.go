@@ -72,7 +72,7 @@ func (s *Store) SaveReceipt(ctx context.Context, receipt domain.Receipt) error {
 		return fmt.Errorf("marshal receipt lines: %w", err)
 	}
 
-	_, err = s.pool.Exec(ctx, `
+	_, err = s.conn(ctx).Exec(ctx, `
 		INSERT INTO receipts (
 			id, store_id, operational_day_id, business_date, shift_id, terminal_id, cashier_id,
 			drawer_id, channel, status, lines, cancel_reason, cancelled_by_id, cancel_approved_by_id,
@@ -171,7 +171,7 @@ func (s *Store) ListReceiptsByOperationalDay(ctx context.Context, operationalDay
 }
 
 func (s *Store) SaveTerminal(ctx context.Context, terminal domain.Terminal) error {
-	_, err := s.pool.Exec(ctx, `
+	_, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO terminals (
 			id, store_id, kind, status, software_version, last_seen_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -272,7 +272,7 @@ func (s *Store) GetLastSyncedAt(ctx context.Context, storeID string) (time.Time,
 }
 
 func (s *Store) SaveLastSyncedAt(ctx context.Context, storeID string, syncedAt time.Time) error {
-	_, err := s.pool.Exec(ctx, `
+	_, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO catalog_sync_state (store_id, last_synced_at)
 		VALUES ($1, $2)
 		ON CONFLICT (store_id) DO UPDATE SET
@@ -282,7 +282,7 @@ func (s *Store) SaveLastSyncedAt(ctx context.Context, storeID string, syncedAt t
 }
 
 func (s *Store) SavePayment(ctx context.Context, payment domain.Payment) error {
-	_, err := s.pool.Exec(ctx, `
+	_, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO payments (
 			id, receipt_id, method, status, amount_minor, refunded_amount_minor, provider_reference,
 			created_at, updated_at, captured_at
@@ -399,7 +399,7 @@ func (s *Store) ListUnresolvedReceiptsByShift(ctx context.Context, shiftID strin
 }
 
 func (s *Store) SaveFiscalDocument(ctx context.Context, document domain.FiscalDocument) error {
-	_, err := s.pool.Exec(ctx, `
+	_, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO fiscal_documents (
 			id, receipt_id, return_id, kind, status, amount_minor, device_id, fiscal_sign, fiscalized_at, created_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -459,7 +459,7 @@ func (s *Store) FindFiscalDocumentByReturn(ctx context.Context, returnID string)
 }
 
 func (s *Store) SaveCashMovement(ctx context.Context, movement domain.CashMovement) error {
-	_, err := s.pool.Exec(ctx, `
+	_, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO cash_movements (
 			id, store_id, type, from_container_id, from_container_type, to_container_id, to_container_type,
 			amount_minor, currency, reason, actor_id, approved_by_id, status, created_at
@@ -513,7 +513,7 @@ func (s *Store) ListCashMovements(ctx context.Context, storeID string) ([]domain
 }
 
 func (s *Store) SaveCashRecount(ctx context.Context, recount domain.CashRecount) error {
-	_, err := s.pool.Exec(ctx, `
+	_, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO cash_recounts (
 			id, store_id, business_date, container_id, container_type, currency, expected_minor,
 			counted_minor, discrepancy_minor, reason, actor_id, approved_by_id, status, resolution_status,
@@ -631,7 +631,7 @@ func (s *Store) ListUnresolvedCashRecountDiscrepanciesByStoreAndBusinessDate(ctx
 }
 
 func (s *Store) SaveShift(ctx context.Context, shift domain.Shift) error {
-	_, err := s.pool.Exec(ctx, `
+	_, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO shifts (
 			id, store_id, operational_day_id, business_date, terminal_id, cashier_id, drawer_id,
 			status, opening_cash_minor, closing_cash_minor, opened_at, closed_at, updated_at
@@ -746,7 +746,7 @@ func (s *Store) ListShiftsByOperationalDay(ctx context.Context, operationalDayID
 }
 
 func (s *Store) SaveOperationalDay(ctx context.Context, day domain.OperationalDay) error {
-	_, err := s.pool.Exec(ctx, `
+	_, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO operational_days (
 			id, store_id, business_date, status, opened_by_id, closed_by_id, opened_at, closed_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -840,7 +840,7 @@ func (s *Store) Save(ctx context.Context, record app.IdempotencyRecord) error {
 		return fmt.Errorf("marshal idempotency result: %w", err)
 	}
 
-	_, err = s.pool.Exec(ctx, `
+	_, err = s.conn(ctx).Exec(ctx, `
 		INSERT INTO idempotency_records (
 			operation, key, target_id, fingerprint, result, created_at
 		) VALUES ($1, $2, $3, $4, $5, $6)
@@ -867,7 +867,7 @@ func (s *Store) saveProduct(ctx context.Context, product domain.Product) error {
 		return fmt.Errorf("marshal product barcodes: %w", err)
 	}
 
-	_, err = s.pool.Exec(ctx, `
+	_, err = s.conn(ctx).Exec(ctx, `
 		INSERT INTO products (
 			id, name, barcodes, unit_price_minor, tax_category_id, active
 		) VALUES ($1, $2, $3, $4, $5, $6)
@@ -1316,7 +1316,7 @@ func (s *Store) SaveOutboxEvent(ctx context.Context, event domain.OutboxEvent) e
 		return err
 	}
 
-	_, err = s.pool.Exec(ctx, `
+	_, err = s.conn(ctx).Exec(ctx, `
 		INSERT INTO outbox_events (
 			id, aggregate_type, aggregate_id, event_type, payload, created_at, published_at
 		) VALUES (
@@ -1367,7 +1367,7 @@ func (s *Store) ListPendingOutboxEvents(ctx context.Context, limit int) ([]domai
 }
 
 func (s *Store) MarkOutboxEventPublished(ctx context.Context, eventID string, publishedAt time.Time) (bool, error) {
-	tag, err := s.pool.Exec(ctx, `
+	tag, err := s.conn(ctx).Exec(ctx, `
 		UPDATE outbox_events
 		SET published_at = $2
 		WHERE id = $1 AND published_at IS NULL

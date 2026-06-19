@@ -32,17 +32,18 @@ type ReturnSettlementOutboxRecorder interface {
 }
 
 type ReturnSettlementService struct {
-	returns     ReturnRepository
-	receipts    ReceiptRepository
-	payments    PaymentRepository
-	refunder    PaymentRefunder
-	cash        ReturnSettlementCashLedger
-	shifts      ReturnSettlementShiftLookup
-	idempotency IdempotencyStore
-	outbox      ReturnSettlementOutboxRecorder
-	journal     OperationJournalRecorder
-	now         func() time.Time
-	newID       func(prefix string) string
+	returns      ReturnRepository
+	receipts     ReceiptRepository
+	payments     PaymentRepository
+	refunder     PaymentRefunder
+	cash         ReturnSettlementCashLedger
+	shifts       ReturnSettlementShiftLookup
+	idempotency  IdempotencyStore
+	outbox       ReturnSettlementOutboxRecorder
+	journal      OperationJournalRecorder
+	transactions TransactionRunner
+	now          func() time.Time
+	newID        func(prefix string) string
 }
 
 type ReturnSettlementOption func(*ReturnSettlementService)
@@ -93,6 +94,12 @@ func WithReturnSettlementCashLedger(cash ReturnSettlementCashLedger) ReturnSettl
 func WithReturnSettlementShiftLookup(shifts ReturnSettlementShiftLookup) ReturnSettlementOption {
 	return func(service *ReturnSettlementService) {
 		service.shifts = shifts
+	}
+}
+
+func WithReturnSettlementTransactionRunner(runner TransactionRunner) ReturnSettlementOption {
+	return func(service *ReturnSettlementService) {
+		service.transactions = runner
 	}
 }
 
@@ -184,31 +191,39 @@ func (s *ReturnSettlementService) settleWithReceiptReturn(ctx context.Context, c
 		return SettleReturnResult{}, err
 	}
 
-	refundedPayments := make([]domain.Payment, 0, len(allocations))
-	for paymentID, amountMinor := range allocations {
-		if amountMinor == 0 {
-			continue
+	var result SettleReturnResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		refundedPayments := make([]domain.Payment, 0, len(allocations))
+		for paymentID, amountMinor := range allocations {
+			if amountMinor == 0 {
+				continue
+			}
+			refundResult, err := s.refunder.RefundPayment(ctx, RefundPaymentCommand{
+				IdempotencyKey: fmt.Sprintf("%s:%s", command.IdempotencyKey, paymentID),
+				ReceiptID:      ret.ReceiptID,
+				PaymentID:      paymentID,
+				AmountMinor:    amountMinor,
+				ActorID:        command.ActorID,
+				Reason:         command.Reason,
+			})
+			if err != nil {
+				return err
+			}
+			refundedPayments = append(refundedPayments, refundResult.Payment)
 		}
-		refundResult, err := s.refunder.RefundPayment(ctx, RefundPaymentCommand{
-			IdempotencyKey: fmt.Sprintf("%s:%s", command.IdempotencyKey, paymentID),
-			ReceiptID:      ret.ReceiptID,
-			PaymentID:      paymentID,
-			AmountMinor:    amountMinor,
-			ActorID:        command.ActorID,
-			Reason:         command.Reason,
-		})
-		if err != nil {
-			return SettleReturnResult{}, err
+
+		paymentIDs := make([]string, 0, len(refundedPayments))
+		for _, payment := range refundedPayments {
+			paymentIDs = append(paymentIDs, payment.ID)
 		}
-		refundedPayments = append(refundedPayments, refundResult.Payment)
-	}
 
-	paymentIDs := make([]string, 0, len(refundedPayments))
-	for _, payment := range refundedPayments {
-		paymentIDs = append(paymentIDs, payment.ID)
+		var settleErr error
+		result, settleErr = s.finishSettledReturn(ctx, command, ret, operation, fingerprint, paymentIDs, "", refundedPayments)
+		return settleErr
+	}); err != nil {
+		return SettleReturnResult{}, err
 	}
-
-	return s.finishSettledReturn(ctx, command, ret, operation, fingerprint, paymentIDs, "", refundedPayments)
+	return result, nil
 }
 
 func (s *ReturnSettlementService) settleNoReceiptReturn(ctx context.Context, command SettleReturnCommand, ret domain.Return) (SettleReturnResult, error) {
@@ -257,11 +272,20 @@ func (s *ReturnSettlementService) settleNoReceiptReturn(ctx context.Context, com
 	if err != nil {
 		return SettleReturnResult{}, err
 	}
-	if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+
+	var result SettleReturnResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+			return err
+		}
+
+		var settleErr error
+		result, settleErr = s.finishSettledReturn(ctx, command, ret, operation, fingerprint, nil, movement.ID, nil)
+		return settleErr
+	}); err != nil {
 		return SettleReturnResult{}, err
 	}
-
-	return s.finishSettledReturn(ctx, command, ret, operation, fingerprint, nil, movement.ID, nil)
+	return result, nil
 }
 
 func (s *ReturnSettlementService) resolveDrawerID(ctx context.Context, drawerID string, actorID string) (string, error) {

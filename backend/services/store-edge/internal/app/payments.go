@@ -36,16 +36,17 @@ type CardPaymentTerminal interface {
 }
 
 type PaymentService struct {
-	receipts            ReceiptRepository
-	payments            PaymentRepository
-	cash                CashRepository
-	idempotency         IdempotencyStore
-	outbox              OutboxRecorder
-	cardTerminal        CardPaymentTerminal
-	paymentTerminalID   string
+	receipts              ReceiptRepository
+	payments              PaymentRepository
+	cash                  CashRepository
+	idempotency           IdempotencyStore
+	outbox                OutboxRecorder
+	transactions          TransactionRunner
+	cardTerminal          CardPaymentTerminal
+	paymentTerminalID     string
 	hardwareAgentFallback bool
-	now                 func() time.Time
-	newID               func(prefix string) string
+	now                   func() time.Time
+	newID                 func(prefix string) string
 }
 
 type PaymentOption func(*PaymentService)
@@ -87,6 +88,12 @@ func WithPaymentCashLedger(cash CashRepository) PaymentOption {
 func WithPaymentOutboxRecorder(outbox OutboxRecorder) PaymentOption {
 	return func(service *PaymentService) {
 		service.outbox = outbox
+	}
+}
+
+func WithPaymentTransactionRunner(runner TransactionRunner) PaymentOption {
+	return func(service *PaymentService) {
+		service.transactions = runner
 	}
 }
 
@@ -165,60 +172,63 @@ func (s *PaymentService) CreatePayment(ctx context.Context, command CreatePaymen
 		return PaymentResult{}, err
 	}
 
-	if err := s.payments.SavePayment(ctx, payment); err != nil {
-		return PaymentResult{}, err
-	}
-	if command.Method == domain.PaymentMethodCash && s.cash != nil {
-		if receipt.DrawerID == "" {
-			return PaymentResult{}, ErrCashDrawerRequired
+	var result PaymentResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if err := s.payments.SavePayment(ctx, payment); err != nil {
+			return err
 		}
-		movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
-			ID:                s.newID("cash"),
-			StoreID:           receipt.StoreID,
-			Type:              domain.CashMovementTypeCashSale,
-			FromContainerID:   "external-customer",
-			FromContainerType: domain.CashContainerTypeExternal,
-			ToContainerID:     receipt.DrawerID,
-			ToContainerType:   domain.CashContainerTypeDrawer,
-			AmountMinor:       command.AmountMinor,
-			Currency:          "RUB",
-			Reason:            "Cash payment for receipt " + receipt.ID,
-			ActorID:           receipt.CashierID,
-			Now:               s.now(),
-		})
-		if err != nil {
-			return PaymentResult{}, err
+		if command.Method == domain.PaymentMethodCash && s.cash != nil {
+			if receipt.DrawerID == "" {
+				return ErrCashDrawerRequired
+			}
+			movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
+				ID:                s.newID("cash"),
+				StoreID:           receipt.StoreID,
+				Type:              domain.CashMovementTypeCashSale,
+				FromContainerID:   "external-customer",
+				FromContainerType: domain.CashContainerTypeExternal,
+				ToContainerID:     receipt.DrawerID,
+				ToContainerType:   domain.CashContainerTypeDrawer,
+				AmountMinor:       command.AmountMinor,
+				Currency:          "RUB",
+				Reason:            "Cash payment for receipt " + receipt.ID,
+				ActorID:           receipt.CashierID,
+				Now:               s.now(),
+			})
+			if err != nil {
+				return err
+			}
+			if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+				return err
+			}
 		}
-		if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
-			return PaymentResult{}, err
+		if command.AmountMinor == remainingBeforePayment {
+			if err := receipt.MarkPaid(s.now()); err != nil {
+				return err
+			}
+		} else {
+			if err := receipt.MarkPaymentStarted(s.now()); err != nil {
+				return err
+			}
 		}
-	}
-	if command.AmountMinor == remainingBeforePayment {
-		if err := receipt.MarkPaid(s.now()); err != nil {
-			return PaymentResult{}, err
+		if err := s.receipts.SaveReceipt(ctx, receipt); err != nil {
+			return err
 		}
-	} else {
-		if err := receipt.MarkPaymentStarted(s.now()); err != nil {
-			return PaymentResult{}, err
-		}
-	}
-	if err := s.receipts.SaveReceipt(ctx, receipt); err != nil {
-		return PaymentResult{}, err
-	}
 
-	result := PaymentResult{Payment: payment}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    command.ReceiptID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   s.now(),
-	}); err != nil {
-		return PaymentResult{}, err
-	}
-	if err := recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
-		return recorder.RecordPaymentCaptured(ctx, payment, receipt.StoreID)
+		result = PaymentResult{Payment: payment}
+		if err := s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.ReceiptID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		}); err != nil {
+			return err
+		}
+		return recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
+			return recorder.RecordPaymentCaptured(ctx, payment, receipt.StoreID)
+		})
 	}); err != nil {
 		return PaymentResult{}, err
 	}
@@ -292,67 +302,70 @@ func (s *PaymentService) CancelPayment(ctx context.Context, command CancelPaymen
 	}
 
 	now := s.now()
-	if payment.Method == domain.PaymentMethodCash {
-		if receipt.DrawerID == "" || s.cash == nil {
-			return PaymentResult{}, ErrCashDrawerRequired
+	var result PaymentResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if payment.Method == domain.PaymentMethodCash {
+			if receipt.DrawerID == "" || s.cash == nil {
+				return ErrCashDrawerRequired
+			}
+			actorID := command.ActorID
+			if actorID == "" {
+				actorID = receipt.CashierID
+			}
+			movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
+				ID:                s.newID("cash"),
+				StoreID:           receipt.StoreID,
+				Type:              domain.CashMovementTypeCashSaleReversal,
+				FromContainerID:   receipt.DrawerID,
+				FromContainerType: domain.CashContainerTypeDrawer,
+				ToContainerID:     "external-customer",
+				ToContainerType:   domain.CashContainerTypeExternal,
+				AmountMinor:       payment.AmountMinor,
+				Currency:          "RUB",
+				Reason:            "Cash payment cancel for receipt " + receipt.ID,
+				ActorID:           actorID,
+				Now:               now,
+			})
+			if err != nil {
+				return err
+			}
+			if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+				return err
+			}
 		}
-		actorID := command.ActorID
-		if actorID == "" {
-			actorID = receipt.CashierID
+
+		if err := payment.Cancel(now); err != nil {
+			return err
 		}
-		movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
-			ID:                s.newID("cash"),
-			StoreID:           receipt.StoreID,
-			Type:              domain.CashMovementTypeCashSaleReversal,
-			FromContainerID:   receipt.DrawerID,
-			FromContainerType: domain.CashContainerTypeDrawer,
-			ToContainerID:     "external-customer",
-			ToContainerType:   domain.CashContainerTypeExternal,
-			AmountMinor:       payment.AmountMinor,
-			Currency:          "RUB",
-			Reason:            "Cash payment cancel for receipt " + receipt.ID,
-			ActorID:           actorID,
-			Now:               now,
-		})
+		if err := s.payments.SavePayment(ctx, payment); err != nil {
+			return err
+		}
+
+		payments, err := s.payments.FindPaymentsByReceipt(ctx, command.ReceiptID)
 		if err != nil {
-			return PaymentResult{}, err
+			return err
 		}
-		if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
-			return PaymentResult{}, err
+		if err := receipt.SyncPaymentProgress(remainingAmountMinor(receipt, payments), now); err != nil {
+			return err
 		}
-	}
+		if err := s.receipts.SaveReceipt(ctx, receipt); err != nil {
+			return err
+		}
 
-	if err := payment.Cancel(now); err != nil {
-		return PaymentResult{}, err
-	}
-	if err := s.payments.SavePayment(ctx, payment); err != nil {
-		return PaymentResult{}, err
-	}
-
-	payments, err := s.payments.FindPaymentsByReceipt(ctx, command.ReceiptID)
-	if err != nil {
-		return PaymentResult{}, err
-	}
-	if err := receipt.SyncPaymentProgress(remainingAmountMinor(receipt, payments), now); err != nil {
-		return PaymentResult{}, err
-	}
-	if err := s.receipts.SaveReceipt(ctx, receipt); err != nil {
-		return PaymentResult{}, err
-	}
-
-	result := PaymentResult{Payment: payment}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    command.PaymentID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   now,
-	}); err != nil {
-		return PaymentResult{}, err
-	}
-	if err := recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
-		return recorder.RecordPaymentCancelled(ctx, payment, receipt.StoreID, command.ActorID, command.Reason)
+		result = PaymentResult{Payment: payment}
+		if err := s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.PaymentID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   now,
+		}); err != nil {
+			return err
+		}
+		return recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
+			return recorder.RecordPaymentCancelled(ctx, payment, receipt.StoreID, command.ActorID, command.Reason)
+		})
 	}); err != nil {
 		return PaymentResult{}, err
 	}
@@ -425,75 +438,78 @@ func (s *PaymentService) RefundPayment(ctx context.Context, command RefundPaymen
 	}
 
 	now := s.now()
-	if payment.Method == domain.PaymentMethodCash {
-		if receipt.DrawerID == "" || s.cash == nil {
-			return PaymentResult{}, ErrCashDrawerRequired
+	var result PaymentResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if payment.Method == domain.PaymentMethodCash {
+			if receipt.DrawerID == "" || s.cash == nil {
+				return ErrCashDrawerRequired
+			}
+			actorID := command.ActorID
+			if actorID == "" {
+				actorID = receipt.CashierID
+			}
+			movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
+				ID:                s.newID("cash"),
+				StoreID:           receipt.StoreID,
+				Type:              domain.CashMovementTypeCashSaleReversal,
+				FromContainerID:   receipt.DrawerID,
+				FromContainerType: domain.CashContainerTypeDrawer,
+				ToContainerID:     "external-customer",
+				ToContainerType:   domain.CashContainerTypeExternal,
+				AmountMinor:       refundAmount,
+				Currency:          "RUB",
+				Reason:            "Cash payment refund for receipt " + receipt.ID,
+				ActorID:           actorID,
+				Now:               now,
+			})
+			if err != nil {
+				return err
+			}
+			if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+				return err
+			}
 		}
-		actorID := command.ActorID
-		if actorID == "" {
-			actorID = receipt.CashierID
+
+		if err := payment.RefundAmount(refundAmount, now); err != nil {
+			if errors.Is(err, domain.ErrPaymentRefundAmountInvalid) {
+				return ErrPaymentRefundAmountInvalid
+			}
+			if errors.Is(err, domain.ErrPaymentCannotBeRefunded) {
+				return ErrPaymentCannotBeRefunded
+			}
+			return err
 		}
-		movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
-			ID:                s.newID("cash"),
-			StoreID:           receipt.StoreID,
-			Type:              domain.CashMovementTypeCashSaleReversal,
-			FromContainerID:   receipt.DrawerID,
-			FromContainerType: domain.CashContainerTypeDrawer,
-			ToContainerID:     "external-customer",
-			ToContainerType:   domain.CashContainerTypeExternal,
-			AmountMinor:       refundAmount,
-			Currency:          "RUB",
-			Reason:            "Cash payment refund for receipt " + receipt.ID,
-			ActorID:           actorID,
-			Now:               now,
+		if err := s.payments.SavePayment(ctx, payment); err != nil {
+			return err
+		}
+
+		if receipt.Status != domain.ReceiptStatusFiscalized {
+			payments, err := s.payments.FindPaymentsByReceipt(ctx, command.ReceiptID)
+			if err != nil {
+				return err
+			}
+			if err := receipt.SyncPaymentProgress(remainingAmountMinor(receipt, payments), now); err != nil {
+				return err
+			}
+			if err := s.receipts.SaveReceipt(ctx, receipt); err != nil {
+				return err
+			}
+		}
+
+		result = PaymentResult{Payment: payment}
+		if err := s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.PaymentID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   now,
+		}); err != nil {
+			return err
+		}
+		return recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
+			return recorder.RecordPaymentRefunded(ctx, payment, receipt.StoreID, command.ActorID, command.Reason)
 		})
-		if err != nil {
-			return PaymentResult{}, err
-		}
-		if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
-			return PaymentResult{}, err
-		}
-	}
-
-	if err := payment.RefundAmount(refundAmount, now); err != nil {
-		if errors.Is(err, domain.ErrPaymentRefundAmountInvalid) {
-			return PaymentResult{}, ErrPaymentRefundAmountInvalid
-		}
-		if errors.Is(err, domain.ErrPaymentCannotBeRefunded) {
-			return PaymentResult{}, ErrPaymentCannotBeRefunded
-		}
-		return PaymentResult{}, err
-	}
-	if err := s.payments.SavePayment(ctx, payment); err != nil {
-		return PaymentResult{}, err
-	}
-
-	if receipt.Status != domain.ReceiptStatusFiscalized {
-		payments, err := s.payments.FindPaymentsByReceipt(ctx, command.ReceiptID)
-		if err != nil {
-			return PaymentResult{}, err
-		}
-		if err := receipt.SyncPaymentProgress(remainingAmountMinor(receipt, payments), now); err != nil {
-			return PaymentResult{}, err
-		}
-		if err := s.receipts.SaveReceipt(ctx, receipt); err != nil {
-			return PaymentResult{}, err
-		}
-	}
-
-	result := PaymentResult{Payment: payment}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    command.PaymentID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   now,
-	}); err != nil {
-		return PaymentResult{}, err
-	}
-	if err := recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
-		return recorder.RecordPaymentRefunded(ctx, payment, receipt.StoreID, command.ActorID, command.Reason)
 	}); err != nil {
 		return PaymentResult{}, err
 	}

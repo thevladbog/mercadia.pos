@@ -607,6 +607,7 @@ func combineReadinessChecks(checks []func(context.Context) error) func(context.C
 }
 
 type storeRepositories interface {
+	app.TransactionRunner
 	app.ReceiptRepository
 	app.IdempotencyStore
 	app.ProductRepository
@@ -645,16 +646,21 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	auth := app.NewAuthService(store, store)
 	terminalEvents := app.NewTerminalEventHub()
 
-	operationalDays := app.NewOperationalDayService(store, store, store, store, store, app.WithOperationalDayOutboxRecorder(outbox))
+	operationalDays := app.NewOperationalDayService(store, store, store, store, store,
+		app.WithOperationalDayOutboxRecorder(outbox),
+		app.WithOperationalDayTransactionRunner(store),
+	)
 	checkout := app.NewCheckoutService(store, store, app.WithProductRepository(store), app.WithStoreOperations(store, store))
 	catalog := app.NewCatalogService(store)
 
 	paymentOptions := []app.PaymentOption{
 		app.WithPaymentCashLedger(store),
 		app.WithPaymentOutboxRecorder(outbox),
+		app.WithPaymentTransactionRunner(store),
 	}
 	fiscalOptions := []app.FiscalizationOption{
 		app.WithFiscalizationOutboxRecorder(outbox),
+		app.WithFiscalizationTransactionRunner(store),
 	}
 	if config.useHardwareAgent && config.hardwareAgent != nil {
 		paymentOptions = append(paymentOptions, app.WithCardPaymentTerminal(config.hardwareAgent, "sim-payment-1", config.hardwareAgentFallback))
@@ -663,7 +669,11 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 
 	payments := app.NewPaymentService(store, store, store, paymentOptions...)
 	fiscalization := app.NewFiscalizationService(store, store, store, store, store, fiscalOptions...)
-	cash := app.NewCashService(store, store, app.WithCashOutboxRecorder(outbox), app.WithCashJournal(journal))
+	cash := app.NewCashService(store, store,
+		app.WithCashOutboxRecorder(outbox),
+		app.WithCashJournal(journal),
+		app.WithCashTransactionRunner(store),
+	)
 	shifts := app.NewShiftService(store, store, app.WithShiftCashLedger(store), app.WithShiftReceiptRepository(store), app.WithShiftOperationalDayRepository(store))
 	terminalOptions := []app.TerminalOption{app.WithTerminalEventPublisher(terminalEvents)}
 	if config.terminalOfflineAfter > 0 {
@@ -681,6 +691,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 		app.WithReturnSettlementJournal(journal),
 		app.WithReturnSettlementCashLedger(store),
 		app.WithReturnSettlementShiftLookup(store),
+		app.WithReturnSettlementTransactionRunner(store),
 	)
 	discounts := app.NewDiscountService(store, store, auth, app.WithDiscountJournal(journal))
 	marking := app.NewMarkingService(store)

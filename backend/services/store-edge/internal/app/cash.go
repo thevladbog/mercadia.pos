@@ -30,12 +30,13 @@ type CashRepository interface {
 }
 
 type CashService struct {
-	cash        CashRepository
-	idempotency IdempotencyStore
-	outbox      OutboxRecorder
-	journal     OperationJournalRecorder
-	now         func() time.Time
-	newID       func(prefix string) string
+	cash         CashRepository
+	idempotency  IdempotencyStore
+	outbox       OutboxRecorder
+	journal      OperationJournalRecorder
+	transactions TransactionRunner
+	now          func() time.Time
+	newID        func(prefix string) string
 }
 
 type CashOption func(*CashService)
@@ -76,6 +77,12 @@ func WithCashOutboxRecorder(outbox OutboxRecorder) CashOption {
 func WithCashJournal(journal OperationJournalRecorder) CashOption {
 	return func(service *CashService) {
 		service.journal = journal
+	}
+}
+
+func WithCashTransactionRunner(runner TransactionRunner) CashOption {
+	return func(service *CashService) {
+		service.transactions = runner
 	}
 }
 
@@ -173,26 +180,29 @@ func (s *CashService) CreateCashMovement(ctx context.Context, command CreateCash
 		return CashMovementResult{}, err
 	}
 
-	if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
-		return CashMovementResult{}, err
-	}
+	var result CashMovementResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+			return err
+		}
 
-	s.recordCashJournal(ctx, movement.StoreID, "cash.movement.created", movement.ActorID, movement.ID,
-		fmt.Sprintf("%s %d from %s to %s", movement.Type, movement.AmountMinor, movement.FromContainerID, movement.ToContainerID))
+		s.recordCashJournal(ctx, movement.StoreID, "cash.movement.created", movement.ActorID, movement.ID,
+			fmt.Sprintf("%s %d from %s to %s", movement.Type, movement.AmountMinor, movement.FromContainerID, movement.ToContainerID))
 
-	result := CashMovementResult{Movement: movement}
-	if err := s.idempotency.Save(ctx, IdempotencyRecord{
-		Operation:   operation,
-		Key:         command.IdempotencyKey,
-		TargetID:    command.StoreID,
-		Fingerprint: fingerprint,
-		Result:      result,
-		CreatedAt:   s.now(),
-	}); err != nil {
-		return CashMovementResult{}, err
-	}
-	if err := recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
-		return recorder.RecordCashMovementPosted(ctx, movement)
+		result = CashMovementResult{Movement: movement}
+		if err := s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.StoreID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		}); err != nil {
+			return err
+		}
+		return recordOutbox(ctx, s.outbox, func(ctx context.Context, recorder OutboxRecorder) error {
+			return recorder.RecordCashMovementPosted(ctx, movement)
+		})
 	}); err != nil {
 		return CashMovementResult{}, err
 	}

@@ -17,7 +17,7 @@ func (s *Store) SeedDemoActors(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("marshal actor roles: %w", err)
 		}
-		_, err = s.pool.Exec(ctx, `
+		_, err = s.conn(ctx).Exec(ctx, `
 			INSERT INTO store_actors (id, pin, roles)
 			VALUES ($1, $2, $3)
 			ON CONFLICT (id) DO UPDATE SET pin = EXCLUDED.pin, roles = EXCLUDED.roles
@@ -61,7 +61,7 @@ func (s *Store) SaveSession(ctx context.Context, session domain.Session) error {
 	if err != nil {
 		return fmt.Errorf("marshal session roles: %w", err)
 	}
-	_, err = s.pool.Exec(ctx, `
+	_, err = s.conn(ctx).Exec(ctx, `
 		INSERT INTO sessions (token, actor_id, roles, created_at, expires_at)
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (token) DO UPDATE SET
@@ -101,7 +101,7 @@ func (s *Store) SaveReturn(ctx context.Context, ret domain.Return) error {
 	if err != nil {
 		return fmt.Errorf("marshal return lines: %w", err)
 	}
-	_, err = s.pool.Exec(ctx, `
+	_, err = s.conn(ctx).Exec(ctx, `
 		INSERT INTO returns (
 			id, store_id, receipt_id, kind, lines, reason, actor_id, approved_by_id,
 			total_minor, status, created_at
@@ -161,7 +161,7 @@ func (s *Store) ListReturnsByReceipt(ctx context.Context, receiptID string) ([]d
 }
 
 func (s *Store) SaveOperationJournalEntry(ctx context.Context, entry domain.OperationJournalEntry) error {
-	_, err := s.pool.Exec(ctx, `
+	_, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO operation_journal_entries (
 			id, store_id, operation_type, actor_id, reference_id, summary, created_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7)

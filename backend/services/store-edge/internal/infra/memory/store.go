@@ -671,3 +671,7 @@ func cloneOutboxEvent(event domain.OutboxEvent) domain.OutboxEvent {
 	}
 	return event
 }
+
+func (s *Store) Run(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
+}
