@@ -90,22 +90,36 @@ type CatalogDeltaResponse struct {
 	Products []CatalogProductResponse `json:"products"`
 }
 
+type ServerOptions struct {
+	ReadinessChecks []func(context.Context) error
+}
+
 func NewServer() http.Handler {
 	handle, err := infra.NewHandle(context.Background())
 	if err != nil {
 		panic(err)
 	}
+	_ = handle
 	return NewServerWithServices(newServices(handle.Repository()))
 }
 
-func NewServerWithServices(services Services) http.Handler {
-	mux, _ := newMuxAndSpec(services)
-	return mux
+type ServerBundle struct {
+	Handler  http.Handler
+	Services Services
+	Handle   infra.Handle
 }
 
-func OpenAPI() map[string]any {
-	_, spec := newMuxAndSpec(newServices(memory.NewStore()))
-	return spec.OpenAPI()
+func NewServerBundle(opts ServerOptions) (*ServerBundle, error) {
+	handle, err := infra.NewHandle(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	services := newServices(handle.Repository())
+	return &ServerBundle{
+		Handler:  newHandler(services, opts),
+		Services: services,
+		Handle:   handle,
+	}, nil
 }
 
 func newServices(repo infra.Repository) Services {
@@ -116,7 +130,25 @@ func newServices(repo infra.Repository) Services {
 	}
 }
 
-func newMuxAndSpec(services Services) (*http.ServeMux, *httpapi.Spec) {
+func NewServerWithServices(services Services) http.Handler {
+	return NewHandler(services, ServerOptions{})
+}
+
+func NewHandler(services Services, opts ServerOptions) http.Handler {
+	return newHandler(services, opts)
+}
+
+func OpenAPI() map[string]any {
+	_, spec := newMuxAndSpec(newServices(memory.NewStore()), nil)
+	return spec.OpenAPI()
+}
+
+func newHandler(services Services, opts ServerOptions) http.Handler {
+	mux, _ := newMuxAndSpec(services, opts.ReadinessChecks)
+	return mux
+}
+
+func newMuxAndSpec(services Services, readinessChecks []func(context.Context) error) (*http.ServeMux, *httpapi.Spec) {
 	info := httpapi.ServiceInfo{
 		Name:        "central-backend",
 		Title:       "Mercadia Central Backend",
@@ -126,10 +158,28 @@ func newMuxAndSpec(services Services) (*http.ServeMux, *httpapi.Spec) {
 
 	mux := http.NewServeMux()
 	spec := httpapi.NewSpec(info)
-	httpapi.MountSystemRoutes(mux, spec, info)
+	var systemOptions []httpapi.SystemRoutesOption
+	if len(readinessChecks) > 0 {
+		systemOptions = append(systemOptions, httpapi.WithReadinessCheck(combineReadinessChecks(readinessChecks)))
+	}
+	httpapi.MountSystemRoutes(mux, spec, info, systemOptions...)
 	mountRoutes(mux, spec, services)
 
 	return mux, spec
+}
+
+func combineReadinessChecks(checks []func(context.Context) error) func(context.Context) error {
+	return func(ctx context.Context) error {
+		for _, check := range checks {
+			if check == nil {
+				continue
+			}
+			if err := check(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 }
 
 func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {

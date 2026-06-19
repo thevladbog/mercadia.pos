@@ -43,6 +43,7 @@ Environment variables:
 | `MERCADIA_STORE_EDGE_DATABASE_URL` | _(empty = in-memory)_ | store-edge |
 | `MERCADIA_CENTRAL_BACKEND_DATABASE_URL` | _(empty = in-memory)_ | central-backend |
 | `MERCADIA_STORE_EDGE_NATS_URL` | `nats://127.0.0.1:4222` | store-edge outbox publisher |
+| `MERCADIA_CENTRAL_BACKEND_NATS_URL` | _(empty = consumer disabled)_ | central-backend JetStream sync consumer |
 | `MERCADIA_STORE_EDGE_ADDR` | `:8081` | store-edge |
 | `MERCADIA_CENTRAL_BACKEND_ADDR` | `:8082` | central-backend |
 | `MERCADIA_CENTRAL_BACKEND_URL` | `http://127.0.0.1:8082` | store-edge catalog sync client |
@@ -74,6 +75,26 @@ INFO ⏭️ migrations already up to date service=central-backend directory=.../
 Override migration directories with `MERCADIA_STORE_EDGE_MIGRATIONS_DIR` or
 `MERCADIA_CENTRAL_BACKEND_MIGRATIONS_DIR` when the service is started outside the repo root.
 
+## Store Edge Sync Pipeline
+
+When NATS is enabled on both services, operational events flow from store-edge to central-backend:
+
+```text
+store-edge command -> outbox row -> JetStream (mercadia.store-edge.sync.{storeId})
+  -> central-backend consumer -> POST-equivalent AcceptEvents -> sync_events table
+```
+
+Local smoke:
+
+1. `docker compose -f infra/docker/docker-compose.yml up -d`
+2. Register a store on central-backend: `POST /v1/stores`
+3. Start central-backend with `MERCADIA_CENTRAL_BACKEND_NATS_URL=nats://127.0.0.1:4222`
+4. Start store-edge with `MERCADIA_STORE_EDGE_NATS_URL=nats://127.0.0.1:4222`
+5. Run a checkout command that records an outbox event (for example a captured payment)
+6. Confirm the event appears in central `sync_events` (via Postgres or future query API)
+
+The consumer uses durable name `central-backend-sync` and idempotency keys `nats:{storeId}:{eventId}` so JetStream redelivery is safe.
+
 ## OpenAPI And Scalar
 
 - OpenAPI is generated from Go handler registrations via `export-openapi.ps1`.
@@ -91,7 +112,7 @@ Third-party Go modules are pinned in each service `go.mod`. Verify versions agai
 |---------|---------|---------|---------|
 | `github.com/jackc/pgx/v5` | v5.10.0 | store-edge, central-backend | PostgreSQL driver |
 | `github.com/pressly/goose/v3` | v3.27.1 | store-edge, central-backend | SQL migrations |
-| `github.com/nats-io/nats.go` | v1.52.0 | store-edge | NATS JetStream bridge |
+| `github.com/nats-io/nats.go` | v1.52.0 | store-edge, central-backend | NATS JetStream bridge |
 | `github.com/prometheus/client_golang` | v1.23.2 | platform (all services) | Prometheus `/metrics` |
 | `go.opentelemetry.io/otel` | v1.44.0 | platform (all services) | OpenTelemetry tracing |
 | `go.opentelemetry.io/otel/sdk` | v1.44.0 | platform (all services) | OpenTelemetry SDK |
