@@ -22,6 +22,7 @@ type ReturnRepository interface {
 	SaveReturn(ctx context.Context, ret domain.Return) error
 	FindReturn(ctx context.Context, returnID string) (domain.Return, error)
 	ListReturnsByReceipt(ctx context.Context, receiptID string) ([]domain.Return, error)
+	ListReturnsByStore(ctx context.Context, storeID string) ([]domain.Return, error)
 }
 
 type ReturnsService struct {
@@ -245,6 +246,18 @@ func (s *ReturnsService) ListReturnsByReceipt(ctx context.Context, receiptID str
 		return PageResult[domain.Return]{}, err
 	}
 	returns, err := s.returns.ListReturnsByReceipt(ctx, receiptID)
+	if err != nil {
+		return PageResult[domain.Return]{}, err
+	}
+	sortReturnsNewestFirst(returns)
+	return PaginateSlice(returns, params), nil
+}
+
+func (s *ReturnsService) ListReturnsByStore(ctx context.Context, storeID string, params PageParams) (PageResult[domain.Return], error) {
+	if storeID == "" {
+		return PageResult[domain.Return]{}, ErrInvalidReturnCommand
+	}
+	returns, err := s.returns.ListReturnsByStore(ctx, storeID)
 	if err != nil {
 		return PageResult[domain.Return]{}, err
 	}

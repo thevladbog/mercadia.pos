@@ -160,6 +160,32 @@ func (s *Store) ListReturnsByReceipt(ctx context.Context, receiptID string) ([]d
 	return result, nil
 }
 
+func (s *Store) ListReturnsByStore(ctx context.Context, storeID string) ([]domain.Return, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, store_id, receipt_id, kind, lines, reason, actor_id, approved_by_id,
+			total_minor, status, created_at
+		FROM returns WHERE store_id = $1
+		ORDER BY created_at DESC, id DESC
+	`, storeID)
+	if err != nil {
+		return nil, fmt.Errorf("list returns by store: %w", err)
+	}
+	defer rows.Close()
+
+	result := make([]domain.Return, 0)
+	for rows.Next() {
+		ret, err := scanReturn(rows)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, ret)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list returns by store: %w", err)
+	}
+	return result, nil
+}
+
 func (s *Store) SaveOperationJournalEntry(ctx context.Context, entry domain.OperationJournalEntry) error {
 	_, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO operation_journal_entries (

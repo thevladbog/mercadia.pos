@@ -264,6 +264,30 @@ func mountDomainRoutes(
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:          http.MethodGet,
+		Path:            "/v1/stores/{storeId}/returns",
+		OperationID:     "listStoreReturns",
+		Summary:         "List returns for store",
+		Tags:            []string{"returns"},
+		QueryParameters: paginationQueryParams(),
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Returns for store", Schema: paginatedReturnsResponseSchema()},
+			"400": {Description: "Invalid returns query", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := returns.ListReturnsByStore(r.Context(), r.PathValue("storeId"), params)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedReturnsResponse{
+			Items:      returnResponses(result.Items),
+			TotalCount: result.TotalCount,
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:              http.MethodPost,
 		Path:                "/v1/receipts/{receiptId}/returns",
 		OperationID:         "createReceiptReturn",
