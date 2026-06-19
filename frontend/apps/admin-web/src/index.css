@@ -99,6 +99,13 @@ button.secondary {
   min-height: 100vh;
 }
 
+.notice-banner {
+  padding: 0.75rem 1.5rem;
+  background: #fef3c7;
+  color: #92400e;
+  border-bottom: 1px solid #fcd34d;
+}
+
 .app-header {
   display: flex;
   justify-content: space-between;

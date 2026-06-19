@@ -1,12 +1,16 @@
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthProvider.js';
+import { canManageCentralUsers } from '../auth/permissions.js';
 
 export function AppLayout() {
   const { logout, roles, userId } = useAuth();
+  const location = useLocation();
+  const notice = (location.state as { notice?: string } | null)?.notice;
 
   return (
     <div className="app-shell">
+      {notice ? <div className="notice-banner">{notice}</div> : null}
       <header className="app-header">
         <div>
           <p className="eyebrow">Mercadia Admin</p>
@@ -15,6 +19,7 @@ export function AppLayout() {
         <div className="header-actions">
           <nav>
             <Link to="/central/reporting">Reporting</Link>
+            {canManageCentralUsers(roles) ? <Link to="/central/users">Users</Link> : null}
           </nav>
           <div className="user-meta">
             <span>{userId}</span>
