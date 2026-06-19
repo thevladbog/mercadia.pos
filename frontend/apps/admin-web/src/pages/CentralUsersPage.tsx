@@ -1,7 +1,7 @@
 import { useListCentralUsers } from '@mercadia/api-clients-central';
 import { Link } from 'react-router-dom';
 
-import { getApiErrorMessage } from '../auth/AuthProvider.js';
+import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { formatTimestamp } from './reporting-utils.js';
 
 export function CentralUsersPage() {

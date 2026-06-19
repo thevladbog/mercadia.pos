@@ -6,7 +6,7 @@ import {
 } from '@mercadia/api-clients-store-edge';
 import { useMemo, useState } from 'react';
 
-import { getApiErrorMessage } from '../auth/AuthProvider.js';
+import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { formatMinorAmount, formatTimestamp } from './reporting-utils.js';
 
 const REFRESH_INTERVAL_MS = 5000;

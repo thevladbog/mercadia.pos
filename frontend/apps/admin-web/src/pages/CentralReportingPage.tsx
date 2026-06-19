@@ -4,7 +4,7 @@ import {
 } from '@mercadia/api-clients-central';
 import { useMemo, useState } from 'react';
 
-import { getApiErrorMessage } from '../auth/AuthProvider.js';
+import { getApiErrorMessage } from '@/auth/api-errors.js';
 import {
   defaultReportingWindow,
   formatMinorAmount,

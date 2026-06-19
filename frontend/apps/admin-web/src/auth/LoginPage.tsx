@@ -2,7 +2,8 @@ import { useCreateCentralAuthSession } from '@mercadia/api-clients-central';
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
-import { getApiErrorMessage, isUnauthorizedError, useAuth } from './AuthProvider.js';
+import { getApiErrorMessage, isUnauthorizedError } from './api-errors.js';
+import { useAuth } from './useAuth.js';
 
 export function LoginPage() {
   const { isAuthenticated, login } = useAuth();

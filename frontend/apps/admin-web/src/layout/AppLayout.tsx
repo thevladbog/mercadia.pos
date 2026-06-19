@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
-import { useAuth } from '../auth/AuthProvider.js';
-import { canManageCentralUsers } from '../auth/permissions.js';
+import { useAuth } from '@/auth/useAuth.js';
+import { canManageCentralUsers } from '@/auth/permissions.js';
 
 export function AppLayout() {
   const { logout, roles, userId } = useAuth();
@@ -20,6 +20,7 @@ export function AppLayout() {
           <nav>
             <Link to="/central/reporting">Reporting</Link>
             <Link to="/central/stores">Stores</Link>
+            <Link to="/central/sync">Sync</Link>
             <Link to="/store/monitoring">Monitoring</Link>
             {canManageCentralUsers(roles) ? <Link to="/central/users">Users</Link> : null}
           </nav>
