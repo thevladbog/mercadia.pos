@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,23 +12,93 @@ import (
 
 	"mercadia.dev/pos/services/central-backend/internal/api"
 	"mercadia.dev/pos/services/central-backend/internal/app"
+	"mercadia.dev/pos/services/central-backend/internal/domain"
 	"mercadia.dev/pos/services/central-backend/internal/infra/memory"
 )
 
 func newTestServer() http.Handler {
 	store := memory.NewStore()
+	if err := seedHTTPTestAdmin(store); err != nil {
+		panic(err)
+	}
+	return api.NewServerWithServices(newTestServices(store))
+}
+
+func newTestServices(store *memory.Store) api.Services {
 	repo := store
-	return api.NewServerWithServices(api.Services{
-		StoreRegistry: app.NewStoreRegistryService(repo, repo),
-		Sync:              app.NewSyncService(repo, repo, repo, repo, repo, repo, repo, repo, repo),
-		Catalog:           app.NewCatalogService(repo, repo),
-		Payments:          app.NewPaymentsService(repo, repo),
-		CashMovements:     app.NewCashMovementsService(repo, repo),
-		FiscalDocuments:   app.NewFiscalDocumentsService(repo, repo),
-		Returns:           app.NewReturnsService(repo, repo),
-		OperationalDays:   app.NewOperationalDaysService(repo, repo),
-		Reporting:         app.NewReportingService(repo, repo),
+	return api.Services{
+		StoreRegistry:   app.NewStoreRegistryService(repo, repo),
+		Sync:            app.NewSyncService(repo, repo, repo, repo, repo, repo, repo, repo, repo),
+		Catalog:         app.NewCatalogService(repo, repo),
+		Payments:        app.NewPaymentsService(repo, repo),
+		CashMovements:   app.NewCashMovementsService(repo, repo),
+		FiscalDocuments: app.NewFiscalDocumentsService(repo, repo),
+		Returns:         app.NewReturnsService(repo, repo),
+		OperationalDays: app.NewOperationalDaysService(repo, repo),
+		Reporting:       app.NewReportingService(repo, repo),
+		Auth:            app.NewAuthService(repo, repo),
+		CentralUsers:    app.NewCentralUsersService(repo),
+	}
+}
+
+func seedHTTPTestAdmin(store *memory.Store) error {
+	passwordHash, err := app.HashPassword("admin-pass")
+	if err != nil {
+		return err
+	}
+	user, err := domain.NewCentralUser(domain.CentralUser{
+		ID:           "admin-1",
+		Email:        "admin@example.com",
+		DisplayName:  "Admin",
+		PasswordHash: passwordHash,
+		Roles:        []domain.CentralRole{domain.CentralRoleAdmin},
+		CreatedAt:    time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC),
 	})
+	if err != nil {
+		return err
+	}
+	return store.SaveUser(context.Background(), user)
+}
+
+func seedHTTPTestViewer(store *memory.Store) error {
+	passwordHash, err := app.HashPassword("viewer-pass")
+	if err != nil {
+		return err
+	}
+	user, err := domain.NewCentralUser(domain.CentralUser{
+		ID:           "viewer-1",
+		Email:        "viewer@example.com",
+		DisplayName:  "Viewer",
+		PasswordHash: passwordHash,
+		Roles:        []domain.CentralRole{domain.CentralRoleViewer},
+		CreatedAt:    time.Date(2026, 6, 19, 12, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		return err
+	}
+	return store.SaveUser(context.Background(), user)
+}
+
+func loginTestSession(t *testing.T, server http.Handler, email, password string) string {
+	t.Helper()
+	body := bytes.NewBufferString(`{"email":"` + email + `","password":"` + password + `"}`)
+	request := httptest.NewRequest(http.MethodPost, "/v1/auth/sessions", body)
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+	if response.Code != http.StatusCreated {
+		t.Fatalf("login status = %d body=%s", response.Code, response.Body.String())
+	}
+	var payload api.CentralSessionAcceptedResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode session: %v", err)
+	}
+	return payload.Session.Token
+}
+
+func newTestServerWithoutSeed() http.Handler {
+	store := memory.NewStore()
+	return api.NewServerWithServices(newTestServices(store))
 }
 
 func TestOpenAPIExposesCentralOperations(t *testing.T) {
@@ -65,6 +136,9 @@ func TestOpenAPIExposesCentralOperations(t *testing.T) {
 		"/v1/stores/{storeId}/reporting/summary",
 		"/v1/central/reporting/summary",
 		"/v1/central/reporting/stores",
+		"/v1/auth/sessions",
+		"/v1/central/users",
+		"/v1/central/users/{userId}",
 	} {
 		if _, ok := paths[path]; !ok {
 			t.Fatalf("expected %s path", path)
@@ -441,8 +515,10 @@ func TestStoreReportingSummaryEndpoint(t *testing.T) {
 
 	since := time.Date(2026, 6, 19, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	until := time.Date(2026, 6, 19, 23, 59, 59, 0, time.UTC).Format(time.RFC3339)
+	token := loginTestSession(t, server, "admin@example.com", "admin-pass")
 	summaryResponse := httptest.NewRecorder()
 	summaryRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/reporting/summary?since="+since+"&until="+until, nil)
+	summaryRequest.Header.Set("X-Session-Token", token)
 	server.ServeHTTP(summaryResponse, summaryRequest)
 	if summaryResponse.Code != http.StatusOK {
 		t.Fatalf("reporting summary status = %d body=%s", summaryResponse.Code, summaryResponse.Body.String())
@@ -506,9 +582,11 @@ func TestCentralReportingSummaryEndpoint(t *testing.T) {
 
 	since := time.Date(2026, 6, 19, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	until := time.Date(2026, 6, 19, 23, 59, 59, 0, time.UTC).Format(time.RFC3339)
+	token := loginTestSession(t, server, "admin@example.com", "admin-pass")
 
 	centralResponse := httptest.NewRecorder()
 	centralRequest := httptest.NewRequest(http.MethodGet, "/v1/central/reporting/summary?since="+since+"&until="+until, nil)
+	centralRequest.Header.Set("X-Session-Token", token)
 	server.ServeHTTP(centralResponse, centralRequest)
 	if centralResponse.Code != http.StatusOK {
 		t.Fatalf("central summary status = %d body=%s", centralResponse.Code, centralResponse.Body.String())
@@ -524,6 +602,7 @@ func TestCentralReportingSummaryEndpoint(t *testing.T) {
 
 	westResponse := httptest.NewRecorder()
 	westRequest := httptest.NewRequest(http.MethodGet, "/v1/central/reporting/summary?since="+since+"&until="+until+"&region=west", nil)
+	westRequest.Header.Set("X-Session-Token", token)
 	server.ServeHTTP(westResponse, westRequest)
 	if westResponse.Code != http.StatusOK {
 		t.Fatalf("west summary status = %d body=%s", westResponse.Code, westResponse.Body.String())
@@ -539,6 +618,7 @@ func TestCentralReportingSummaryEndpoint(t *testing.T) {
 
 	storesResponse := httptest.NewRecorder()
 	storesRequest := httptest.NewRequest(http.MethodGet, "/v1/central/reporting/stores?since="+since+"&until="+until, nil)
+	storesRequest.Header.Set("X-Session-Token", token)
 	server.ServeHTTP(storesResponse, storesRequest)
 	if storesResponse.Code != http.StatusOK {
 		t.Fatalf("stores summary status = %d body=%s", storesResponse.Code, storesResponse.Body.String())
@@ -550,5 +630,67 @@ func TestCentralReportingSummaryEndpoint(t *testing.T) {
 	}
 	if stores.TotalCount != 2 || len(stores.Items) != 2 {
 		t.Fatalf("stores summaries = %+v", stores)
+	}
+}
+
+func TestReportingRequiresSession(t *testing.T) {
+	server := newTestServerWithoutSeed()
+
+	since := time.Date(2026, 6, 19, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	until := time.Date(2026, 6, 19, 23, 59, 59, 0, time.UTC).Format(time.RFC3339)
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/v1/central/reporting/summary?since="+since+"&until="+until, nil)
+	server.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestCentralAuthAndUserManagementHTTP(t *testing.T) {
+	store := memory.NewStore()
+	if err := seedHTTPTestAdmin(store); err != nil {
+		t.Fatalf("seed admin: %v", err)
+	}
+	if err := seedHTTPTestViewer(store); err != nil {
+		t.Fatalf("seed viewer: %v", err)
+	}
+	server := api.NewServerWithServices(newTestServices(store))
+
+	adminToken := loginTestSession(t, server, "admin@example.com", "admin-pass")
+	viewerToken := loginTestSession(t, server, "viewer@example.com", "viewer-pass")
+
+	createBody := bytes.NewBufferString(`{"userId":"manager-1","email":"manager@example.com","password":"manager-pass","roles":["central_admin"]}`)
+	createRequest := httptest.NewRequest(http.MethodPost, "/v1/central/users", createBody)
+	createRequest.Header.Set("Content-Type", "application/json")
+	createRequest.Header.Set("X-Session-Token", viewerToken)
+	createResponse := httptest.NewRecorder()
+	server.ServeHTTP(createResponse, createRequest)
+	if createResponse.Code != http.StatusForbidden {
+		t.Fatalf("viewer create status = %d body=%s", createResponse.Code, createResponse.Body.String())
+	}
+
+	createRequest.Header.Set("X-Session-Token", adminToken)
+	createResponse = httptest.NewRecorder()
+	server.ServeHTTP(createResponse, createRequest)
+	if createResponse.Code != http.StatusCreated {
+		t.Fatalf("admin create status = %d body=%s", createResponse.Code, createResponse.Body.String())
+	}
+
+	listRequest := httptest.NewRequest(http.MethodGet, "/v1/central/users", nil)
+	listRequest.Header.Set("X-Session-Token", adminToken)
+	listResponse := httptest.NewRecorder()
+	server.ServeHTTP(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK {
+		t.Fatalf("list users status = %d body=%s", listResponse.Code, listResponse.Body.String())
+	}
+
+	since := time.Date(2026, 6, 19, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	until := time.Date(2026, 6, 19, 23, 59, 59, 0, time.UTC).Format(time.RFC3339)
+	reportingRequest := httptest.NewRequest(http.MethodGet, "/v1/central/reporting/summary?since="+since+"&until="+until, nil)
+	reportingRequest.Header.Set("X-Session-Token", viewerToken)
+	reportingResponse := httptest.NewRecorder()
+	server.ServeHTTP(reportingResponse, reportingRequest)
+	if reportingResponse.Code != http.StatusOK {
+		t.Fatalf("viewer reporting status = %d body=%s", reportingResponse.Code, reportingResponse.Body.String())
 	}
 }

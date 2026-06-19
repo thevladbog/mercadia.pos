@@ -27,6 +27,8 @@ type Services struct {
 	Returns           *app.ReturnsService
 	OperationalDays   *app.OperationalDaysService
 	Reporting         *app.ReportingService
+	Auth              *app.AuthService
+	CentralUsers      *app.CentralUsersService
 }
 
 type StatusResponse struct {
@@ -270,6 +272,11 @@ func NewServerBundle(opts ServerOptions) (*ServerBundle, error) {
 		return nil, err
 	}
 	services := newServices(handle.Repository())
+	if config, ok := app.SeedCentralAdminConfigFromEnv(); ok {
+		if err := app.BootstrapSeedCentralAdmin(context.Background(), handle.Repository(), config); err != nil {
+			return nil, err
+		}
+	}
 	return &ServerBundle{
 		Handler:  newHandler(services, opts),
 		Services: services,
@@ -288,6 +295,8 @@ func newServices(repo infra.Repository) Services {
 		Returns:           app.NewReturnsService(repo, repo),
 		OperationalDays:   app.NewOperationalDaysService(repo, repo),
 		Reporting:         app.NewReportingService(repo, repo),
+		Auth:              app.NewAuthService(repo, repo),
+		CentralUsers:      app.NewCentralUsersService(repo),
 	}
 }
 
@@ -324,6 +333,7 @@ func newMuxAndSpec(services Services, readinessChecks []func(context.Context) er
 		systemOptions = append(systemOptions, httpapi.WithReadinessCheck(combineReadinessChecks(readinessChecks)))
 	}
 	httpapi.MountSystemRoutes(mux, spec, info, systemOptions...)
+	mountAuthRoutes(mux, spec, services)
 	mountRoutes(mux, spec, services)
 
 	return mux, spec
@@ -781,15 +791,17 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		Path:            "/v1/stores/{storeId}/reporting/summary",
 		OperationID:     "getStoreReportingSummary",
 		Summary:         "Get store reporting summary for a time window",
-		Description:     "Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window).",
+		Description:     sessionProtectedDescription("Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window)."),
 		Tags:            []string{"reporting"},
 		QueryParameters: reportingWindowQueryParams(),
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Store reporting summary", Schema: storeReportingSummaryResponseSchema()},
-			"400": {Description: "Invalid reporting query", Schema: httpapi.ProblemSchema()},
-			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Store reporting summary", storeReportingSummaryResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"400": {Description: "Invalid reporting query", Schema: httpapi.ProblemSchema()},
+				"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		window, err := app.ParseReportingWindow(r.URL.Query().Get("since"), r.URL.Query().Get("until"))
 		if err != nil {
 			writeAppError(w, err)
@@ -801,25 +813,27 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			return
 		}
 		httpapi.WriteJSON(w, http.StatusOK, storeReportingSummaryResponse(summary))
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:          http.MethodGet,
 		Path:            "/v1/central/reporting/summary",
 		OperationID:     "getCentralReportingSummary",
 		Summary:         "Get cross-store reporting summary for a time window",
-		Description:     "Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window). Optional `region` filters registered stores.",
+		Description:     sessionProtectedDescription("Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window). Optional `region` filters registered stores."),
 		Tags:            []string{"reporting"},
 		QueryParameters: append(reportingWindowQueryParams(), httpapi.QueryParamSpec{
 			Name:        "region",
 			Description: "Optional store region filter",
 			Schema:      httpapi.StringSchema(),
 		}),
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Central reporting summary", Schema: centralReportingSummaryResponseSchema()},
-			"400": {Description: "Invalid reporting query", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Central reporting summary", centralReportingSummaryResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"400": {Description: "Invalid reporting query", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingCentralRead, func(w http.ResponseWriter, r *http.Request) {
 		window, err := app.ParseReportingWindow(r.URL.Query().Get("since"), r.URL.Query().Get("until"))
 		if err != nil {
 			writeAppError(w, err)
@@ -831,25 +845,27 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			return
 		}
 		httpapi.WriteJSON(w, http.StatusOK, centralReportingSummaryResponse(summary))
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
 		Path:        "/v1/central/reporting/stores",
 		OperationID: "listCentralStoreReportingSummaries",
 		Summary:     "List per-store reporting summaries for a time window",
-		Description: "Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window). Optional `region` filters registered stores.",
+		Description: sessionProtectedDescription("Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window). Optional `region` filters registered stores."),
 		Tags:        []string{"reporting"},
 		QueryParameters: append(append(reportingWindowQueryParams(), httpapi.QueryParamSpec{
 			Name:        "region",
 			Description: "Optional store region filter",
 			Schema:      httpapi.StringSchema(),
 		}), paginationQueryParams()...),
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Per-store reporting summaries", Schema: paginatedStoreReportingSummariesResponseSchema()},
-			"400": {Description: "Invalid reporting query", Schema: httpapi.ProblemSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: mergeResponseSpecs(
+			protectedResponseSpecs("200", "Per-store reporting summaries", paginatedStoreReportingSummariesResponseSchema()),
+			map[string]httpapi.ResponseSpec{
+				"400": {Description: "Invalid reporting query", Schema: httpapi.ProblemSchema()},
+			},
+		),
+	}, RequireSession(services.Auth, app.PermissionReportingCentralRead, func(w http.ResponseWriter, r *http.Request) {
 		window, err := app.ParseReportingWindow(r.URL.Query().Get("since"), r.URL.Query().Get("until"))
 		if err != nil {
 			writeAppError(w, err)
@@ -869,7 +885,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 			Items:      items,
 			TotalCount: result.TotalCount,
 		})
-	})
+	}))
 }
 
 func writeAppError(w http.ResponseWriter, err error) {
@@ -910,6 +926,22 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_operational_day_query", "Invalid operational day query", err.Error())
 	case errors.Is(err, app.ErrInvalidReportingQuery):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_reporting_query", "Invalid reporting query", err.Error())
+	case errors.Is(err, app.ErrInvalidAuthCommand):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_auth_command", "Invalid session command", err.Error())
+	case errors.Is(err, app.ErrInvalidCredentials):
+		httpapi.WriteProblem(w, http.StatusUnauthorized, "invalid_credentials", "Invalid credentials", err.Error())
+	case errors.Is(err, app.ErrSessionNotFound), errors.Is(err, app.ErrSessionExpired):
+		httpapi.WriteProblem(w, http.StatusUnauthorized, "session_invalid", "Session is missing or invalid", err.Error())
+	case errors.Is(err, app.ErrPermissionDenied):
+		httpapi.WriteProblem(w, http.StatusForbidden, "permission_denied", "Permission denied", err.Error())
+	case errors.Is(err, app.ErrCentralUserNotFound):
+		httpapi.WriteProblem(w, http.StatusNotFound, "central_user_not_found", "Central user was not found", err.Error())
+	case errors.Is(err, app.ErrInvalidCentralUserCommand):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_central_user_command", "Invalid central user command", err.Error())
+	case errors.Is(err, app.ErrCentralUserConflict):
+		httpapi.WriteProblem(w, http.StatusConflict, "central_user_conflict", "Central user already exists", err.Error())
+	case errors.Is(err, domain.ErrInvalidCentralUserInput):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_central_user_command", "Invalid central user command", err.Error())
 	default:
 		httpapi.WriteProblem(w, http.StatusInternalServerError, "internal_error", "Unexpected server error", err.Error())
 	}
@@ -1028,6 +1060,17 @@ func syncedCashMovementResponses(movements []domain.SyncedCashMovement) []Synced
 		responses = append(responses, syncedCashMovementResponse(movement))
 	}
 	return responses
+}
+
+func mergeResponseSpecs(base map[string]httpapi.ResponseSpec, extra map[string]httpapi.ResponseSpec) map[string]httpapi.ResponseSpec {
+	merged := make(map[string]httpapi.ResponseSpec, len(base)+len(extra))
+	for key, value := range base {
+		merged[key] = value
+	}
+	for key, value := range extra {
+		merged[key] = value
+	}
+	return merged
 }
 
 func paginationQueryParams() []httpapi.QueryParamSpec {
