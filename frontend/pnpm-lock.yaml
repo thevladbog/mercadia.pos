@@ -44,6 +44,9 @@ importers:
       '@mercadia/api-clients-central':
         specifier: workspace:*
         version: link:../../packages/api-clients/central
+      '@mercadia/api-clients-store-edge':
+        specifier: workspace:*
+        version: link:../../packages/api-clients/store-edge
       '@tanstack/react-query':
         specifier: ^5.101.0
         version: 5.101.0(react@19.2.7)

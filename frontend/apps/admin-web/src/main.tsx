@@ -5,10 +5,15 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 
 import { App } from './App.js';
-import { configureCentralApiClient, isUnauthorizedError } from './auth/AuthProvider.js';
+import {
+  configureCentralApiClient,
+  configureStoreEdgeApiClient,
+  isUnauthorizedError,
+} from './auth/AuthProvider.js';
 import './index.css';
 
 configureCentralApiClient();
+configureStoreEdgeApiClient();
 
 let unauthorizedHandler: (() => void) | null = null;
 

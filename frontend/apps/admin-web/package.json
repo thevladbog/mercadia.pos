@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@mercadia/api-clients-central": "workspace:*",
+    "@mercadia/api-clients-store-edge": "workspace:*",
     "@tanstack/react-query": "^5.101.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

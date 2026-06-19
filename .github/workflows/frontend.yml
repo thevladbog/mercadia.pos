@@ -38,9 +38,14 @@ jobs:
       - name: Generate Orval central client
         run: pnpm orval:central
 
+      - name: Generate Orval store-edge client
+        run: pnpm orval:store-edge
+
       - name: Verify generated client is up to date
         working-directory: ${{ github.workspace }}
-        run: git diff --exit-code frontend/packages/api-clients/central/src/generated/
+        run: |
+          git diff --exit-code frontend/packages/api-clients/central/src/generated/
+          git diff --exit-code frontend/packages/api-clients/store-edge/src/generated/
 
       - name: Typecheck
         run: pnpm typecheck

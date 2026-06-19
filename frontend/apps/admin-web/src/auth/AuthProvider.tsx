@@ -5,6 +5,10 @@ import {
   setApiBaseUrl,
   setSessionToken,
 } from '@mercadia/api-clients-central';
+import {
+  ApiError as StoreEdgeApiError,
+  setApiBaseUrl as setStoreEdgeApiBaseUrl,
+} from '@mercadia/api-clients-store-edge';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
 export type AuthState = {
@@ -106,7 +110,7 @@ export function isUnauthorizedError(error: unknown): boolean {
 }
 
 export function getApiErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
+  if (error instanceof ApiError || error instanceof StoreEdgeApiError) {
     return error.problem.detail ?? error.problem.title;
   }
   if (error instanceof Error) {
@@ -117,4 +121,8 @@ export function getApiErrorMessage(error: unknown): string {
 
 export function configureCentralApiClient(): void {
   setApiBaseUrl(import.meta.env.VITE_CENTRAL_BACKEND_URL ?? '');
+}
+
+export function configureStoreEdgeApiClient(): void {
+  setStoreEdgeApiBaseUrl(import.meta.env.VITE_STORE_EDGE_URL ?? '');
 }
