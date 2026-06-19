@@ -247,7 +247,7 @@ cash accountability, and EoD checks can be joined without guessing from timestam
 
 ## Current Central Backend Slice
 
-The central backend service exposes store registration, sync ingestion, and catalog read models:
+The central backend service exposes store registration, sync ingestion, synced read models, and cross-store reporting:
 
 - `GET /v1/central/status` - returns region status and registered store count.
 - `POST /v1/stores` - registers a store (idempotent).
@@ -256,6 +256,22 @@ The central backend service exposes store registration, sync ingestion, and cata
 - `GET /v1/stores/{storeId}/sync-events` - lists accepted sync events (paginated, newest first).
 - `GET /v1/stores/{storeId}/catalog/products` - lists catalog products for a store.
 - `GET /v1/stores/{storeId}/catalog/delta` - returns catalog products updated since a timestamp.
+- `GET /v1/stores/{storeId}/payments` - lists synchronized payments (paginated).
+- `GET /v1/stores/{storeId}/payments/{paymentId}` - returns a synchronized payment.
+- `GET /v1/stores/{storeId}/cash-movements` - lists synchronized cash movements (paginated).
+- `GET /v1/stores/{storeId}/cash-movements/{cashMovementId}` - returns a synchronized cash movement.
+- `GET /v1/stores/{storeId}/fiscal-documents` - lists synchronized fiscal documents (paginated).
+- `GET /v1/stores/{storeId}/fiscal-documents/{fiscalDocumentId}` - returns a synchronized fiscal document.
+- `GET /v1/stores/{storeId}/returns` - lists synchronized returns (paginated).
+- `GET /v1/stores/{storeId}/returns/{returnId}` - returns a synchronized return.
+- `GET /v1/stores/{storeId}/operational-days` - lists synchronized closed operational days (paginated).
+- `GET /v1/stores/{storeId}/operational-days/{operationalDayId}` - returns a synchronized closed operational day.
+- `GET /v1/stores/{storeId}/reporting/summary?since=&until=` - store KPI snapshot from synced projections (RFC3339 inclusive window).
+- `GET /v1/central/reporting/summary?since=&until=&region=` - network KPI aggregate across registered stores.
+- `GET /v1/central/reporting/stores?since=&until=&region=&limit=&offset=` - paginated per-store reporting rows for drill-down.
+
+Reporting aggregates use synced fiscal documents (`kind=receipt` for revenue proxy), payments, returns, cash movements, and closed operational days within the requested time window.
 
 After a captured payment or NATS-delivered sync event, use `GET /v1/stores/{storeId}/sync-events`
-to confirm central ingestion without querying Postgres directly.
+to confirm central ingestion without querying Postgres directly. Then query `GET /v1/stores/{storeId}/reporting/summary`
+or the central reporting endpoints for cross-store KPIs.

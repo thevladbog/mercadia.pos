@@ -123,6 +123,346 @@
         ]
       }
     },
+    "/v1/central/reporting/stores": {
+      "get": {
+        "description": "Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window). Optional `region` filters registered stores.",
+        "operationId": "listCentralStoreReportingSummaries",
+        "parameters": [
+          {
+            "description": "Inclusive window start (RFC3339)",
+            "in": "query",
+            "name": "since",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive window end (RFC3339)",
+            "in": "query",
+            "name": "until",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional store region filter",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of items to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "cashMovementsPostedCount": {
+                            "type": "integer"
+                          },
+                          "fiscalReceiptAmountMinor": {
+                            "type": "integer"
+                          },
+                          "fiscalReceiptCount": {
+                            "type": "integer"
+                          },
+                          "fiscalReturnAmountMinor": {
+                            "type": "integer"
+                          },
+                          "fiscalReturnCount": {
+                            "type": "integer"
+                          },
+                          "operationalDaysClosedCount": {
+                            "type": "integer"
+                          },
+                          "paymentsCancelledCount": {
+                            "type": "integer"
+                          },
+                          "paymentsCapturedAmountMinor": {
+                            "type": "integer"
+                          },
+                          "paymentsRefundedAmountMinor": {
+                            "type": "integer"
+                          },
+                          "returnsSettledAmountMinor": {
+                            "type": "integer"
+                          },
+                          "returnsSettledCount": {
+                            "type": "integer"
+                          },
+                          "since": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          },
+                          "until": {
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "storeId",
+                          "since",
+                          "until",
+                          "fiscalReceiptCount",
+                          "fiscalReceiptAmountMinor",
+                          "fiscalReturnCount",
+                          "fiscalReturnAmountMinor",
+                          "paymentsCapturedAmountMinor",
+                          "paymentsCancelledCount",
+                          "paymentsRefundedAmountMinor",
+                          "returnsSettledCount",
+                          "returnsSettledAmountMinor",
+                          "cashMovementsPostedCount",
+                          "operationalDaysClosedCount"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "totalCount": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "totalCount"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Per-store reporting summaries"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid reporting query"
+          }
+        },
+        "summary": "List per-store reporting summaries for a time window",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
+    "/v1/central/reporting/summary": {
+      "get": {
+        "description": "Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window). Optional `region` filters registered stores.",
+        "operationId": "getCentralReportingSummary",
+        "parameters": [
+          {
+            "description": "Inclusive window start (RFC3339)",
+            "in": "query",
+            "name": "since",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive window end (RFC3339)",
+            "in": "query",
+            "name": "until",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional store region filter",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "cashMovementsPostedCount": {
+                      "type": "integer"
+                    },
+                    "fiscalReceiptAmountMinor": {
+                      "type": "integer"
+                    },
+                    "fiscalReceiptCount": {
+                      "type": "integer"
+                    },
+                    "fiscalReturnAmountMinor": {
+                      "type": "integer"
+                    },
+                    "fiscalReturnCount": {
+                      "type": "integer"
+                    },
+                    "operationalDaysClosedCount": {
+                      "type": "integer"
+                    },
+                    "paymentsCancelledCount": {
+                      "type": "integer"
+                    },
+                    "paymentsCapturedAmountMinor": {
+                      "type": "integer"
+                    },
+                    "paymentsRefundedAmountMinor": {
+                      "type": "integer"
+                    },
+                    "region": {
+                      "type": "string"
+                    },
+                    "returnsSettledAmountMinor": {
+                      "type": "integer"
+                    },
+                    "returnsSettledCount": {
+                      "type": "integer"
+                    },
+                    "since": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "storeCount": {
+                      "type": "integer"
+                    },
+                    "until": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "since",
+                    "until",
+                    "storeCount",
+                    "fiscalReceiptCount",
+                    "fiscalReceiptAmountMinor",
+                    "fiscalReturnCount",
+                    "fiscalReturnAmountMinor",
+                    "paymentsCapturedAmountMinor",
+                    "paymentsCancelledCount",
+                    "paymentsRefundedAmountMinor",
+                    "returnsSettledCount",
+                    "returnsSettledAmountMinor",
+                    "cashMovementsPostedCount",
+                    "operationalDaysClosedCount"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Central reporting summary"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid reporting query"
+          }
+        },
+        "summary": "Get cross-store reporting summary for a time window",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
     "/v1/central/status": {
       "get": {
         "operationId": "getCentralStatus",
@@ -1919,6 +2259,189 @@
         "summary": "Get a synchronized payment",
         "tags": [
           "sync"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/reporting/summary": {
+      "get": {
+        "description": "Query parameters `since` and `until` must be RFC3339 timestamps (inclusive window).",
+        "operationId": "getStoreReportingSummary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive window start (RFC3339)",
+            "in": "query",
+            "name": "since",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive window end (RFC3339)",
+            "in": "query",
+            "name": "until",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "cashMovementsPostedCount": {
+                      "type": "integer"
+                    },
+                    "fiscalReceiptAmountMinor": {
+                      "type": "integer"
+                    },
+                    "fiscalReceiptCount": {
+                      "type": "integer"
+                    },
+                    "fiscalReturnAmountMinor": {
+                      "type": "integer"
+                    },
+                    "fiscalReturnCount": {
+                      "type": "integer"
+                    },
+                    "operationalDaysClosedCount": {
+                      "type": "integer"
+                    },
+                    "paymentsCancelledCount": {
+                      "type": "integer"
+                    },
+                    "paymentsCapturedAmountMinor": {
+                      "type": "integer"
+                    },
+                    "paymentsRefundedAmountMinor": {
+                      "type": "integer"
+                    },
+                    "returnsSettledAmountMinor": {
+                      "type": "integer"
+                    },
+                    "returnsSettledCount": {
+                      "type": "integer"
+                    },
+                    "since": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "storeId": {
+                      "type": "string"
+                    },
+                    "until": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "storeId",
+                    "since",
+                    "until",
+                    "fiscalReceiptCount",
+                    "fiscalReceiptAmountMinor",
+                    "fiscalReturnCount",
+                    "fiscalReturnAmountMinor",
+                    "paymentsCapturedAmountMinor",
+                    "paymentsCancelledCount",
+                    "paymentsRefundedAmountMinor",
+                    "returnsSettledCount",
+                    "returnsSettledAmountMinor",
+                    "cashMovementsPostedCount",
+                    "operationalDaysClosedCount"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store reporting summary"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid reporting query"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store not found"
+          }
+        },
+        "summary": "Get store reporting summary for a time window",
+        "tags": [
+          "reporting"
         ]
       }
     },
