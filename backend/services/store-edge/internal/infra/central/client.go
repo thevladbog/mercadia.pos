@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const syncAPIKeyHeader = "X-Sync-Api-Key"
+
 type CatalogProduct struct {
 	ID             string    `json:"id"`
 	StoreID        string    `json:"storeId"`
@@ -30,15 +32,21 @@ type catalogDeltaResponse struct {
 
 type Client struct {
 	baseURL    string
+	syncAPIKey string
 	httpClient *http.Client
 }
 
 func NewClient(baseURL string, httpClient *http.Client) *Client {
+	return NewClientWithSyncAPIKey(baseURL, "", httpClient)
+}
+
+func NewClientWithSyncAPIKey(baseURL, syncAPIKey string, httpClient *http.Client) *Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
 	return &Client{
 		baseURL:    strings.TrimRight(baseURL, "/"),
+		syncAPIKey: strings.TrimSpace(syncAPIKey),
 		httpClient: httpClient,
 	}
 }
@@ -64,6 +72,9 @@ func (c *Client) CatalogDelta(ctx context.Context, storeID string, since time.Ti
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("create catalog delta request: %w", err)
+	}
+	if c.syncAPIKey != "" {
+		request.Header.Set(syncAPIKeyHeader, c.syncAPIKey)
 	}
 
 	response, err := c.httpClient.Do(request)
