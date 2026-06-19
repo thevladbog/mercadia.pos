@@ -3,8 +3,10 @@ import {
   useListCentralStoreReportingSummaries,
 } from '@mercadia/api-clients-central';
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
+import { ReportingKpiGrid } from './ReportingKpiGrid.js';
 import {
   defaultReportingWindow,
   formatMinorAmount,
@@ -13,6 +15,11 @@ import {
   PAGE_SIZE,
   toDatetimeLocalValue,
 } from './reporting-utils.js';
+
+function storeReportingHref(storeId: string, since: string, until: string): string {
+  const params = new URLSearchParams({ since, until });
+  return `/central/reporting/stores/${encodeURIComponent(storeId)}?${params.toString()}`;
+}
 
 export function CentralReportingPage() {
   const defaults = useMemo(() => defaultReportingWindow(), []);
@@ -139,51 +146,7 @@ export function CentralReportingPage() {
         {summaryQuery.isLoading && !summary ? (
           <p className="muted">Loading summary…</p>
         ) : summary ? (
-          <dl className="kpi-grid">
-            <div>
-              <dt>Stores</dt>
-              <dd>{summary.storeCount}</dd>
-            </div>
-            <div>
-              <dt>Fiscal receipts</dt>
-              <dd>
-                {summary.fiscalReceiptCount} / {formatMinorAmount(summary.fiscalReceiptAmountMinor)}
-              </dd>
-            </div>
-            <div>
-              <dt>Fiscal returns</dt>
-              <dd>
-                {summary.fiscalReturnCount} / {formatMinorAmount(summary.fiscalReturnAmountMinor)}
-              </dd>
-            </div>
-            <div>
-              <dt>Payments captured</dt>
-              <dd>{formatMinorAmount(summary.paymentsCapturedAmountMinor)}</dd>
-            </div>
-            <div>
-              <dt>Payments cancelled</dt>
-              <dd>{summary.paymentsCancelledCount}</dd>
-            </div>
-            <div>
-              <dt>Payments refunded</dt>
-              <dd>{formatMinorAmount(summary.paymentsRefundedAmountMinor)}</dd>
-            </div>
-            <div>
-              <dt>Returns settled</dt>
-              <dd>
-                {summary.returnsSettledCount} /{' '}
-                {formatMinorAmount(summary.returnsSettledAmountMinor)}
-              </dd>
-            </div>
-            <div>
-              <dt>Cash movements posted</dt>
-              <dd>{summary.cashMovementsPostedCount}</dd>
-            </div>
-            <div>
-              <dt>Operational days closed</dt>
-              <dd>{summary.operationalDaysClosedCount}</dd>
-            </div>
-          </dl>
+          <ReportingKpiGrid data={summary} />
         ) : (
           <p className="muted">No summary data.</p>
         )}
@@ -219,7 +182,11 @@ export function CentralReportingPage() {
                 <tbody>
                   {stores.items.map((item) => (
                     <tr key={item.storeId}>
-                      <td>{item.storeId}</td>
+                      <td>
+                        <Link to={storeReportingHref(item.storeId, applied.since, applied.until)}>
+                          {item.storeId}
+                        </Link>
+                      </td>
                       <td>{item.fiscalReceiptCount}</td>
                       <td>{formatMinorAmount(item.fiscalReceiptAmountMinor)}</td>
                       <td>
