@@ -384,18 +384,17 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		Path:        "/v1/stores",
 		OperationID: "listStores",
 		Summary:     "List registered stores",
+		Description: sessionProtectedDescription("Lists stores registered in the central registry."),
 		Tags:        []string{"stores"},
-		Responses: map[string]httpapi.ResponseSpec{
-			"200": {Description: "Registered stores", Schema: storesResponseSchema()},
-		},
-	}, func(w http.ResponseWriter, r *http.Request) {
+		Responses: protectedResponseSpecs("200", "Registered stores", storesResponseSchema()),
+	}, RequireSession(services.Auth, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		stores, err := services.StoreRegistry.ListStores(r.Context())
 		if err != nil {
 			writeAppError(w, err)
 			return
 		}
 		httpapi.WriteJSON(w, http.StatusOK, StoresResponse{Stores: storeResponses(stores)})
-	})
+	}))
 
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:              http.MethodPost,
