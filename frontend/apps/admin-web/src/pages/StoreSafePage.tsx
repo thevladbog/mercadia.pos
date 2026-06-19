@@ -3,12 +3,17 @@ import {
   useListCashBalances,
   useListCashMovements,
   useListCashRecounts,
+  type ListCashRecounts200ItemsItem,
 } from '@mercadia/api-clients-store-edge';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
+import { useAuth } from '@/auth/useAuth.js';
+import { canWriteStoreOperations } from '@/auth/permissions.js';
+import { CashActionsPanel } from '@/components/cash/CashActionsPanel.js';
+import { ResolveRecountModal } from '@/components/cash/ResolveRecountModal.js';
 import { PaginationControls } from '@/components/PaginationControls.js';
 import { StorePicker } from '@/components/StorePicker.js';
 import { formatMinorAmount, formatTimestamp, PAGE_SIZE } from './reporting-utils.js';
@@ -17,8 +22,10 @@ import { STORE_POLL_INTERVAL_MS } from './store-polling.js';
 
 export function StoreSafePage() {
   const { t } = useTranslation();
+  const { roles } = useAuth();
   const [searchParams] = useSearchParams();
   const initialStoreId = readStoreFromSearchParams(searchParams);
+  const canWrite = canWriteStoreOperations(roles);
 
   const storesQuery = useListStores();
   const stores = storesQuery.data?.status === 200 ? storesQuery.data.data.stores : [];
@@ -27,6 +34,7 @@ export function StoreSafePage() {
 
   const [movementsOffset, setMovementsOffset] = useState(0);
   const [recountsOffset, setRecountsOffset] = useState(0);
+  const [resolveRecount, setResolveRecount] = useState<ListCashRecounts200ItemsItem | null>(null);
 
   const pollOptions = useMemo(
     () => ({
@@ -119,6 +127,14 @@ export function StoreSafePage() {
         </div>
       ) : (
         <>
+          {balances && balances.length > 0 ? (
+            <CashActionsPanel balances={balances} canWrite={canWrite} storeId={activeStoreId} />
+          ) : canWrite ? (
+            <div className="panel">
+              <p className="muted">{t('safe.actions.noContainers')}</p>
+            </div>
+          ) : null}
+
           <div className="panel">
             <h3>{t('safe.balances')}</h3>
             {balancesQuery.isLoading && !balances ? (
@@ -215,6 +231,7 @@ export function StoreSafePage() {
                         <th>{t('safe.variance')}</th>
                         <th>{t('safe.resolution')}</th>
                         <th>{t('eod.created')}</th>
+                        {canWrite ? <th>{t('safe.actions.column')}</th> : null}
                       </tr>
                     </thead>
                     <tbody>
@@ -227,6 +244,21 @@ export function StoreSafePage() {
                           <td>{formatMinorAmount(recount.discrepancyMinor)}</td>
                           <td>{recount.resolutionStatus}</td>
                           <td>{formatTimestamp(recount.createdAt)}</td>
+                          {canWrite ? (
+                            <td>
+                              {recount.resolutionStatus === 'open' ? (
+                                <button
+                                  className="secondary"
+                                  onClick={() => setResolveRecount(recount)}
+                                  type="button"
+                                >
+                                  {t('safe.actions.resolveRecount')}
+                                </button>
+                              ) : (
+                                t('common.emDash')
+                              )}
+                            </td>
+                          ) : null}
                         </tr>
                       ))}
                     </tbody>
@@ -244,6 +276,14 @@ export function StoreSafePage() {
               <p className="muted">{t('safe.noRecounts')}</p>
             )}
           </div>
+
+          {resolveRecount ? (
+            <ResolveRecountModal
+              recount={resolveRecount}
+              storeId={activeStoreId}
+              onClose={() => setResolveRecount(null)}
+            />
+          ) : null}
         </>
       )}
     </section>

@@ -26,6 +26,8 @@
     "previous": "Previous",
     "next": "Next",
     "apply": "Apply",
+    "cancel": "Cancel",
+    "submitting": "Submitting…",
     "yes": "Yes",
     "no": "No",
     "edit": "Edit",
@@ -206,7 +208,7 @@
   },
   "safe": {
     "title": "Store Safe",
-    "subtitle": "Cash balances and immutable movement journal (read-only).",
+    "subtitle": "Cash balances and immutable movement journal.",
     "selectStore": "Select a store to view safe data.",
     "balances": "Cash balances",
     "loadingBalances": "Loading balances…",
@@ -232,7 +234,53 @@
     "expected": "Expected",
     "counted": "Counted",
     "variance": "Variance",
-    "resolution": "Resolution"
+    "resolution": "Resolution",
+    "actions": {
+      "title": "Cash operations",
+      "column": "Actions",
+      "noContainers": "No cash containers available. Post movements on store-edge first.",
+      "issueChangeFund": "Issue change fund",
+      "receiveFromCashier": "Receive from cashier",
+      "bankCollection": "Bank collection",
+      "businessExpense": "Business expense",
+      "recountSafe": "Recount safe",
+      "resolveRecount": "Resolve"
+    },
+    "forms": {
+      "submit": "Post operation",
+      "resolveSubmit": "Resolve recount",
+      "fromContainer": "From container",
+      "toContainer": "To container",
+      "safeContainer": "Safe",
+      "bankContainer": "Bank container",
+      "container": "Container",
+      "amountRub": "Amount (RUB)",
+      "reason": "Reason",
+      "payeeId": "Payee ID",
+      "actorId": "Actor ID",
+      "approvedById": "Approved by ID",
+      "actorHint": "Use store-edge actor IDs (e.g. senior-1, admin-1). Approver must differ from actor.",
+      "noContainers": "No containers",
+      "expectedBalance": "Expected balance",
+      "resolutionNote": "Resolution note",
+      "recountSummary": "Recount {{id}} — variance {{variance}}",
+      "validation": {
+        "amount": "Enter a positive amount.",
+        "containers": "Select valid source and destination containers.",
+        "selfApproval": "Actor and approver must be different users.",
+        "payee": "Payee ID is required.",
+        "reasonRequired": "Reason is required for business expenses.",
+        "resolutionNote": "Resolution note is required."
+      }
+    },
+    "notices": {
+      "changeFundSuccess": "Change fund posted successfully.",
+      "receiveCashSuccess": "Cash receipt posted successfully.",
+      "bankCollectionSuccess": "Bank collection posted successfully.",
+      "expenseSuccess": "Business expense posted successfully.",
+      "recountSuccess": "Cash recount recorded successfully.",
+      "resolveRecountSuccess": "Recount discrepancy resolved."
+    }
   },
   "eod": {
     "title": "End of Day",

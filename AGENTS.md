@@ -14,6 +14,7 @@ Before implementing or changing behavior, read:
 6. `docs/development/dependency-policy.md`
 7. The relevant module spec in `docs/modules`
 8. Relevant ADRs in `docs/adr`
+9. `docs/development/admin-web-i18n.md` when changing `frontend/apps/admin-web`
 
 ## Non-Negotiable Rules
 
@@ -30,6 +31,7 @@ Before implementing or changing behavior, read:
 - Cash ledger entries are immutable.
 - Payment and fiscalization are separate state machines.
 - Permission and separation-of-duties checks must be enforced server-side.
+- Admin-web UI strings must use i18n (`docs/development/admin-web-i18n.md`); never hardcode user-facing labels in TSX.
 
 ## Commands
 
