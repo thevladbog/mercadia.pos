@@ -23,8 +23,10 @@ import type {
 import type {
   GetStoreCatalogDelta200,
   GetStoreCatalogDelta400,
+  GetStoreCatalogDelta401,
   GetStoreCatalogDelta404,
   ListStoreCatalogProducts200,
+  ListStoreCatalogProducts401,
   ListStoreCatalogProducts404
 } from '../models';
 
@@ -60,6 +62,11 @@ export type getStoreCatalogDeltaResponse400 = {
   status: 400
 }
 
+export type getStoreCatalogDeltaResponse401 = {
+  data: GetStoreCatalogDelta401
+  status: 401
+}
+
 export type getStoreCatalogDeltaResponse404 = {
   data: GetStoreCatalogDelta404
   status: 404
@@ -68,7 +75,7 @@ export type getStoreCatalogDeltaResponse404 = {
 export type getStoreCatalogDeltaResponseSuccess = (getStoreCatalogDeltaResponse200) & {
   headers: Headers;
 };
-export type getStoreCatalogDeltaResponseError = (getStoreCatalogDeltaResponse400 | getStoreCatalogDeltaResponse404) & {
+export type getStoreCatalogDeltaResponseError = (getStoreCatalogDeltaResponse400 | getStoreCatalogDeltaResponse401 | getStoreCatalogDeltaResponse404) & {
   headers: Headers;
 };
 
@@ -83,7 +90,7 @@ export const getGetStoreCatalogDeltaUrl = (storeId: string,) => {
 }
 
 /**
- * Query parameter `since` must be an RFC3339 timestamp.
+ * Query parameter `since` must be an RFC3339 timestamp. When `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` is set, requires `X-Sync-Api-Key` header.
  * @summary Get catalog changes since a timestamp
  */
 export const getStoreCatalogDelta = async (storeId: string, options?: RequestInit): Promise<getStoreCatalogDeltaResponse> => {
@@ -108,7 +115,7 @@ export const getGetStoreCatalogDeltaQueryKey = (storeId: string,) => {
     }
 
 
-export const getGetStoreCatalogDeltaQueryOptions = <TData = Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError = GetStoreCatalogDelta400 | GetStoreCatalogDelta404>(storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetStoreCatalogDeltaQueryOptions = <TData = Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError = GetStoreCatalogDelta400 | GetStoreCatalogDelta401 | GetStoreCatalogDelta404>(storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -127,10 +134,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetStoreCatalogDeltaQueryResult = NonNullable<Awaited<ReturnType<typeof getStoreCatalogDelta>>>
-export type GetStoreCatalogDeltaQueryError = GetStoreCatalogDelta400 | GetStoreCatalogDelta404
+export type GetStoreCatalogDeltaQueryError = GetStoreCatalogDelta400 | GetStoreCatalogDelta401 | GetStoreCatalogDelta404
 
 
-export function useGetStoreCatalogDelta<TData = Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError = GetStoreCatalogDelta400 | GetStoreCatalogDelta404>(
+export function useGetStoreCatalogDelta<TData = Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError = GetStoreCatalogDelta400 | GetStoreCatalogDelta401 | GetStoreCatalogDelta404>(
  storeId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getStoreCatalogDelta>>,
@@ -140,7 +147,7 @@ export function useGetStoreCatalogDelta<TData = Awaited<ReturnType<typeof getSto
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStoreCatalogDelta<TData = Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError = GetStoreCatalogDelta400 | GetStoreCatalogDelta404>(
+export function useGetStoreCatalogDelta<TData = Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError = GetStoreCatalogDelta400 | GetStoreCatalogDelta401 | GetStoreCatalogDelta404>(
  storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getStoreCatalogDelta>>,
@@ -150,7 +157,7 @@ export function useGetStoreCatalogDelta<TData = Awaited<ReturnType<typeof getSto
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStoreCatalogDelta<TData = Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError = GetStoreCatalogDelta400 | GetStoreCatalogDelta404>(
+export function useGetStoreCatalogDelta<TData = Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError = GetStoreCatalogDelta400 | GetStoreCatalogDelta401 | GetStoreCatalogDelta404>(
  storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -158,7 +165,7 @@ export function useGetStoreCatalogDelta<TData = Awaited<ReturnType<typeof getSto
  * @summary Get catalog changes since a timestamp
  */
 
-export function useGetStoreCatalogDelta<TData = Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError = GetStoreCatalogDelta400 | GetStoreCatalogDelta404>(
+export function useGetStoreCatalogDelta<TData = Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError = GetStoreCatalogDelta400 | GetStoreCatalogDelta401 | GetStoreCatalogDelta404>(
  storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreCatalogDelta>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -180,6 +187,11 @@ export type listStoreCatalogProductsResponse200 = {
   status: 200
 }
 
+export type listStoreCatalogProductsResponse401 = {
+  data: ListStoreCatalogProducts401
+  status: 401
+}
+
 export type listStoreCatalogProductsResponse404 = {
   data: ListStoreCatalogProducts404
   status: 404
@@ -188,7 +200,7 @@ export type listStoreCatalogProductsResponse404 = {
 export type listStoreCatalogProductsResponseSuccess = (listStoreCatalogProductsResponse200) & {
   headers: Headers;
 };
-export type listStoreCatalogProductsResponseError = (listStoreCatalogProductsResponse404) & {
+export type listStoreCatalogProductsResponseError = (listStoreCatalogProductsResponse401 | listStoreCatalogProductsResponse404) & {
   headers: Headers;
 };
 
@@ -203,6 +215,7 @@ export const getListStoreCatalogProductsUrl = (storeId: string,) => {
 }
 
 /**
+ * Lists catalog products for a store. When `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` is set, requires `X-Sync-Api-Key` header.
  * @summary List catalog products for a store
  */
 export const listStoreCatalogProducts = async (storeId: string, options?: RequestInit): Promise<listStoreCatalogProductsResponse> => {
@@ -227,7 +240,7 @@ export const getListStoreCatalogProductsQueryKey = (storeId: string,) => {
     }
 
 
-export const getListStoreCatalogProductsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts404>(storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getListStoreCatalogProductsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts404>(storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -246,10 +259,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListStoreCatalogProductsQueryResult = NonNullable<Awaited<ReturnType<typeof listStoreCatalogProducts>>>
-export type ListStoreCatalogProductsQueryError = ListStoreCatalogProducts404
+export type ListStoreCatalogProductsQueryError = ListStoreCatalogProducts401 | ListStoreCatalogProducts404
 
 
-export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts404>(
+export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts404>(
  storeId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listStoreCatalogProducts>>,
@@ -259,7 +272,7 @@ export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof li
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts404>(
+export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts404>(
  storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listStoreCatalogProducts>>,
@@ -269,7 +282,7 @@ export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof li
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts404>(
+export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts404>(
  storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -277,7 +290,7 @@ export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof li
  * @summary List catalog products for a store
  */
 
-export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts404>(
+export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts404>(
  storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

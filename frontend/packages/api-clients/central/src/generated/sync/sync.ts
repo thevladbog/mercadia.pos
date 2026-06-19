@@ -32,37 +32,59 @@ import type {
   AcceptStoreSyncEvents409,
   AcceptStoreSyncEventsBody,
   GetStoreCashMovement200,
+  GetStoreCashMovement401,
+  GetStoreCashMovement403,
   GetStoreCashMovement404,
   GetStoreFiscalDocument200,
+  GetStoreFiscalDocument401,
+  GetStoreFiscalDocument403,
   GetStoreFiscalDocument404,
   GetStoreOperationalDay200,
+  GetStoreOperationalDay401,
+  GetStoreOperationalDay403,
   GetStoreOperationalDay404,
   GetStorePayment200,
+  GetStorePayment401,
+  GetStorePayment403,
   GetStorePayment404,
   GetStoreReturn200,
+  GetStoreReturn401,
+  GetStoreReturn403,
   GetStoreReturn404,
   ListStoreCashMovements200,
   ListStoreCashMovements400,
+  ListStoreCashMovements401,
+  ListStoreCashMovements403,
   ListStoreCashMovements404,
   ListStoreCashMovementsParams,
   ListStoreFiscalDocuments200,
   ListStoreFiscalDocuments400,
+  ListStoreFiscalDocuments401,
+  ListStoreFiscalDocuments403,
   ListStoreFiscalDocuments404,
   ListStoreFiscalDocumentsParams,
   ListStoreOperationalDays200,
   ListStoreOperationalDays400,
+  ListStoreOperationalDays401,
+  ListStoreOperationalDays403,
   ListStoreOperationalDays404,
   ListStoreOperationalDaysParams,
   ListStorePayments200,
   ListStorePayments400,
+  ListStorePayments401,
+  ListStorePayments403,
   ListStorePayments404,
   ListStorePaymentsParams,
   ListStoreReturns200,
   ListStoreReturns400,
+  ListStoreReturns401,
+  ListStoreReturns403,
   ListStoreReturns404,
   ListStoreReturnsParams,
   ListStoreSyncEvents200,
   ListStoreSyncEvents400,
+  ListStoreSyncEvents401,
+  ListStoreSyncEvents403,
   ListStoreSyncEvents404,
   ListStoreSyncEventsParams
 } from '../models';
@@ -99,6 +121,16 @@ export type listStoreCashMovementsResponse400 = {
   status: 400
 }
 
+export type listStoreCashMovementsResponse401 = {
+  data: ListStoreCashMovements401
+  status: 401
+}
+
+export type listStoreCashMovementsResponse403 = {
+  data: ListStoreCashMovements403
+  status: 403
+}
+
 export type listStoreCashMovementsResponse404 = {
   data: ListStoreCashMovements404
   status: 404
@@ -107,7 +139,7 @@ export type listStoreCashMovementsResponse404 = {
 export type listStoreCashMovementsResponseSuccess = (listStoreCashMovementsResponse200) & {
   headers: Headers;
 };
-export type listStoreCashMovementsResponseError = (listStoreCashMovementsResponse400 | listStoreCashMovementsResponse404) & {
+export type listStoreCashMovementsResponseError = (listStoreCashMovementsResponse400 | listStoreCashMovementsResponse401 | listStoreCashMovementsResponse403 | listStoreCashMovementsResponse404) & {
   headers: Headers;
 };
 
@@ -130,6 +162,7 @@ export const getListStoreCashMovementsUrl = (storeId: string,
 }
 
 /**
+ * Lists synchronized cash movements projected from Store Edge events. Requires `X-Session-Token` header.
  * @summary List synchronized cash movements for a store
  */
 export const listStoreCashMovements = async (storeId: string,
@@ -156,7 +189,7 @@ export const getListStoreCashMovementsQueryKey = (storeId: string,
     }
 
 
-export const getListStoreCashMovementsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreCashMovements>>, TError = ListStoreCashMovements400 | ListStoreCashMovements404>(storeId: string,
+export const getListStoreCashMovementsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreCashMovements>>, TError = ListStoreCashMovements400 | ListStoreCashMovements401 | ListStoreCashMovements403 | ListStoreCashMovements404>(storeId: string,
     params?: ListStoreCashMovementsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCashMovements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -176,10 +209,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListStoreCashMovementsQueryResult = NonNullable<Awaited<ReturnType<typeof listStoreCashMovements>>>
-export type ListStoreCashMovementsQueryError = ListStoreCashMovements400 | ListStoreCashMovements404
+export type ListStoreCashMovementsQueryError = ListStoreCashMovements400 | ListStoreCashMovements401 | ListStoreCashMovements403 | ListStoreCashMovements404
 
 
-export function useListStoreCashMovements<TData = Awaited<ReturnType<typeof listStoreCashMovements>>, TError = ListStoreCashMovements400 | ListStoreCashMovements404>(
+export function useListStoreCashMovements<TData = Awaited<ReturnType<typeof listStoreCashMovements>>, TError = ListStoreCashMovements400 | ListStoreCashMovements401 | ListStoreCashMovements403 | ListStoreCashMovements404>(
  storeId: string,
     params: undefined |  ListStoreCashMovementsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCashMovements>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -190,7 +223,7 @@ export function useListStoreCashMovements<TData = Awaited<ReturnType<typeof list
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreCashMovements<TData = Awaited<ReturnType<typeof listStoreCashMovements>>, TError = ListStoreCashMovements400 | ListStoreCashMovements404>(
+export function useListStoreCashMovements<TData = Awaited<ReturnType<typeof listStoreCashMovements>>, TError = ListStoreCashMovements400 | ListStoreCashMovements401 | ListStoreCashMovements403 | ListStoreCashMovements404>(
  storeId: string,
     params?: ListStoreCashMovementsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCashMovements>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -201,7 +234,7 @@ export function useListStoreCashMovements<TData = Awaited<ReturnType<typeof list
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreCashMovements<TData = Awaited<ReturnType<typeof listStoreCashMovements>>, TError = ListStoreCashMovements400 | ListStoreCashMovements404>(
+export function useListStoreCashMovements<TData = Awaited<ReturnType<typeof listStoreCashMovements>>, TError = ListStoreCashMovements400 | ListStoreCashMovements401 | ListStoreCashMovements403 | ListStoreCashMovements404>(
  storeId: string,
     params?: ListStoreCashMovementsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCashMovements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -210,7 +243,7 @@ export function useListStoreCashMovements<TData = Awaited<ReturnType<typeof list
  * @summary List synchronized cash movements for a store
  */
 
-export function useListStoreCashMovements<TData = Awaited<ReturnType<typeof listStoreCashMovements>>, TError = ListStoreCashMovements400 | ListStoreCashMovements404>(
+export function useListStoreCashMovements<TData = Awaited<ReturnType<typeof listStoreCashMovements>>, TError = ListStoreCashMovements400 | ListStoreCashMovements401 | ListStoreCashMovements403 | ListStoreCashMovements404>(
  storeId: string,
     params?: ListStoreCashMovementsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCashMovements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -233,6 +266,16 @@ export type getStoreCashMovementResponse200 = {
   status: 200
 }
 
+export type getStoreCashMovementResponse401 = {
+  data: GetStoreCashMovement401
+  status: 401
+}
+
+export type getStoreCashMovementResponse403 = {
+  data: GetStoreCashMovement403
+  status: 403
+}
+
 export type getStoreCashMovementResponse404 = {
   data: GetStoreCashMovement404
   status: 404
@@ -241,7 +284,7 @@ export type getStoreCashMovementResponse404 = {
 export type getStoreCashMovementResponseSuccess = (getStoreCashMovementResponse200) & {
   headers: Headers;
 };
-export type getStoreCashMovementResponseError = (getStoreCashMovementResponse404) & {
+export type getStoreCashMovementResponseError = (getStoreCashMovementResponse401 | getStoreCashMovementResponse403 | getStoreCashMovementResponse404) & {
   headers: Headers;
 };
 
@@ -257,6 +300,7 @@ export const getGetStoreCashMovementUrl = (storeId: string,
 }
 
 /**
+ * Returns a synchronized cash movement projected from Store Edge events. Requires `X-Session-Token` header.
  * @summary Get a synchronized cash movement
  */
 export const getStoreCashMovement = async (storeId: string,
@@ -283,7 +327,7 @@ export const getGetStoreCashMovementQueryKey = (storeId: string,
     }
 
 
-export const getGetStoreCashMovementQueryOptions = <TData = Awaited<ReturnType<typeof getStoreCashMovement>>, TError = GetStoreCashMovement404>(storeId: string,
+export const getGetStoreCashMovementQueryOptions = <TData = Awaited<ReturnType<typeof getStoreCashMovement>>, TError = GetStoreCashMovement401 | GetStoreCashMovement403 | GetStoreCashMovement404>(storeId: string,
     cashMovementId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreCashMovement>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -303,10 +347,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetStoreCashMovementQueryResult = NonNullable<Awaited<ReturnType<typeof getStoreCashMovement>>>
-export type GetStoreCashMovementQueryError = GetStoreCashMovement404
+export type GetStoreCashMovementQueryError = GetStoreCashMovement401 | GetStoreCashMovement403 | GetStoreCashMovement404
 
 
-export function useGetStoreCashMovement<TData = Awaited<ReturnType<typeof getStoreCashMovement>>, TError = GetStoreCashMovement404>(
+export function useGetStoreCashMovement<TData = Awaited<ReturnType<typeof getStoreCashMovement>>, TError = GetStoreCashMovement401 | GetStoreCashMovement403 | GetStoreCashMovement404>(
  storeId: string,
     cashMovementId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreCashMovement>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -317,7 +361,7 @@ export function useGetStoreCashMovement<TData = Awaited<ReturnType<typeof getSto
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStoreCashMovement<TData = Awaited<ReturnType<typeof getStoreCashMovement>>, TError = GetStoreCashMovement404>(
+export function useGetStoreCashMovement<TData = Awaited<ReturnType<typeof getStoreCashMovement>>, TError = GetStoreCashMovement401 | GetStoreCashMovement403 | GetStoreCashMovement404>(
  storeId: string,
     cashMovementId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreCashMovement>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -328,7 +372,7 @@ export function useGetStoreCashMovement<TData = Awaited<ReturnType<typeof getSto
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStoreCashMovement<TData = Awaited<ReturnType<typeof getStoreCashMovement>>, TError = GetStoreCashMovement404>(
+export function useGetStoreCashMovement<TData = Awaited<ReturnType<typeof getStoreCashMovement>>, TError = GetStoreCashMovement401 | GetStoreCashMovement403 | GetStoreCashMovement404>(
  storeId: string,
     cashMovementId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreCashMovement>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -337,7 +381,7 @@ export function useGetStoreCashMovement<TData = Awaited<ReturnType<typeof getSto
  * @summary Get a synchronized cash movement
  */
 
-export function useGetStoreCashMovement<TData = Awaited<ReturnType<typeof getStoreCashMovement>>, TError = GetStoreCashMovement404>(
+export function useGetStoreCashMovement<TData = Awaited<ReturnType<typeof getStoreCashMovement>>, TError = GetStoreCashMovement401 | GetStoreCashMovement403 | GetStoreCashMovement404>(
  storeId: string,
     cashMovementId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreCashMovement>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -365,6 +409,16 @@ export type listStoreFiscalDocumentsResponse400 = {
   status: 400
 }
 
+export type listStoreFiscalDocumentsResponse401 = {
+  data: ListStoreFiscalDocuments401
+  status: 401
+}
+
+export type listStoreFiscalDocumentsResponse403 = {
+  data: ListStoreFiscalDocuments403
+  status: 403
+}
+
 export type listStoreFiscalDocumentsResponse404 = {
   data: ListStoreFiscalDocuments404
   status: 404
@@ -373,7 +427,7 @@ export type listStoreFiscalDocumentsResponse404 = {
 export type listStoreFiscalDocumentsResponseSuccess = (listStoreFiscalDocumentsResponse200) & {
   headers: Headers;
 };
-export type listStoreFiscalDocumentsResponseError = (listStoreFiscalDocumentsResponse400 | listStoreFiscalDocumentsResponse404) & {
+export type listStoreFiscalDocumentsResponseError = (listStoreFiscalDocumentsResponse400 | listStoreFiscalDocumentsResponse401 | listStoreFiscalDocumentsResponse403 | listStoreFiscalDocumentsResponse404) & {
   headers: Headers;
 };
 
@@ -396,6 +450,7 @@ export const getListStoreFiscalDocumentsUrl = (storeId: string,
 }
 
 /**
+ * Lists synchronized fiscal documents projected from Store Edge events. Requires `X-Session-Token` header.
  * @summary List synchronized fiscal documents for a store
  */
 export const listStoreFiscalDocuments = async (storeId: string,
@@ -422,7 +477,7 @@ export const getListStoreFiscalDocumentsQueryKey = (storeId: string,
     }
 
 
-export const getListStoreFiscalDocumentsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError = ListStoreFiscalDocuments400 | ListStoreFiscalDocuments404>(storeId: string,
+export const getListStoreFiscalDocumentsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError = ListStoreFiscalDocuments400 | ListStoreFiscalDocuments401 | ListStoreFiscalDocuments403 | ListStoreFiscalDocuments404>(storeId: string,
     params?: ListStoreFiscalDocumentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -442,10 +497,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListStoreFiscalDocumentsQueryResult = NonNullable<Awaited<ReturnType<typeof listStoreFiscalDocuments>>>
-export type ListStoreFiscalDocumentsQueryError = ListStoreFiscalDocuments400 | ListStoreFiscalDocuments404
+export type ListStoreFiscalDocumentsQueryError = ListStoreFiscalDocuments400 | ListStoreFiscalDocuments401 | ListStoreFiscalDocuments403 | ListStoreFiscalDocuments404
 
 
-export function useListStoreFiscalDocuments<TData = Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError = ListStoreFiscalDocuments400 | ListStoreFiscalDocuments404>(
+export function useListStoreFiscalDocuments<TData = Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError = ListStoreFiscalDocuments400 | ListStoreFiscalDocuments401 | ListStoreFiscalDocuments403 | ListStoreFiscalDocuments404>(
  storeId: string,
     params: undefined |  ListStoreFiscalDocumentsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -456,7 +511,7 @@ export function useListStoreFiscalDocuments<TData = Awaited<ReturnType<typeof li
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreFiscalDocuments<TData = Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError = ListStoreFiscalDocuments400 | ListStoreFiscalDocuments404>(
+export function useListStoreFiscalDocuments<TData = Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError = ListStoreFiscalDocuments400 | ListStoreFiscalDocuments401 | ListStoreFiscalDocuments403 | ListStoreFiscalDocuments404>(
  storeId: string,
     params?: ListStoreFiscalDocumentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -467,7 +522,7 @@ export function useListStoreFiscalDocuments<TData = Awaited<ReturnType<typeof li
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreFiscalDocuments<TData = Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError = ListStoreFiscalDocuments400 | ListStoreFiscalDocuments404>(
+export function useListStoreFiscalDocuments<TData = Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError = ListStoreFiscalDocuments400 | ListStoreFiscalDocuments401 | ListStoreFiscalDocuments403 | ListStoreFiscalDocuments404>(
  storeId: string,
     params?: ListStoreFiscalDocumentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -476,7 +531,7 @@ export function useListStoreFiscalDocuments<TData = Awaited<ReturnType<typeof li
  * @summary List synchronized fiscal documents for a store
  */
 
-export function useListStoreFiscalDocuments<TData = Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError = ListStoreFiscalDocuments400 | ListStoreFiscalDocuments404>(
+export function useListStoreFiscalDocuments<TData = Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError = ListStoreFiscalDocuments400 | ListStoreFiscalDocuments401 | ListStoreFiscalDocuments403 | ListStoreFiscalDocuments404>(
  storeId: string,
     params?: ListStoreFiscalDocumentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreFiscalDocuments>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -499,6 +554,16 @@ export type getStoreFiscalDocumentResponse200 = {
   status: 200
 }
 
+export type getStoreFiscalDocumentResponse401 = {
+  data: GetStoreFiscalDocument401
+  status: 401
+}
+
+export type getStoreFiscalDocumentResponse403 = {
+  data: GetStoreFiscalDocument403
+  status: 403
+}
+
 export type getStoreFiscalDocumentResponse404 = {
   data: GetStoreFiscalDocument404
   status: 404
@@ -507,7 +572,7 @@ export type getStoreFiscalDocumentResponse404 = {
 export type getStoreFiscalDocumentResponseSuccess = (getStoreFiscalDocumentResponse200) & {
   headers: Headers;
 };
-export type getStoreFiscalDocumentResponseError = (getStoreFiscalDocumentResponse404) & {
+export type getStoreFiscalDocumentResponseError = (getStoreFiscalDocumentResponse401 | getStoreFiscalDocumentResponse403 | getStoreFiscalDocumentResponse404) & {
   headers: Headers;
 };
 
@@ -523,6 +588,7 @@ export const getGetStoreFiscalDocumentUrl = (storeId: string,
 }
 
 /**
+ * Returns a synchronized fiscal document projected from Store Edge events. Requires `X-Session-Token` header.
  * @summary Get a synchronized fiscal document
  */
 export const getStoreFiscalDocument = async (storeId: string,
@@ -549,7 +615,7 @@ export const getGetStoreFiscalDocumentQueryKey = (storeId: string,
     }
 
 
-export const getGetStoreFiscalDocumentQueryOptions = <TData = Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError = GetStoreFiscalDocument404>(storeId: string,
+export const getGetStoreFiscalDocumentQueryOptions = <TData = Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError = GetStoreFiscalDocument401 | GetStoreFiscalDocument403 | GetStoreFiscalDocument404>(storeId: string,
     fiscalDocumentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -569,10 +635,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetStoreFiscalDocumentQueryResult = NonNullable<Awaited<ReturnType<typeof getStoreFiscalDocument>>>
-export type GetStoreFiscalDocumentQueryError = GetStoreFiscalDocument404
+export type GetStoreFiscalDocumentQueryError = GetStoreFiscalDocument401 | GetStoreFiscalDocument403 | GetStoreFiscalDocument404
 
 
-export function useGetStoreFiscalDocument<TData = Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError = GetStoreFiscalDocument404>(
+export function useGetStoreFiscalDocument<TData = Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError = GetStoreFiscalDocument401 | GetStoreFiscalDocument403 | GetStoreFiscalDocument404>(
  storeId: string,
     fiscalDocumentId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -583,7 +649,7 @@ export function useGetStoreFiscalDocument<TData = Awaited<ReturnType<typeof getS
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStoreFiscalDocument<TData = Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError = GetStoreFiscalDocument404>(
+export function useGetStoreFiscalDocument<TData = Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError = GetStoreFiscalDocument401 | GetStoreFiscalDocument403 | GetStoreFiscalDocument404>(
  storeId: string,
     fiscalDocumentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -594,7 +660,7 @@ export function useGetStoreFiscalDocument<TData = Awaited<ReturnType<typeof getS
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStoreFiscalDocument<TData = Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError = GetStoreFiscalDocument404>(
+export function useGetStoreFiscalDocument<TData = Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError = GetStoreFiscalDocument401 | GetStoreFiscalDocument403 | GetStoreFiscalDocument404>(
  storeId: string,
     fiscalDocumentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -603,7 +669,7 @@ export function useGetStoreFiscalDocument<TData = Awaited<ReturnType<typeof getS
  * @summary Get a synchronized fiscal document
  */
 
-export function useGetStoreFiscalDocument<TData = Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError = GetStoreFiscalDocument404>(
+export function useGetStoreFiscalDocument<TData = Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError = GetStoreFiscalDocument401 | GetStoreFiscalDocument403 | GetStoreFiscalDocument404>(
  storeId: string,
     fiscalDocumentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreFiscalDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -631,6 +697,16 @@ export type listStoreOperationalDaysResponse400 = {
   status: 400
 }
 
+export type listStoreOperationalDaysResponse401 = {
+  data: ListStoreOperationalDays401
+  status: 401
+}
+
+export type listStoreOperationalDaysResponse403 = {
+  data: ListStoreOperationalDays403
+  status: 403
+}
+
 export type listStoreOperationalDaysResponse404 = {
   data: ListStoreOperationalDays404
   status: 404
@@ -639,7 +715,7 @@ export type listStoreOperationalDaysResponse404 = {
 export type listStoreOperationalDaysResponseSuccess = (listStoreOperationalDaysResponse200) & {
   headers: Headers;
 };
-export type listStoreOperationalDaysResponseError = (listStoreOperationalDaysResponse400 | listStoreOperationalDaysResponse404) & {
+export type listStoreOperationalDaysResponseError = (listStoreOperationalDaysResponse400 | listStoreOperationalDaysResponse401 | listStoreOperationalDaysResponse403 | listStoreOperationalDaysResponse404) & {
   headers: Headers;
 };
 
@@ -662,6 +738,7 @@ export const getListStoreOperationalDaysUrl = (storeId: string,
 }
 
 /**
+ * Lists synchronized closed operational days projected from Store Edge events. Requires `X-Session-Token` header.
  * @summary List synchronized closed operational days for a store
  */
 export const listStoreOperationalDays = async (storeId: string,
@@ -688,7 +765,7 @@ export const getListStoreOperationalDaysQueryKey = (storeId: string,
     }
 
 
-export const getListStoreOperationalDaysQueryOptions = <TData = Awaited<ReturnType<typeof listStoreOperationalDays>>, TError = ListStoreOperationalDays400 | ListStoreOperationalDays404>(storeId: string,
+export const getListStoreOperationalDaysQueryOptions = <TData = Awaited<ReturnType<typeof listStoreOperationalDays>>, TError = ListStoreOperationalDays400 | ListStoreOperationalDays401 | ListStoreOperationalDays403 | ListStoreOperationalDays404>(storeId: string,
     params?: ListStoreOperationalDaysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreOperationalDays>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -708,10 +785,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListStoreOperationalDaysQueryResult = NonNullable<Awaited<ReturnType<typeof listStoreOperationalDays>>>
-export type ListStoreOperationalDaysQueryError = ListStoreOperationalDays400 | ListStoreOperationalDays404
+export type ListStoreOperationalDaysQueryError = ListStoreOperationalDays400 | ListStoreOperationalDays401 | ListStoreOperationalDays403 | ListStoreOperationalDays404
 
 
-export function useListStoreOperationalDays<TData = Awaited<ReturnType<typeof listStoreOperationalDays>>, TError = ListStoreOperationalDays400 | ListStoreOperationalDays404>(
+export function useListStoreOperationalDays<TData = Awaited<ReturnType<typeof listStoreOperationalDays>>, TError = ListStoreOperationalDays400 | ListStoreOperationalDays401 | ListStoreOperationalDays403 | ListStoreOperationalDays404>(
  storeId: string,
     params: undefined |  ListStoreOperationalDaysParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreOperationalDays>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -722,7 +799,7 @@ export function useListStoreOperationalDays<TData = Awaited<ReturnType<typeof li
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreOperationalDays<TData = Awaited<ReturnType<typeof listStoreOperationalDays>>, TError = ListStoreOperationalDays400 | ListStoreOperationalDays404>(
+export function useListStoreOperationalDays<TData = Awaited<ReturnType<typeof listStoreOperationalDays>>, TError = ListStoreOperationalDays400 | ListStoreOperationalDays401 | ListStoreOperationalDays403 | ListStoreOperationalDays404>(
  storeId: string,
     params?: ListStoreOperationalDaysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreOperationalDays>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -733,7 +810,7 @@ export function useListStoreOperationalDays<TData = Awaited<ReturnType<typeof li
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreOperationalDays<TData = Awaited<ReturnType<typeof listStoreOperationalDays>>, TError = ListStoreOperationalDays400 | ListStoreOperationalDays404>(
+export function useListStoreOperationalDays<TData = Awaited<ReturnType<typeof listStoreOperationalDays>>, TError = ListStoreOperationalDays400 | ListStoreOperationalDays401 | ListStoreOperationalDays403 | ListStoreOperationalDays404>(
  storeId: string,
     params?: ListStoreOperationalDaysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreOperationalDays>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -742,7 +819,7 @@ export function useListStoreOperationalDays<TData = Awaited<ReturnType<typeof li
  * @summary List synchronized closed operational days for a store
  */
 
-export function useListStoreOperationalDays<TData = Awaited<ReturnType<typeof listStoreOperationalDays>>, TError = ListStoreOperationalDays400 | ListStoreOperationalDays404>(
+export function useListStoreOperationalDays<TData = Awaited<ReturnType<typeof listStoreOperationalDays>>, TError = ListStoreOperationalDays400 | ListStoreOperationalDays401 | ListStoreOperationalDays403 | ListStoreOperationalDays404>(
  storeId: string,
     params?: ListStoreOperationalDaysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreOperationalDays>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -765,6 +842,16 @@ export type getStoreOperationalDayResponse200 = {
   status: 200
 }
 
+export type getStoreOperationalDayResponse401 = {
+  data: GetStoreOperationalDay401
+  status: 401
+}
+
+export type getStoreOperationalDayResponse403 = {
+  data: GetStoreOperationalDay403
+  status: 403
+}
+
 export type getStoreOperationalDayResponse404 = {
   data: GetStoreOperationalDay404
   status: 404
@@ -773,7 +860,7 @@ export type getStoreOperationalDayResponse404 = {
 export type getStoreOperationalDayResponseSuccess = (getStoreOperationalDayResponse200) & {
   headers: Headers;
 };
-export type getStoreOperationalDayResponseError = (getStoreOperationalDayResponse404) & {
+export type getStoreOperationalDayResponseError = (getStoreOperationalDayResponse401 | getStoreOperationalDayResponse403 | getStoreOperationalDayResponse404) & {
   headers: Headers;
 };
 
@@ -789,6 +876,7 @@ export const getGetStoreOperationalDayUrl = (storeId: string,
 }
 
 /**
+ * Returns a synchronized closed operational day projected from Store Edge events. Requires `X-Session-Token` header.
  * @summary Get a synchronized closed operational day
  */
 export const getStoreOperationalDay = async (storeId: string,
@@ -815,7 +903,7 @@ export const getGetStoreOperationalDayQueryKey = (storeId: string,
     }
 
 
-export const getGetStoreOperationalDayQueryOptions = <TData = Awaited<ReturnType<typeof getStoreOperationalDay>>, TError = GetStoreOperationalDay404>(storeId: string,
+export const getGetStoreOperationalDayQueryOptions = <TData = Awaited<ReturnType<typeof getStoreOperationalDay>>, TError = GetStoreOperationalDay401 | GetStoreOperationalDay403 | GetStoreOperationalDay404>(storeId: string,
     operationalDayId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreOperationalDay>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -835,10 +923,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetStoreOperationalDayQueryResult = NonNullable<Awaited<ReturnType<typeof getStoreOperationalDay>>>
-export type GetStoreOperationalDayQueryError = GetStoreOperationalDay404
+export type GetStoreOperationalDayQueryError = GetStoreOperationalDay401 | GetStoreOperationalDay403 | GetStoreOperationalDay404
 
 
-export function useGetStoreOperationalDay<TData = Awaited<ReturnType<typeof getStoreOperationalDay>>, TError = GetStoreOperationalDay404>(
+export function useGetStoreOperationalDay<TData = Awaited<ReturnType<typeof getStoreOperationalDay>>, TError = GetStoreOperationalDay401 | GetStoreOperationalDay403 | GetStoreOperationalDay404>(
  storeId: string,
     operationalDayId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreOperationalDay>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -849,7 +937,7 @@ export function useGetStoreOperationalDay<TData = Awaited<ReturnType<typeof getS
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStoreOperationalDay<TData = Awaited<ReturnType<typeof getStoreOperationalDay>>, TError = GetStoreOperationalDay404>(
+export function useGetStoreOperationalDay<TData = Awaited<ReturnType<typeof getStoreOperationalDay>>, TError = GetStoreOperationalDay401 | GetStoreOperationalDay403 | GetStoreOperationalDay404>(
  storeId: string,
     operationalDayId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreOperationalDay>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -860,7 +948,7 @@ export function useGetStoreOperationalDay<TData = Awaited<ReturnType<typeof getS
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStoreOperationalDay<TData = Awaited<ReturnType<typeof getStoreOperationalDay>>, TError = GetStoreOperationalDay404>(
+export function useGetStoreOperationalDay<TData = Awaited<ReturnType<typeof getStoreOperationalDay>>, TError = GetStoreOperationalDay401 | GetStoreOperationalDay403 | GetStoreOperationalDay404>(
  storeId: string,
     operationalDayId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreOperationalDay>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -869,7 +957,7 @@ export function useGetStoreOperationalDay<TData = Awaited<ReturnType<typeof getS
  * @summary Get a synchronized closed operational day
  */
 
-export function useGetStoreOperationalDay<TData = Awaited<ReturnType<typeof getStoreOperationalDay>>, TError = GetStoreOperationalDay404>(
+export function useGetStoreOperationalDay<TData = Awaited<ReturnType<typeof getStoreOperationalDay>>, TError = GetStoreOperationalDay401 | GetStoreOperationalDay403 | GetStoreOperationalDay404>(
  storeId: string,
     operationalDayId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreOperationalDay>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -897,6 +985,16 @@ export type listStorePaymentsResponse400 = {
   status: 400
 }
 
+export type listStorePaymentsResponse401 = {
+  data: ListStorePayments401
+  status: 401
+}
+
+export type listStorePaymentsResponse403 = {
+  data: ListStorePayments403
+  status: 403
+}
+
 export type listStorePaymentsResponse404 = {
   data: ListStorePayments404
   status: 404
@@ -905,7 +1003,7 @@ export type listStorePaymentsResponse404 = {
 export type listStorePaymentsResponseSuccess = (listStorePaymentsResponse200) & {
   headers: Headers;
 };
-export type listStorePaymentsResponseError = (listStorePaymentsResponse400 | listStorePaymentsResponse404) & {
+export type listStorePaymentsResponseError = (listStorePaymentsResponse400 | listStorePaymentsResponse401 | listStorePaymentsResponse403 | listStorePaymentsResponse404) & {
   headers: Headers;
 };
 
@@ -928,6 +1026,7 @@ export const getListStorePaymentsUrl = (storeId: string,
 }
 
 /**
+ * Lists synchronized payments projected from Store Edge events. Requires `X-Session-Token` header.
  * @summary List synchronized payments for a store
  */
 export const listStorePayments = async (storeId: string,
@@ -954,7 +1053,7 @@ export const getListStorePaymentsQueryKey = (storeId: string,
     }
 
 
-export const getListStorePaymentsQueryOptions = <TData = Awaited<ReturnType<typeof listStorePayments>>, TError = ListStorePayments400 | ListStorePayments404>(storeId: string,
+export const getListStorePaymentsQueryOptions = <TData = Awaited<ReturnType<typeof listStorePayments>>, TError = ListStorePayments400 | ListStorePayments401 | ListStorePayments403 | ListStorePayments404>(storeId: string,
     params?: ListStorePaymentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStorePayments>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -974,10 +1073,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListStorePaymentsQueryResult = NonNullable<Awaited<ReturnType<typeof listStorePayments>>>
-export type ListStorePaymentsQueryError = ListStorePayments400 | ListStorePayments404
+export type ListStorePaymentsQueryError = ListStorePayments400 | ListStorePayments401 | ListStorePayments403 | ListStorePayments404
 
 
-export function useListStorePayments<TData = Awaited<ReturnType<typeof listStorePayments>>, TError = ListStorePayments400 | ListStorePayments404>(
+export function useListStorePayments<TData = Awaited<ReturnType<typeof listStorePayments>>, TError = ListStorePayments400 | ListStorePayments401 | ListStorePayments403 | ListStorePayments404>(
  storeId: string,
     params: undefined |  ListStorePaymentsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStorePayments>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -988,7 +1087,7 @@ export function useListStorePayments<TData = Awaited<ReturnType<typeof listStore
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStorePayments<TData = Awaited<ReturnType<typeof listStorePayments>>, TError = ListStorePayments400 | ListStorePayments404>(
+export function useListStorePayments<TData = Awaited<ReturnType<typeof listStorePayments>>, TError = ListStorePayments400 | ListStorePayments401 | ListStorePayments403 | ListStorePayments404>(
  storeId: string,
     params?: ListStorePaymentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStorePayments>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -999,7 +1098,7 @@ export function useListStorePayments<TData = Awaited<ReturnType<typeof listStore
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStorePayments<TData = Awaited<ReturnType<typeof listStorePayments>>, TError = ListStorePayments400 | ListStorePayments404>(
+export function useListStorePayments<TData = Awaited<ReturnType<typeof listStorePayments>>, TError = ListStorePayments400 | ListStorePayments401 | ListStorePayments403 | ListStorePayments404>(
  storeId: string,
     params?: ListStorePaymentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStorePayments>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -1008,7 +1107,7 @@ export function useListStorePayments<TData = Awaited<ReturnType<typeof listStore
  * @summary List synchronized payments for a store
  */
 
-export function useListStorePayments<TData = Awaited<ReturnType<typeof listStorePayments>>, TError = ListStorePayments400 | ListStorePayments404>(
+export function useListStorePayments<TData = Awaited<ReturnType<typeof listStorePayments>>, TError = ListStorePayments400 | ListStorePayments401 | ListStorePayments403 | ListStorePayments404>(
  storeId: string,
     params?: ListStorePaymentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStorePayments>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -1031,6 +1130,16 @@ export type getStorePaymentResponse200 = {
   status: 200
 }
 
+export type getStorePaymentResponse401 = {
+  data: GetStorePayment401
+  status: 401
+}
+
+export type getStorePaymentResponse403 = {
+  data: GetStorePayment403
+  status: 403
+}
+
 export type getStorePaymentResponse404 = {
   data: GetStorePayment404
   status: 404
@@ -1039,7 +1148,7 @@ export type getStorePaymentResponse404 = {
 export type getStorePaymentResponseSuccess = (getStorePaymentResponse200) & {
   headers: Headers;
 };
-export type getStorePaymentResponseError = (getStorePaymentResponse404) & {
+export type getStorePaymentResponseError = (getStorePaymentResponse401 | getStorePaymentResponse403 | getStorePaymentResponse404) & {
   headers: Headers;
 };
 
@@ -1055,6 +1164,7 @@ export const getGetStorePaymentUrl = (storeId: string,
 }
 
 /**
+ * Returns a synchronized payment projected from Store Edge events. Requires `X-Session-Token` header.
  * @summary Get a synchronized payment
  */
 export const getStorePayment = async (storeId: string,
@@ -1081,7 +1191,7 @@ export const getGetStorePaymentQueryKey = (storeId: string,
     }
 
 
-export const getGetStorePaymentQueryOptions = <TData = Awaited<ReturnType<typeof getStorePayment>>, TError = GetStorePayment404>(storeId: string,
+export const getGetStorePaymentQueryOptions = <TData = Awaited<ReturnType<typeof getStorePayment>>, TError = GetStorePayment401 | GetStorePayment403 | GetStorePayment404>(storeId: string,
     paymentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStorePayment>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -1101,10 +1211,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetStorePaymentQueryResult = NonNullable<Awaited<ReturnType<typeof getStorePayment>>>
-export type GetStorePaymentQueryError = GetStorePayment404
+export type GetStorePaymentQueryError = GetStorePayment401 | GetStorePayment403 | GetStorePayment404
 
 
-export function useGetStorePayment<TData = Awaited<ReturnType<typeof getStorePayment>>, TError = GetStorePayment404>(
+export function useGetStorePayment<TData = Awaited<ReturnType<typeof getStorePayment>>, TError = GetStorePayment401 | GetStorePayment403 | GetStorePayment404>(
  storeId: string,
     paymentId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStorePayment>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -1115,7 +1225,7 @@ export function useGetStorePayment<TData = Awaited<ReturnType<typeof getStorePay
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStorePayment<TData = Awaited<ReturnType<typeof getStorePayment>>, TError = GetStorePayment404>(
+export function useGetStorePayment<TData = Awaited<ReturnType<typeof getStorePayment>>, TError = GetStorePayment401 | GetStorePayment403 | GetStorePayment404>(
  storeId: string,
     paymentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStorePayment>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -1126,7 +1236,7 @@ export function useGetStorePayment<TData = Awaited<ReturnType<typeof getStorePay
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStorePayment<TData = Awaited<ReturnType<typeof getStorePayment>>, TError = GetStorePayment404>(
+export function useGetStorePayment<TData = Awaited<ReturnType<typeof getStorePayment>>, TError = GetStorePayment401 | GetStorePayment403 | GetStorePayment404>(
  storeId: string,
     paymentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStorePayment>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -1135,7 +1245,7 @@ export function useGetStorePayment<TData = Awaited<ReturnType<typeof getStorePay
  * @summary Get a synchronized payment
  */
 
-export function useGetStorePayment<TData = Awaited<ReturnType<typeof getStorePayment>>, TError = GetStorePayment404>(
+export function useGetStorePayment<TData = Awaited<ReturnType<typeof getStorePayment>>, TError = GetStorePayment401 | GetStorePayment403 | GetStorePayment404>(
  storeId: string,
     paymentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStorePayment>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -1163,6 +1273,16 @@ export type listStoreReturnsResponse400 = {
   status: 400
 }
 
+export type listStoreReturnsResponse401 = {
+  data: ListStoreReturns401
+  status: 401
+}
+
+export type listStoreReturnsResponse403 = {
+  data: ListStoreReturns403
+  status: 403
+}
+
 export type listStoreReturnsResponse404 = {
   data: ListStoreReturns404
   status: 404
@@ -1171,7 +1291,7 @@ export type listStoreReturnsResponse404 = {
 export type listStoreReturnsResponseSuccess = (listStoreReturnsResponse200) & {
   headers: Headers;
 };
-export type listStoreReturnsResponseError = (listStoreReturnsResponse400 | listStoreReturnsResponse404) & {
+export type listStoreReturnsResponseError = (listStoreReturnsResponse400 | listStoreReturnsResponse401 | listStoreReturnsResponse403 | listStoreReturnsResponse404) & {
   headers: Headers;
 };
 
@@ -1194,6 +1314,7 @@ export const getListStoreReturnsUrl = (storeId: string,
 }
 
 /**
+ * Lists synchronized returns projected from Store Edge events. Requires `X-Session-Token` header.
  * @summary List synchronized returns for a store
  */
 export const listStoreReturns = async (storeId: string,
@@ -1220,7 +1341,7 @@ export const getListStoreReturnsQueryKey = (storeId: string,
     }
 
 
-export const getListStoreReturnsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreReturns>>, TError = ListStoreReturns400 | ListStoreReturns404>(storeId: string,
+export const getListStoreReturnsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreReturns>>, TError = ListStoreReturns400 | ListStoreReturns401 | ListStoreReturns403 | ListStoreReturns404>(storeId: string,
     params?: ListStoreReturnsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreReturns>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -1240,10 +1361,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListStoreReturnsQueryResult = NonNullable<Awaited<ReturnType<typeof listStoreReturns>>>
-export type ListStoreReturnsQueryError = ListStoreReturns400 | ListStoreReturns404
+export type ListStoreReturnsQueryError = ListStoreReturns400 | ListStoreReturns401 | ListStoreReturns403 | ListStoreReturns404
 
 
-export function useListStoreReturns<TData = Awaited<ReturnType<typeof listStoreReturns>>, TError = ListStoreReturns400 | ListStoreReturns404>(
+export function useListStoreReturns<TData = Awaited<ReturnType<typeof listStoreReturns>>, TError = ListStoreReturns400 | ListStoreReturns401 | ListStoreReturns403 | ListStoreReturns404>(
  storeId: string,
     params: undefined |  ListStoreReturnsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreReturns>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -1254,7 +1375,7 @@ export function useListStoreReturns<TData = Awaited<ReturnType<typeof listStoreR
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreReturns<TData = Awaited<ReturnType<typeof listStoreReturns>>, TError = ListStoreReturns400 | ListStoreReturns404>(
+export function useListStoreReturns<TData = Awaited<ReturnType<typeof listStoreReturns>>, TError = ListStoreReturns400 | ListStoreReturns401 | ListStoreReturns403 | ListStoreReturns404>(
  storeId: string,
     params?: ListStoreReturnsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreReturns>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -1265,7 +1386,7 @@ export function useListStoreReturns<TData = Awaited<ReturnType<typeof listStoreR
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreReturns<TData = Awaited<ReturnType<typeof listStoreReturns>>, TError = ListStoreReturns400 | ListStoreReturns404>(
+export function useListStoreReturns<TData = Awaited<ReturnType<typeof listStoreReturns>>, TError = ListStoreReturns400 | ListStoreReturns401 | ListStoreReturns403 | ListStoreReturns404>(
  storeId: string,
     params?: ListStoreReturnsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreReturns>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -1274,7 +1395,7 @@ export function useListStoreReturns<TData = Awaited<ReturnType<typeof listStoreR
  * @summary List synchronized returns for a store
  */
 
-export function useListStoreReturns<TData = Awaited<ReturnType<typeof listStoreReturns>>, TError = ListStoreReturns400 | ListStoreReturns404>(
+export function useListStoreReturns<TData = Awaited<ReturnType<typeof listStoreReturns>>, TError = ListStoreReturns400 | ListStoreReturns401 | ListStoreReturns403 | ListStoreReturns404>(
  storeId: string,
     params?: ListStoreReturnsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreReturns>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -1297,6 +1418,16 @@ export type getStoreReturnResponse200 = {
   status: 200
 }
 
+export type getStoreReturnResponse401 = {
+  data: GetStoreReturn401
+  status: 401
+}
+
+export type getStoreReturnResponse403 = {
+  data: GetStoreReturn403
+  status: 403
+}
+
 export type getStoreReturnResponse404 = {
   data: GetStoreReturn404
   status: 404
@@ -1305,7 +1436,7 @@ export type getStoreReturnResponse404 = {
 export type getStoreReturnResponseSuccess = (getStoreReturnResponse200) & {
   headers: Headers;
 };
-export type getStoreReturnResponseError = (getStoreReturnResponse404) & {
+export type getStoreReturnResponseError = (getStoreReturnResponse401 | getStoreReturnResponse403 | getStoreReturnResponse404) & {
   headers: Headers;
 };
 
@@ -1321,6 +1452,7 @@ export const getGetStoreReturnUrl = (storeId: string,
 }
 
 /**
+ * Returns a synchronized return projected from Store Edge events. Requires `X-Session-Token` header.
  * @summary Get a synchronized return
  */
 export const getStoreReturn = async (storeId: string,
@@ -1347,7 +1479,7 @@ export const getGetStoreReturnQueryKey = (storeId: string,
     }
 
 
-export const getGetStoreReturnQueryOptions = <TData = Awaited<ReturnType<typeof getStoreReturn>>, TError = GetStoreReturn404>(storeId: string,
+export const getGetStoreReturnQueryOptions = <TData = Awaited<ReturnType<typeof getStoreReturn>>, TError = GetStoreReturn401 | GetStoreReturn403 | GetStoreReturn404>(storeId: string,
     returnId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreReturn>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -1367,10 +1499,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetStoreReturnQueryResult = NonNullable<Awaited<ReturnType<typeof getStoreReturn>>>
-export type GetStoreReturnQueryError = GetStoreReturn404
+export type GetStoreReturnQueryError = GetStoreReturn401 | GetStoreReturn403 | GetStoreReturn404
 
 
-export function useGetStoreReturn<TData = Awaited<ReturnType<typeof getStoreReturn>>, TError = GetStoreReturn404>(
+export function useGetStoreReturn<TData = Awaited<ReturnType<typeof getStoreReturn>>, TError = GetStoreReturn401 | GetStoreReturn403 | GetStoreReturn404>(
  storeId: string,
     returnId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreReturn>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -1381,7 +1513,7 @@ export function useGetStoreReturn<TData = Awaited<ReturnType<typeof getStoreRetu
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStoreReturn<TData = Awaited<ReturnType<typeof getStoreReturn>>, TError = GetStoreReturn404>(
+export function useGetStoreReturn<TData = Awaited<ReturnType<typeof getStoreReturn>>, TError = GetStoreReturn401 | GetStoreReturn403 | GetStoreReturn404>(
  storeId: string,
     returnId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreReturn>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -1392,7 +1524,7 @@ export function useGetStoreReturn<TData = Awaited<ReturnType<typeof getStoreRetu
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStoreReturn<TData = Awaited<ReturnType<typeof getStoreReturn>>, TError = GetStoreReturn404>(
+export function useGetStoreReturn<TData = Awaited<ReturnType<typeof getStoreReturn>>, TError = GetStoreReturn401 | GetStoreReturn403 | GetStoreReturn404>(
  storeId: string,
     returnId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreReturn>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -1401,7 +1533,7 @@ export function useGetStoreReturn<TData = Awaited<ReturnType<typeof getStoreRetu
  * @summary Get a synchronized return
  */
 
-export function useGetStoreReturn<TData = Awaited<ReturnType<typeof getStoreReturn>>, TError = GetStoreReturn404>(
+export function useGetStoreReturn<TData = Awaited<ReturnType<typeof getStoreReturn>>, TError = GetStoreReturn401 | GetStoreReturn403 | GetStoreReturn404>(
  storeId: string,
     returnId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoreReturn>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -1429,6 +1561,16 @@ export type listStoreSyncEventsResponse400 = {
   status: 400
 }
 
+export type listStoreSyncEventsResponse401 = {
+  data: ListStoreSyncEvents401
+  status: 401
+}
+
+export type listStoreSyncEventsResponse403 = {
+  data: ListStoreSyncEvents403
+  status: 403
+}
+
 export type listStoreSyncEventsResponse404 = {
   data: ListStoreSyncEvents404
   status: 404
@@ -1437,7 +1579,7 @@ export type listStoreSyncEventsResponse404 = {
 export type listStoreSyncEventsResponseSuccess = (listStoreSyncEventsResponse200) & {
   headers: Headers;
 };
-export type listStoreSyncEventsResponseError = (listStoreSyncEventsResponse400 | listStoreSyncEventsResponse404) & {
+export type listStoreSyncEventsResponseError = (listStoreSyncEventsResponse400 | listStoreSyncEventsResponse401 | listStoreSyncEventsResponse403 | listStoreSyncEventsResponse404) & {
   headers: Headers;
 };
 
@@ -1460,6 +1602,7 @@ export const getListStoreSyncEventsUrl = (storeId: string,
 }
 
 /**
+ * Lists synchronized Store Edge events accepted for a store. Requires `X-Session-Token` header.
  * @summary List synchronized Store Edge events
  */
 export const listStoreSyncEvents = async (storeId: string,
@@ -1486,7 +1629,7 @@ export const getListStoreSyncEventsQueryKey = (storeId: string,
     }
 
 
-export const getListStoreSyncEventsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreSyncEvents>>, TError = ListStoreSyncEvents400 | ListStoreSyncEvents404>(storeId: string,
+export const getListStoreSyncEventsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreSyncEvents>>, TError = ListStoreSyncEvents400 | ListStoreSyncEvents401 | ListStoreSyncEvents403 | ListStoreSyncEvents404>(storeId: string,
     params?: ListStoreSyncEventsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreSyncEvents>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -1506,10 +1649,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListStoreSyncEventsQueryResult = NonNullable<Awaited<ReturnType<typeof listStoreSyncEvents>>>
-export type ListStoreSyncEventsQueryError = ListStoreSyncEvents400 | ListStoreSyncEvents404
+export type ListStoreSyncEventsQueryError = ListStoreSyncEvents400 | ListStoreSyncEvents401 | ListStoreSyncEvents403 | ListStoreSyncEvents404
 
 
-export function useListStoreSyncEvents<TData = Awaited<ReturnType<typeof listStoreSyncEvents>>, TError = ListStoreSyncEvents400 | ListStoreSyncEvents404>(
+export function useListStoreSyncEvents<TData = Awaited<ReturnType<typeof listStoreSyncEvents>>, TError = ListStoreSyncEvents400 | ListStoreSyncEvents401 | ListStoreSyncEvents403 | ListStoreSyncEvents404>(
  storeId: string,
     params: undefined |  ListStoreSyncEventsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreSyncEvents>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -1520,7 +1663,7 @@ export function useListStoreSyncEvents<TData = Awaited<ReturnType<typeof listSto
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreSyncEvents<TData = Awaited<ReturnType<typeof listStoreSyncEvents>>, TError = ListStoreSyncEvents400 | ListStoreSyncEvents404>(
+export function useListStoreSyncEvents<TData = Awaited<ReturnType<typeof listStoreSyncEvents>>, TError = ListStoreSyncEvents400 | ListStoreSyncEvents401 | ListStoreSyncEvents403 | ListStoreSyncEvents404>(
  storeId: string,
     params?: ListStoreSyncEventsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreSyncEvents>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -1531,7 +1674,7 @@ export function useListStoreSyncEvents<TData = Awaited<ReturnType<typeof listSto
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreSyncEvents<TData = Awaited<ReturnType<typeof listStoreSyncEvents>>, TError = ListStoreSyncEvents400 | ListStoreSyncEvents404>(
+export function useListStoreSyncEvents<TData = Awaited<ReturnType<typeof listStoreSyncEvents>>, TError = ListStoreSyncEvents400 | ListStoreSyncEvents401 | ListStoreSyncEvents403 | ListStoreSyncEvents404>(
  storeId: string,
     params?: ListStoreSyncEventsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreSyncEvents>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
@@ -1540,7 +1683,7 @@ export function useListStoreSyncEvents<TData = Awaited<ReturnType<typeof listSto
  * @summary List synchronized Store Edge events
  */
 
-export function useListStoreSyncEvents<TData = Awaited<ReturnType<typeof listStoreSyncEvents>>, TError = ListStoreSyncEvents400 | ListStoreSyncEvents404>(
+export function useListStoreSyncEvents<TData = Awaited<ReturnType<typeof listStoreSyncEvents>>, TError = ListStoreSyncEvents400 | ListStoreSyncEvents401 | ListStoreSyncEvents403 | ListStoreSyncEvents404>(
  storeId: string,
     params?: ListStoreSyncEventsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreSyncEvents>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
