@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"mercadia.dev/pos/services/store-edge/internal/domain"
@@ -223,6 +224,41 @@ func (s *ReturnsService) CreateNoReceiptReturn(ctx context.Context, command Crea
 		return ReturnResult{}, err
 	}
 	return result, nil
+}
+
+func (s *ReturnsService) GetReturn(ctx context.Context, returnID string) (ReturnResult, error) {
+	if returnID == "" {
+		return ReturnResult{}, ErrInvalidReturnCommand
+	}
+	ret, err := s.returns.FindReturn(ctx, returnID)
+	if err != nil {
+		return ReturnResult{}, err
+	}
+	return ReturnResult{Return: ret}, nil
+}
+
+func (s *ReturnsService) ListReturnsByReceipt(ctx context.Context, receiptID string, params PageParams) (PageResult[domain.Return], error) {
+	if receiptID == "" {
+		return PageResult[domain.Return]{}, ErrInvalidReturnCommand
+	}
+	if _, err := s.receipts.FindReceipt(ctx, receiptID); err != nil {
+		return PageResult[domain.Return]{}, err
+	}
+	returns, err := s.returns.ListReturnsByReceipt(ctx, receiptID)
+	if err != nil {
+		return PageResult[domain.Return]{}, err
+	}
+	sortReturnsNewestFirst(returns)
+	return PaginateSlice(returns, params), nil
+}
+
+func sortReturnsNewestFirst(returns []domain.Return) {
+	sort.Slice(returns, func(i, j int) bool {
+		if returns[i].CreatedAt.Equal(returns[j].CreatedAt) {
+			return returns[i].ID > returns[j].ID
+		}
+		return returns[i].CreatedAt.After(returns[j].CreatedAt)
+	})
 }
 
 func (s *ReturnsService) recordJournal(ctx context.Context, ret domain.Return) error {

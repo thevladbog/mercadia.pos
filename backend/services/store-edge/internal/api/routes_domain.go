@@ -111,6 +111,11 @@ type ReturnAcceptedResponse struct {
 	Return ReturnResponse `json:"return"`
 }
 
+type PaginatedReturnsResponse struct {
+	Items      []ReturnResponse `json:"items"`
+	TotalCount int              `json:"totalCount"`
+}
+
 type SettleReturnRequest struct {
 	ActorID  string `json:"actorId,omitempty"`
 	Reason   string `json:"reason,omitempty"`
@@ -212,6 +217,49 @@ func mountDomainRoutes(
 		}
 		httpapi.WriteJSON(w, http.StatusCreated, SessionAcceptedResponse{
 			Session: sessionResponse(result),
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:          http.MethodGet,
+		Path:            "/v1/returns/{returnId}",
+		OperationID:     "getReturn",
+		Summary:         "Get return",
+		Tags:            []string{"returns"},
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Return", Schema: returnAcceptedResponseSchema()},
+			"404": {Description: "Return was not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		result, err := returns.GetReturn(r.Context(), r.PathValue("returnId"))
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, ReturnAcceptedResponse{Return: returnResponse(result.Return)})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:          http.MethodGet,
+		Path:            "/v1/receipts/{receiptId}/returns",
+		OperationID:     "listReceiptReturns",
+		Summary:         "List returns for receipt",
+		Tags:            []string{"returns"},
+		QueryParameters: paginationQueryParams(),
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Returns for receipt", Schema: paginatedReturnsResponseSchema()},
+			"404": {Description: "Receipt was not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := returns.ListReturnsByReceipt(r.Context(), r.PathValue("receiptId"), params)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedReturnsResponse{
+			Items:      returnResponses(result.Items),
+			TotalCount: result.TotalCount,
 		})
 	})
 
@@ -568,6 +616,14 @@ func returnResponse(ret domain.Return) ReturnResponse {
 	}
 }
 
+func returnResponses(returns []domain.Return) []ReturnResponse {
+	result := make([]ReturnResponse, 0, len(returns))
+	for _, ret := range returns {
+		result = append(result, returnResponse(ret))
+	}
+	return result
+}
+
 func operationJournalEntryResponses(entries []domain.OperationJournalEntry) []OperationJournalEntryResponse {
 	result := make([]OperationJournalEntryResponse, 0, len(entries))
 	for _, entry := range entries {
@@ -637,6 +693,13 @@ func returnAcceptedResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"return": returnResponseSchema(),
 	}, "return")
+}
+
+func paginatedReturnsResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"items":      httpapi.ArraySchema(returnResponseSchema()),
+		"totalCount": {"type": "integer"},
+	}, "items", "totalCount")
 }
 
 func settleReturnRequestSchema() httpapi.Schema {
