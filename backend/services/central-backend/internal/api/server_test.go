@@ -103,6 +103,17 @@ func loginTestSession(t *testing.T, server http.Handler, email, password string)
 	return payload.Session.Token
 }
 
+func authorizedGet(t *testing.T, server http.Handler, path, token string) *httptest.ResponseRecorder {
+	t.Helper()
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, path, nil)
+	if token != "" {
+		request.Header.Set("X-Session-Token", token)
+	}
+	server.ServeHTTP(response, request)
+	return response
+}
+
 func newTestServerWithoutSeed() http.Handler {
 	store := memory.NewStore()
 	return api.NewServerWithServices(newTestServices(store))
@@ -163,11 +174,9 @@ func loginAdminAndRegisterStore(t *testing.T, server http.Handler, body, idempot
 func TestRegisterStoreAndStatus(t *testing.T) {
 	server := newTestServer()
 
-	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street","region":"west"}`, "register-1")
+	token := loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street","region":"west"}`, "register-1")
 
-	statusResponse := httptest.NewRecorder()
-	statusRequest := httptest.NewRequest(http.MethodGet, "/v1/central/status", nil)
-	server.ServeHTTP(statusResponse, statusRequest)
+	statusResponse := authorizedGet(t, server, "/v1/central/status", token)
 	if statusResponse.Code != http.StatusOK {
 		t.Fatalf("status = %d", statusResponse.Code)
 	}
@@ -224,7 +233,7 @@ func TestSyncEventsAndCatalogEndpoints(t *testing.T) {
 func TestListStoreSyncEventsReturnsAcceptedEvents(t *testing.T) {
 	server := newTestServer()
 
-	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-list-sync")
+	token := loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-list-sync")
 
 	syncBody := bytes.NewBufferString(`{"events":[{"eventId":"evt-list-1","eventType":"catalog.product.upserted","payload":{"productId":"sku-1","name":"Milk","barcodes":["4600000000000"],"unitPriceMinor":19999,"taxCategoryId":"vat_20"}}]}`)
 	syncRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/sync-events", syncBody)
@@ -236,9 +245,7 @@ func TestListStoreSyncEventsReturnsAcceptedEvents(t *testing.T) {
 		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
 	}
 
-	listResponse := httptest.NewRecorder()
-	listRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/sync-events", nil)
-	server.ServeHTTP(listResponse, listRequest)
+	listResponse := authorizedGet(t, server, "/v1/stores/store-1/sync-events", token)
 	if listResponse.Code != http.StatusOK {
 		t.Fatalf("list sync events status = %d body=%s", listResponse.Code, listResponse.Body.String())
 	}
@@ -258,7 +265,7 @@ func TestListStoreSyncEventsReturnsAcceptedEvents(t *testing.T) {
 func TestSyncEventsProjectPaymentsAndCashMovements(t *testing.T) {
 	server := newTestServer()
 
-	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-projection-1")
+	token := loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-projection-1")
 
 	capturedAt := time.Date(2026, 6, 19, 14, 30, 0, 0, time.UTC).Format(time.RFC3339)
 	postedAt := time.Date(2026, 6, 19, 15, 0, 0, 0, time.UTC).Format(time.RFC3339)
@@ -275,23 +282,17 @@ func TestSyncEventsProjectPaymentsAndCashMovements(t *testing.T) {
 		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
 	}
 
-	paymentResponse := httptest.NewRecorder()
-	paymentRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/payments/pay-1", nil)
-	server.ServeHTTP(paymentResponse, paymentRequest)
+	paymentResponse := authorizedGet(t, server, "/v1/stores/store-1/payments/pay-1", token)
 	if paymentResponse.Code != http.StatusOK {
 		t.Fatalf("get payment status = %d body=%s", paymentResponse.Code, paymentResponse.Body.String())
 	}
 
-	movementResponse := httptest.NewRecorder()
-	movementRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/cash-movements/cash-1", nil)
-	server.ServeHTTP(movementResponse, movementRequest)
+	movementResponse := authorizedGet(t, server, "/v1/stores/store-1/cash-movements/cash-1", token)
 	if movementResponse.Code != http.StatusOK {
 		t.Fatalf("get cash movement status = %d body=%s", movementResponse.Code, movementResponse.Body.String())
 	}
 
-	listPaymentsResponse := httptest.NewRecorder()
-	listPaymentsRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/payments", nil)
-	server.ServeHTTP(listPaymentsResponse, listPaymentsRequest)
+	listPaymentsResponse := authorizedGet(t, server, "/v1/stores/store-1/payments", token)
 	if listPaymentsResponse.Code != http.StatusOK {
 		t.Fatalf("list payments status = %d body=%s", listPaymentsResponse.Code, listPaymentsResponse.Body.String())
 	}
@@ -308,7 +309,7 @@ func TestSyncEventsProjectPaymentsAndCashMovements(t *testing.T) {
 func TestSyncEventsUpdatePaymentLifecycle(t *testing.T) {
 	server := newTestServer()
 
-	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-lifecycle-http")
+	token := loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-lifecycle-http")
 
 	capturedAt := time.Date(2026, 6, 19, 14, 30, 0, 0, time.UTC).Format(time.RFC3339)
 	cancelledAt := time.Date(2026, 6, 19, 15, 0, 0, 0, time.UTC).Format(time.RFC3339)
@@ -325,9 +326,7 @@ func TestSyncEventsUpdatePaymentLifecycle(t *testing.T) {
 		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
 	}
 
-	paymentResponse := httptest.NewRecorder()
-	paymentRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/payments/pay-1", nil)
-	server.ServeHTTP(paymentResponse, paymentRequest)
+	paymentResponse := authorizedGet(t, server, "/v1/stores/store-1/payments/pay-1", token)
 	if paymentResponse.Code != http.StatusOK {
 		t.Fatalf("get payment status = %d body=%s", paymentResponse.Code, paymentResponse.Body.String())
 	}
@@ -344,7 +343,7 @@ func TestSyncEventsUpdatePaymentLifecycle(t *testing.T) {
 func TestSyncEventsProjectFiscalDocument(t *testing.T) {
 	server := newTestServer()
 
-	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-fiscal-http")
+	token := loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-fiscal-http")
 
 	fiscalizedAt := time.Date(2026, 6, 19, 16, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	syncBody := bytes.NewBufferString(`{"events":[` +
@@ -359,9 +358,7 @@ func TestSyncEventsProjectFiscalDocument(t *testing.T) {
 		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
 	}
 
-	documentResponse := httptest.NewRecorder()
-	documentRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/fiscal-documents/fisc-1", nil)
-	server.ServeHTTP(documentResponse, documentRequest)
+	documentResponse := authorizedGet(t, server, "/v1/stores/store-1/fiscal-documents/fisc-1", token)
 	if documentResponse.Code != http.StatusOK {
 		t.Fatalf("get fiscal document status = %d body=%s", documentResponse.Code, documentResponse.Body.String())
 	}
@@ -378,7 +375,7 @@ func TestSyncEventsProjectFiscalDocument(t *testing.T) {
 func TestSyncEventsProjectReturn(t *testing.T) {
 	server := newTestServer()
 
-	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-return-http")
+	token := loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-return-http")
 
 	settledAt := time.Date(2026, 6, 19, 17, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	syncBody := bytes.NewBufferString(`{"events":[` +
@@ -393,9 +390,7 @@ func TestSyncEventsProjectReturn(t *testing.T) {
 		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
 	}
 
-	returnResponse := httptest.NewRecorder()
-	returnRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/returns/ret-1", nil)
-	server.ServeHTTP(returnResponse, returnRequest)
+	returnResponse := authorizedGet(t, server, "/v1/stores/store-1/returns/ret-1", token)
 	if returnResponse.Code != http.StatusOK {
 		t.Fatalf("get return status = %d body=%s", returnResponse.Code, returnResponse.Body.String())
 	}
@@ -412,7 +407,7 @@ func TestSyncEventsProjectReturn(t *testing.T) {
 func TestSyncEventsProjectOperationalDay(t *testing.T) {
 	server := newTestServer()
 
-	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-od-http")
+	token := loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-od-http")
 
 	closedAt := time.Date(2026, 6, 19, 23, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	syncBody := bytes.NewBufferString(`{"events":[` +
@@ -427,9 +422,7 @@ func TestSyncEventsProjectOperationalDay(t *testing.T) {
 		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
 	}
 
-	dayResponse := httptest.NewRecorder()
-	dayRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/operational-days/od-1", nil)
-	server.ServeHTTP(dayResponse, dayRequest)
+	dayResponse := authorizedGet(t, server, "/v1/stores/store-1/operational-days/od-1", token)
 	if dayResponse.Code != http.StatusOK {
 		t.Fatalf("get operational day status = %d body=%s", dayResponse.Code, dayResponse.Body.String())
 	}
@@ -759,6 +752,80 @@ func TestRegisterStoreRejectsAdminSessionWhenSyncKeyConfigured(t *testing.T) {
 	server.ServeHTTP(response, request)
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("register with session only status = %d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestSyncReadModelsRequireSession(t *testing.T) {
+	store := memory.NewStore()
+	if err := seedHTTPTestAdmin(store); err != nil {
+		t.Fatalf("seed admin: %v", err)
+	}
+	if err := seedHTTPTestViewer(store); err != nil {
+		t.Fatalf("seed viewer: %v", err)
+	}
+	server := api.NewServerWithServices(newTestServices(store))
+	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-read-models")
+
+	for _, path := range []string{
+		"/v1/central/status",
+		"/v1/stores/store-1/sync-events",
+		"/v1/stores/store-1/payments",
+	} {
+		response := authorizedGet(t, server, path, "")
+		if response.Code != http.StatusUnauthorized {
+			t.Fatalf("%s without auth status = %d body=%s", path, response.Code, response.Body.String())
+		}
+	}
+
+	viewerToken := loginTestSession(t, server, "viewer@example.com", "viewer-pass")
+	for _, path := range []string{
+		"/v1/central/status",
+		"/v1/stores/store-1/sync-events",
+		"/v1/stores/store-1/payments",
+	} {
+		response := authorizedGet(t, server, path, viewerToken)
+		if response.Code != http.StatusOK {
+			t.Fatalf("%s viewer status = %d body=%s", path, response.Code, response.Body.String())
+		}
+	}
+}
+
+func TestCatalogRequiresSyncAPIKeyWhenConfigured(t *testing.T) {
+	store := memory.NewStore()
+	server := api.NewServerWithServices(newTestServicesWithSyncAPIKey(store, "test-key"))
+
+	registerTestStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-catalog-key", registerTestStoreAuth{syncAPIKey: "test-key"})
+
+	since := time.Now().UTC().Add(-time.Hour).Format(time.RFC3339)
+
+	unauthorizedProducts := httptest.NewRecorder()
+	unauthorizedProductsRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/catalog/products", nil)
+	server.ServeHTTP(unauthorizedProducts, unauthorizedProductsRequest)
+	if unauthorizedProducts.Code != http.StatusUnauthorized {
+		t.Fatalf("products without key status = %d body=%s", unauthorizedProducts.Code, unauthorizedProducts.Body.String())
+	}
+
+	authorizedProducts := httptest.NewRecorder()
+	authorizedProductsRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/catalog/products", nil)
+	authorizedProductsRequest.Header.Set("X-Sync-Api-Key", "test-key")
+	server.ServeHTTP(authorizedProducts, authorizedProductsRequest)
+	if authorizedProducts.Code != http.StatusOK {
+		t.Fatalf("products with key status = %d body=%s", authorizedProducts.Code, authorizedProducts.Body.String())
+	}
+
+	unauthorizedDelta := httptest.NewRecorder()
+	unauthorizedDeltaRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/catalog/delta?since="+since, nil)
+	server.ServeHTTP(unauthorizedDelta, unauthorizedDeltaRequest)
+	if unauthorizedDelta.Code != http.StatusUnauthorized {
+		t.Fatalf("delta without key status = %d body=%s", unauthorizedDelta.Code, unauthorizedDelta.Body.String())
+	}
+
+	authorizedDelta := httptest.NewRecorder()
+	authorizedDeltaRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/catalog/delta?since="+since, nil)
+	authorizedDeltaRequest.Header.Set("X-Sync-Api-Key", "test-key")
+	server.ServeHTTP(authorizedDelta, authorizedDeltaRequest)
+	if authorizedDelta.Code != http.StatusOK {
+		t.Fatalf("delta with key status = %d body=%s", authorizedDelta.Code, authorizedDelta.Body.String())
 	}
 }
 

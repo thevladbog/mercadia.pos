@@ -63,7 +63,7 @@ Environment variables:
 | `MERCADIA_CENTRAL_BACKEND_SEED_ADMIN_PASSWORD` | _(empty = disabled)_ | password for seeded central admin |
 | `MERCADIA_CENTRAL_BACKEND_SEED_ADMIN_DISPLAY_NAME` | `Central Admin` | display name for seeded central admin |
 | `MERCADIA_CENTRAL_BACKEND_SEED_ADMIN_USER_ID` | `seed-admin` | id for seeded central admin |
-| `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` | _(empty = disabled)_ | shared API key for HTTP sync ingestion (`X-Sync-Api-Key`) |
+| `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` | _(empty = disabled)_ | shared API key for HTTP sync ingestion and catalog reads (`X-Sync-Api-Key`); store-edge catalog sync uses the same value when set |
 | `MERCADIA_OTEL_ENABLED` | `false` | all services (enables OpenTelemetry HTTP tracing) |
 
 Example PostgreSQL URL: `postgres://mercadia:mercadia@127.0.0.1:5433/mercadia_pos?sslmode=disable`
@@ -98,12 +98,12 @@ On PostgreSQL, command handlers that emit outbox events persist business state a
 Local smoke:
 
 1. `docker compose -f infra/docker/docker-compose.yml up -d`
-2. Register a store on central-backend: `POST /v1/stores` with `X-Session-Token` (`users.manage`, central admin) or `X-Sync-Api-Key` when `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` is set
+2. Register a store on central-backend: `POST /v1/stores` with `X-Session-Token` (`users.manage`, central admin) when sync key is unset, or `X-Sync-Api-Key` when `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` is set
 3. Start central-backend with `MERCADIA_CENTRAL_BACKEND_NATS_URL=nats://127.0.0.1:4222`
-4. Start store-edge with `MERCADIA_STORE_EDGE_NATS_URL=nats://127.0.0.1:4222`
+4. Start store-edge with `MERCADIA_STORE_EDGE_NATS_URL=nats://127.0.0.1:4222` and the same `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` when catalog sync or HTTP sync ingestion uses the key
 5. Run a checkout command that records an outbox event (for example a captured payment)
-6. Confirm the event appears in central sync events: `GET /v1/stores/{storeId}/sync-events`
-7. Confirm projected read models: `GET /v1/stores/{storeId}/payments`, `GET /v1/stores/{storeId}/cash-movements`, `GET /v1/stores/{storeId}/fiscal-documents`, `GET /v1/stores/{storeId}/returns`, and `GET /v1/stores/{storeId}/operational-days`
+6. Confirm the event appears in central sync events: `GET /v1/stores/{storeId}/sync-events` with `X-Session-Token` (`reporting.read`)
+7. Confirm projected read models with the same session token: `GET /v1/stores/{storeId}/payments`, `GET /v1/stores/{storeId}/cash-movements`, `GET /v1/stores/{storeId}/fiscal-documents`, `GET /v1/stores/{storeId}/returns`, and `GET /v1/stores/{storeId}/operational-days`
 8. After cancel/refund, return settlement, or EoD close on store-edge, confirm the corresponding central read models are updated
 
 When using NATS (steps 3–4 above), sync ingestion does not use the HTTP API key. For manual `POST /v1/stores/{storeId}/sync-events` calls, set `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` and pass `X-Sync-Api-Key` with the same value. When the env var is unset, HTTP sync ingestion remains open for local development.
@@ -258,23 +258,23 @@ cash accountability, and EoD checks can be joined without guessing from timestam
 
 The central backend service exposes store registration, sync ingestion, synced read models, and cross-store reporting:
 
-- `GET /v1/central/status` - returns region status and registered store count.
+- `GET /v1/central/status` - returns region status and registered store count. Requires `X-Session-Token` with `reporting.read`.
 - `POST /v1/stores` - registers a store (idempotent). Requires `X-Sync-Api-Key` when configured, otherwise `X-Session-Token` with `users.manage`.
 - `GET /v1/stores` - lists registered stores. Requires `X-Session-Token` with `reporting.read`.
 - `POST /v1/stores/{storeId}/sync-events` - accepts synchronized Store Edge event batches. When `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` is set, requires `X-Sync-Api-Key`.
-- `GET /v1/stores/{storeId}/sync-events` - lists accepted sync events (paginated, newest first).
-- `GET /v1/stores/{storeId}/catalog/products` - lists catalog products for a store.
-- `GET /v1/stores/{storeId}/catalog/delta` - returns catalog products updated since a timestamp.
-- `GET /v1/stores/{storeId}/payments` - lists synchronized payments (paginated).
-- `GET /v1/stores/{storeId}/payments/{paymentId}` - returns a synchronized payment.
-- `GET /v1/stores/{storeId}/cash-movements` - lists synchronized cash movements (paginated).
-- `GET /v1/stores/{storeId}/cash-movements/{cashMovementId}` - returns a synchronized cash movement.
-- `GET /v1/stores/{storeId}/fiscal-documents` - lists synchronized fiscal documents (paginated).
-- `GET /v1/stores/{storeId}/fiscal-documents/{fiscalDocumentId}` - returns a synchronized fiscal document.
-- `GET /v1/stores/{storeId}/returns` - lists synchronized returns (paginated).
-- `GET /v1/stores/{storeId}/returns/{returnId}` - returns a synchronized return.
-- `GET /v1/stores/{storeId}/operational-days` - lists synchronized closed operational days (paginated).
-- `GET /v1/stores/{storeId}/operational-days/{operationalDayId}` - returns a synchronized closed operational day.
+- `GET /v1/stores/{storeId}/sync-events` - lists accepted sync events (paginated, newest first). Requires `X-Session-Token` with `reporting.read`.
+- `GET /v1/stores/{storeId}/catalog/products` - lists catalog products for a store. Requires `X-Sync-Api-Key` when configured.
+- `GET /v1/stores/{storeId}/catalog/delta` - returns catalog products updated since a timestamp. Requires `X-Sync-Api-Key` when configured.
+- `GET /v1/stores/{storeId}/payments` - lists synchronized payments (paginated). Requires `X-Session-Token` with `reporting.read`.
+- `GET /v1/stores/{storeId}/payments/{paymentId}` - returns a synchronized payment. Requires `X-Session-Token` with `reporting.read`.
+- `GET /v1/stores/{storeId}/cash-movements` - lists synchronized cash movements (paginated). Requires `X-Session-Token` with `reporting.read`.
+- `GET /v1/stores/{storeId}/cash-movements/{cashMovementId}` - returns a synchronized cash movement. Requires `X-Session-Token` with `reporting.read`.
+- `GET /v1/stores/{storeId}/fiscal-documents` - lists synchronized fiscal documents (paginated). Requires `X-Session-Token` with `reporting.read`.
+- `GET /v1/stores/{storeId}/fiscal-documents/{fiscalDocumentId}` - returns a synchronized fiscal document. Requires `X-Session-Token` with `reporting.read`.
+- `GET /v1/stores/{storeId}/returns` - lists synchronized returns (paginated). Requires `X-Session-Token` with `reporting.read`.
+- `GET /v1/stores/{storeId}/returns/{returnId}` - returns a synchronized return. Requires `X-Session-Token` with `reporting.read`.
+- `GET /v1/stores/{storeId}/operational-days` - lists synchronized closed operational days (paginated). Requires `X-Session-Token` with `reporting.read`.
+- `GET /v1/stores/{storeId}/operational-days/{operationalDayId}` - returns a synchronized closed operational day. Requires `X-Session-Token` with `reporting.read`.
 - `GET /v1/stores/{storeId}/reporting/summary?since=&until=` - store KPI snapshot from synced projections (RFC3339 inclusive window). Requires `X-Session-Token` with `reporting.read`.
 - `GET /v1/central/reporting/summary?since=&until=&region=` - network KPI aggregate across registered stores. Requires `X-Session-Token` with `reporting.central.read`.
 - `GET /v1/central/reporting/stores?since=&until=&region=&limit=&offset=` - paginated per-store reporting rows for drill-down. Requires `X-Session-Token` with `reporting.central.read`.
@@ -286,7 +286,7 @@ The central backend service exposes store registration, sync ingestion, synced r
 
 Reporting aggregates use synced fiscal documents (`kind=receipt` for revenue proxy), payments, returns, cash movements, and closed operational days within the requested time window.
 
-Central roles in v1: `central_viewer` (reporting read) and `central_admin` (reporting + user management). Store registration and sync ingestion remain unauthenticated so store-edge NATS sync keeps working without human login.
+Central roles in v1: `central_viewer` (reporting read) and `central_admin` (reporting + user management). NATS sync ingestion does not use the HTTP API key. HTTP sync ingestion and catalog reads require `X-Sync-Api-Key` when `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` is set; synced read-model GET endpoints require `X-Session-Token` with `reporting.read`.
 
 Auth smoke:
 
@@ -295,6 +295,6 @@ Auth smoke:
 3. Call reporting endpoints with `X-Session-Token: <token from step 2>`
 4. Confirm `GET /v1/central/reporting/summary` returns 401 without the header
 
-After a captured payment or NATS-delivered sync event, use `GET /v1/stores/{storeId}/sync-events`
+After a captured payment or NATS-delivered sync event, use `GET /v1/stores/{storeId}/sync-events` with `X-Session-Token`
 to confirm central ingestion without querying Postgres directly. Then query `GET /v1/stores/{storeId}/reporting/summary`
 or the central reporting endpoints for cross-store KPIs.

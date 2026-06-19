@@ -22,6 +22,8 @@ import type {
 
 import type {
   GetCentralStatus200,
+  GetCentralStatus401,
+  GetCentralStatus403,
   GetHealth200,
   GetReadiness200
 } from '../models';
@@ -277,12 +279,24 @@ export type getCentralStatusResponse200 = {
   status: 200
 }
 
+export type getCentralStatusResponse401 = {
+  data: GetCentralStatus401
+  status: 401
+}
+
+export type getCentralStatusResponse403 = {
+  data: GetCentralStatus403
+  status: 403
+}
+
 export type getCentralStatusResponseSuccess = (getCentralStatusResponse200) & {
   headers: Headers;
 };
-;
+export type getCentralStatusResponseError = (getCentralStatusResponse401 | getCentralStatusResponse403) & {
+  headers: Headers;
+};
 
-export type getCentralStatusResponse = (getCentralStatusResponseSuccess)
+export type getCentralStatusResponse = (getCentralStatusResponseSuccess | getCentralStatusResponseError)
 
 export const getGetCentralStatusUrl = () => {
 
@@ -293,6 +307,7 @@ export const getGetCentralStatusUrl = () => {
 }
 
 /**
+ * Returns region status and registered store count. Requires `X-Session-Token` header.
  * @summary Get central backend status
  */
 export const getCentralStatus = async ( options?: RequestInit): Promise<getCentralStatusResponse> => {
@@ -317,7 +332,7 @@ export const getGetCentralStatusQueryKey = () => {
     }
 
 
-export const getGetCentralStatusQueryOptions = <TData = Awaited<ReturnType<typeof getCentralStatus>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCentralStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetCentralStatusQueryOptions = <TData = Awaited<ReturnType<typeof getCentralStatus>>, TError = GetCentralStatus401 | GetCentralStatus403>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCentralStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -336,10 +351,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetCentralStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getCentralStatus>>>
-export type GetCentralStatusQueryError = unknown
+export type GetCentralStatusQueryError = GetCentralStatus401 | GetCentralStatus403
 
 
-export function useGetCentralStatus<TData = Awaited<ReturnType<typeof getCentralStatus>>, TError = unknown>(
+export function useGetCentralStatus<TData = Awaited<ReturnType<typeof getCentralStatus>>, TError = GetCentralStatus401 | GetCentralStatus403>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCentralStatus>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getCentralStatus>>,
@@ -349,7 +364,7 @@ export function useGetCentralStatus<TData = Awaited<ReturnType<typeof getCentral
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetCentralStatus<TData = Awaited<ReturnType<typeof getCentralStatus>>, TError = unknown>(
+export function useGetCentralStatus<TData = Awaited<ReturnType<typeof getCentralStatus>>, TError = GetCentralStatus401 | GetCentralStatus403>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCentralStatus>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getCentralStatus>>,
@@ -359,7 +374,7 @@ export function useGetCentralStatus<TData = Awaited<ReturnType<typeof getCentral
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetCentralStatus<TData = Awaited<ReturnType<typeof getCentralStatus>>, TError = unknown>(
+export function useGetCentralStatus<TData = Awaited<ReturnType<typeof getCentralStatus>>, TError = GetCentralStatus401 | GetCentralStatus403>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCentralStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -367,7 +382,7 @@ export function useGetCentralStatus<TData = Awaited<ReturnType<typeof getCentral
  * @summary Get central backend status
  */
 
-export function useGetCentralStatus<TData = Awaited<ReturnType<typeof getCentralStatus>>, TError = unknown>(
+export function useGetCentralStatus<TData = Awaited<ReturnType<typeof getCentralStatus>>, TError = GetCentralStatus401 | GetCentralStatus403>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCentralStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

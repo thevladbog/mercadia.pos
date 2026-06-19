@@ -604,7 +604,11 @@ func buildServer(opts ServerOptions) (*http.ServeMux, *httpapi.Spec, app.OutboxR
 
 	var catalogSync *app.CatalogSyncService
 	if centralBackendURL != "" {
-		centralClient := centralclient.NewClient(centralBackendURL, nil)
+		centralClient := centralclient.NewClientWithSyncAPIKey(
+			centralBackendURL,
+			os.Getenv("MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY"),
+			nil,
+		)
 		catalogSync = app.NewCatalogSyncService(store, store, centralClient)
 	}
 
