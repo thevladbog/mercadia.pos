@@ -192,6 +192,16 @@
     },
     "entityDetail": {
       "sourceEventHint": "(событие магазина; центрального detail view нет)"
+    },
+    "receiptDetail": {
+      "title": "Чек (central read model)",
+      "receiptId": "ID чека",
+      "centralHint": "Сводка из central sync projections для этого магазина. Построчные детали чека доступны в мониторинге или EoD.",
+      "payments": "Связанные оплаты",
+      "fiscalDocuments": "Связанные fiscal documents",
+      "returns": "Связанные возвраты",
+      "noRelated": "Связанные sync projections для этого чека не найдены на первой странице каждого списка.",
+      "partialScan": "Просмотрена только первая страница каждой проекции; более старые связанные записи могут быть на следующих страницах."
     }
   },
   "monitoring": {

@@ -192,6 +192,16 @@
     },
     "entityDetail": {
       "sourceEventHint": "(store event; no central detail view)"
+    },
+    "receiptDetail": {
+      "title": "Receipt (central read model)",
+      "receiptId": "Receipt ID",
+      "centralHint": "Summary from central sync projections for this store. Line-level receipt detail is available from store monitoring or EoD.",
+      "payments": "Related payments",
+      "fiscalDocuments": "Related fiscal documents",
+      "returns": "Related returns",
+      "noRelated": "No related sync projections found for this receipt in the first page of each entity list.",
+      "partialScan": "Only the first page of each projection was scanned; older related entities may exist on later pages."
     }
   },
   "monitoring": {

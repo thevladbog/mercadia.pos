@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
-import { ReceiptDetailModal } from '@/components/eod/ReceiptDetailModal.js';
+import { CentralReceiptDetailModal } from '@/components/sync/CentralReceiptDetailModal.js';
 import { PageBackLink } from './users-shared.js';
 import {
   fieldsFromSyncEntityRecord,
@@ -165,7 +165,11 @@ export function SyncEntityDetailPage() {
       </div>
 
       {detailReceiptId ? (
-        <ReceiptDetailModal receiptId={detailReceiptId} onClose={() => setDetailReceiptId(null)} />
+        <CentralReceiptDetailModal
+          receiptId={detailReceiptId}
+          storeId={storeId}
+          onClose={() => setDetailReceiptId(null)}
+        />
       ) : null}
     </section>
   );

@@ -20,7 +20,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 
 import { PaginationControls } from '@/components/PaginationControls.js';
 import { StorePicker } from '@/components/StorePicker.js';
-import { ReceiptDetailModal } from '@/components/eod/ReceiptDetailModal.js';
+import { CentralReceiptDetailModal } from '@/components/sync/CentralReceiptDetailModal.js';
 import { SyncEventDetailModal } from '@/components/sync/SyncEventDetailModal.js';
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { formatMinorAmount, formatTimestamp, PAGE_SIZE } from './reporting-utils.js';
@@ -323,7 +323,11 @@ export function CentralSyncExplorerPage() {
         <SyncEventDetailModal event={activeDetailSyncEvent} onClose={handleCloseSyncEvent} />
       ) : null}
       {detailReceiptId ? (
-        <ReceiptDetailModal receiptId={detailReceiptId} onClose={() => setDetailReceiptId(null)} />
+        <CentralReceiptDetailModal
+          receiptId={detailReceiptId}
+          storeId={activeStoreId}
+          onClose={() => setDetailReceiptId(null)}
+        />
       ) : null}
     </section>
   );

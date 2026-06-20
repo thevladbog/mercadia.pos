@@ -122,9 +122,9 @@ Requires central-backend (store list and sync read-models). Data is populated vi
 2. Select a store — sync events and entity tabs load (or empty state if no sync yet).
 3. On **Sync events**, click a source event ID or event type — read-only detail modal shows payload JSON.
 4. Change tab or store — URL updates with `tab` and `store` query params; shared links restore state.
-5. Open a payment or return entity detail page — click `receiptId` to open the receipt modal; on returns,
+5. Open a payment or return entity detail page — click `receiptId` to open the central receipt summary modal; on returns,
    `paymentIds` link to payment entity pages.
-6. On the **Returns** tab, click a receipt ID — receipt detail modal opens.
+6. On the **Returns** tab, click a receipt ID — central receipt summary modal lists related sync projections.
 
 ### Store monitoring smoke test
 
