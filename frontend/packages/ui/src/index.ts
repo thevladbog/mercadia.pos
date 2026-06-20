@@ -11,7 +11,7 @@ export {
   DetailDialog,
   FormDialog,
 } from './components/Dialog/Dialog.js';
-export { Field, Input, Label, Select, Textarea } from './components/Input/Input.js';
+export { Checkbox, Field, Input, Label, Select, Textarea } from './components/Input/Input.js';
 export { PillTabs, Tabs, TabsContent, TabsList, TabsTrigger } from './components/Tabs/Tabs.js';
 export { Card, CardHeading, cardVariants } from './components/Card/Card.js';
 export { LayoutGrid } from './components/LayoutGrid/LayoutGrid.js';

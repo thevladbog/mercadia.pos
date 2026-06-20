@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
+import { TextField } from '@/components/FormControls.js';
 
 export function RegisterStorePage() {
   const { t } = useTranslation();
@@ -77,18 +78,14 @@ export function RegisterStorePage() {
         <h2>{t('stores.registerTitle')}</h2>
         <p className="muted">{t('stores.registerSubtitle')}</p>
         <form className="stack" onSubmit={handleSubmit}>
-          <label className="field">
-            <span>{t('stores.storeIdField')}</span>
-            <input required value={storeId} onChange={(event) => setStoreId(event.target.value)} />
-          </label>
-          <label className="field">
-            <span>{t('stores.storeName')}</span>
-            <input required value={name} onChange={(event) => setName(event.target.value)} />
-          </label>
-          <label className="field">
-            <span>{t('stores.regionField')}</span>
-            <input value={region} onChange={(event) => setRegion(event.target.value)} />
-          </label>
+          <TextField
+            required
+            label={t('stores.storeIdField')}
+            value={storeId}
+            onValueChange={setStoreId}
+          />
+          <TextField required label={t('stores.storeName')} value={name} onValueChange={setName} />
+          <TextField label={t('stores.regionField')} value={region} onValueChange={setRegion} />
           {errorMessage ? <p className="error">{errorMessage}</p> : null}
           <div className="form-actions">
             <Button disabled={mutation.isPending} type="submit">

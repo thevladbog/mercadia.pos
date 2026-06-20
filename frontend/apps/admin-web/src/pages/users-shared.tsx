@@ -6,6 +6,7 @@ import {
   CENTRAL_ROLE_OPTIONS,
   CENTRAL_ROLE_VIEWER,
 } from '@/auth/permissions.js';
+import { CheckboxField } from '@/components/FormControls.js';
 
 type CentralRoleFieldsProps = {
   roles: string[];
@@ -38,14 +39,12 @@ export function CentralRoleFields({ roles, onChange }: CentralRoleFieldsProps) {
       <legend>{t('users.roles')}</legend>
       <div className="role-options">
         {CENTRAL_ROLE_OPTIONS.map((role) => (
-          <label className="checkbox-field" key={role}>
-            <input
-              checked={roles.includes(role)}
-              type="checkbox"
-              onChange={(event) => toggleRole(role, event.target.checked)}
-            />
-            <span>{roleLabel(role)}</span>
-          </label>
+          <CheckboxField
+            checked={roles.includes(role)}
+            key={role}
+            label={roleLabel(role)}
+            onCheckedChange={(checked) => toggleRole(role, checked)}
+          />
         ))}
       </div>
     </fieldset>

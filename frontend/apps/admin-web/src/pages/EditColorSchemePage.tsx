@@ -15,6 +15,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import { ColorSchemePreviewPanel } from '@/components/branding/ColorSchemePreviewPanel.js';
 import { getApiErrorMessage } from '@/auth/api-errors.js';
+import { CheckboxField, SelectField, TextField } from '@/components/FormControls.js';
 import {
   ACCENT_PRESET_OPTIONS,
   accentPresetLabel,
@@ -88,54 +89,44 @@ function EditColorSchemeForm({ scheme, schemeId }: EditColorSchemeFormProps) {
     <div className="stack">
       <form className="stack" onSubmit={handleSubmit}>
         <p className="readonly-field">{scheme.id}</p>
-        <label className="field">
-          <span>{t('colorSchemes.name')}</span>
-          <input required value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label className="field">
-          <span>{t('colorSchemes.logoUrl')}</span>
-          <input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} />
-        </label>
-        <label className="field">
-          <span>{t('colorSchemes.accentPreset')}</span>
-          <select value={accentPreset} onChange={(e) => setAccentPreset(e.target.value)}>
-            {ACCENT_PRESET_OPTIONS.map((preset) => (
-              <option key={preset} value={preset}>
-                {accentPresetLabel(t, preset)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>{t('colorSchemes.accentColor')}</span>
-          <input value={accentColor} onChange={(e) => setAccentColor(e.target.value)} />
-        </label>
-        <label className="field">
-          <span>{t('colorSchemes.backgroundColor')}</span>
-          <input value={backgroundColor} onChange={(e) => setBackgroundColor(e.target.value)} />
-        </label>
-        <label className="field">
-          <span>{t('colorSchemes.status')}</span>
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="draft">{t('branding.status.draft')}</option>
-            <option value="published">{t('branding.status.published')}</option>
-          </select>
-        </label>
+        <TextField required label={t('colorSchemes.name')} value={name} onValueChange={setName} />
+        <TextField label={t('colorSchemes.logoUrl')} value={logoUrl} onValueChange={setLogoUrl} />
+        <SelectField
+          label={t('colorSchemes.accentPreset')}
+          value={accentPreset}
+          onValueChange={setAccentPreset}
+        >
+          {ACCENT_PRESET_OPTIONS.map((preset) => (
+            <option key={preset} value={preset}>
+              {accentPresetLabel(t, preset)}
+            </option>
+          ))}
+        </SelectField>
+        <TextField
+          label={t('colorSchemes.accentColor')}
+          value={accentColor}
+          onValueChange={setAccentColor}
+        />
+        <TextField
+          label={t('colorSchemes.backgroundColor')}
+          value={backgroundColor}
+          onValueChange={setBackgroundColor}
+        />
+        <SelectField label={t('colorSchemes.status')} value={status} onValueChange={setStatus}>
+          <option value="draft">{t('branding.status.draft')}</option>
+          <option value="published">{t('branding.status.published')}</option>
+        </SelectField>
         {stores.length > 0 ? (
           <fieldset className="role-fieldset">
             <legend>{t('colorSchemes.storeIds')}</legend>
             <div className="role-options">
               {stores.map((store) => (
-                <label className="checkbox-field" key={store.id}>
-                  <input
-                    checked={storeIds.includes(store.id)}
-                    type="checkbox"
-                    onChange={(e) => toggleStore(store.id, e.target.checked)}
-                  />
-                  <span>
-                    {store.name} ({store.id})
-                  </span>
-                </label>
+                <CheckboxField
+                  checked={storeIds.includes(store.id)}
+                  key={store.id}
+                  label={`${store.name} (${store.id})`}
+                  onCheckedChange={(checked) => toggleStore(store.id, checked)}
+                />
               ))}
             </div>
           </fieldset>

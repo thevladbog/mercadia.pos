@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { CENTRAL_ROLE_VIEWER } from '@/auth/permissions.js';
+import { TextField } from '@/components/FormControls.js';
 import { CentralRoleFields, PageBackLink } from './users-shared.js';
 
 export function CreateCentralUserPage() {
@@ -72,32 +73,26 @@ export function CreateCentralUserPage() {
         <h2>{t('users.createTitle')}</h2>
         <p className="muted">{t('users.subtitle')}</p>
         <form className="stack" onSubmit={handleSubmit}>
-          <label className="field">
-            <span>{t('users.userId')}</span>
-            <input required value={userId} onChange={(event) => setUserId(event.target.value)} />
-          </label>
-          <label className="field">
-            <span>{t('users.email')}</span>
-            <input
-              required
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>{t('users.displayName')}</span>
-            <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
-          </label>
-          <label className="field">
-            <span>{t('users.password')}</span>
-            <input
-              required
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
+          <TextField required label={t('users.userId')} value={userId} onValueChange={setUserId} />
+          <TextField
+            required
+            label={t('users.email')}
+            type="email"
+            value={email}
+            onValueChange={setEmail}
+          />
+          <TextField
+            label={t('users.displayName')}
+            value={displayName}
+            onValueChange={setDisplayName}
+          />
+          <TextField
+            required
+            label={t('users.password')}
+            type="password"
+            value={password}
+            onValueChange={setPassword}
+          />
           <CentralRoleFields roles={roles} onChange={setRoles} />
           {errorMessage ? <p className="error">{errorMessage}</p> : null}
           <div className="form-actions">
