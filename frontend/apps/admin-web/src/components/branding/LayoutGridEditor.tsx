@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 type LayoutGridEditorProps = {
   grid: LayoutGridSpec;
+  catalogReady?: boolean;
   knownProductIds?: ReadonlySet<string>;
   onChange: (grid: LayoutGridSpec) => void;
 };
@@ -39,7 +40,12 @@ function createCategoryId(): string {
   return `cat-${Date.now().toString(36)}`;
 }
 
-export function LayoutGridEditor({ grid, knownProductIds, onChange }: LayoutGridEditorProps) {
+export function LayoutGridEditor({
+  grid,
+  catalogReady,
+  knownProductIds,
+  onChange,
+}: LayoutGridEditorProps) {
   const { t } = useTranslation();
   const [activeCategoryId, setActiveCategoryId] = useState(ALL_CATEGORIES);
   const categories = grid.categories ?? [];
@@ -95,7 +101,7 @@ export function LayoutGridEditor({ grid, knownProductIds, onChange }: LayoutGrid
         {
           label: '',
           color: '#FF6600',
-          ...(activeCategoryId ? { categoryId: activeCategoryId } : {}),
+          ...(activeCategoryId !== ALL_CATEGORIES ? { categoryId: activeCategoryId } : {}),
         },
       ],
     });
@@ -109,7 +115,7 @@ export function LayoutGridEditor({ grid, knownProductIds, onChange }: LayoutGrid
   }
 
   function isUnknownProduct(productId: string | undefined): boolean {
-    if (!productId || !knownProductIds) {
+    if (!productId || !knownProductIds || !catalogReady) {
       return false;
     }
     return !knownProductIds.has(productId);
@@ -270,7 +276,7 @@ export function LayoutGridEditor({ grid, knownProductIds, onChange }: LayoutGrid
               <label className="field">
                 <span>{t('layoutTemplates.gridEditor.iconUrl')}</span>
                 <input
-                  placeholder="https://"
+                  placeholder={t('layoutTemplates.gridEditor.iconUrlPlaceholder')}
                   value={tile.iconUrl ?? ''}
                   onChange={(event) =>
                     onChange({

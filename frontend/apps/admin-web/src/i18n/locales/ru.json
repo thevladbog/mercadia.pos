@@ -693,6 +693,7 @@
     "gridJson": "JSON сетки",
     "invalidGrid": "Некорректный JSON сетки.",
     "publishRequiresStore": "Выберите магазин перед публикацией шаблона с привязанными товарами.",
+    "catalogNotReady": "Дождитесь загрузки каталога магазина перед публикацией.",
     "invalidProducts": "Неизвестные ID товаров: {{productIds}}",
     "unknownProduct": "Товар {{productId}} отсутствует в каталоге выбранного магазина.",
     "accent": "Акцент",
@@ -722,7 +723,8 @@
       "allCategories": "Все",
       "category": "Категория",
       "uncategorized": "Без категории",
-      "iconUrl": "URL иконки"
+      "iconUrl": "URL иконки",
+      "iconUrlPlaceholder": "https://"
     }
   }
 }

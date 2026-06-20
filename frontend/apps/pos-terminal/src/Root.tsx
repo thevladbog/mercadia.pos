@@ -42,11 +42,17 @@ function TerminalShell() {
     ? {
         rows: template.grid.rows ?? 4,
         cols: template.grid.cols ?? 4,
+        categories: (template.grid.categories ?? []).map((category) => ({
+          id: category.id ?? '',
+          label: category.label ?? '',
+        })),
         tiles: (template.grid.tiles ?? []).map((tile) => ({
           label: tile.label ?? '',
           color: tile.color,
           productId: tile.productId,
           empty: tile.empty,
+          categoryId: tile.categoryId,
+          iconUrl: tile.iconUrl,
         })),
       }
     : { rows: 4, cols: 4, tiles: [{ label: 'Demo item' }, { label: 'Return item' }] };

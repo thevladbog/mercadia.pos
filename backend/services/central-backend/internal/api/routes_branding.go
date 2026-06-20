@@ -255,7 +255,7 @@ func mountBrandingRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Servic
 		Summary:     "Create layout template",
 		Tags:        []string{"layout-templates"},
 		RequestBody: &httpapi.BodySpec{Required: true, Schema: createLayoutTemplateRequestSchema()},
-		Responses:   protectedResponseSpecs("201", "Layout template created", layoutTemplateAcceptedResponseSchema()),
+		Responses: layoutTemplateWriteResponseSpecs("201", "Layout template created", layoutTemplateAcceptedResponseSchema()),
 	}, RequireSession(services.Auth, app.PermissionUsersManage, func(w http.ResponseWriter, r *http.Request) {
 		session, _ := SessionFromContext(r.Context())
 		var request CreateLayoutTemplateRequest
@@ -310,7 +310,7 @@ func mountBrandingRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Servic
 		Summary:     "Update layout template",
 		Tags:        []string{"layout-templates"},
 		RequestBody: &httpapi.BodySpec{Required: true, Schema: updateLayoutTemplateRequestSchema()},
-		Responses:   protectedResponseSpecs("200", "Layout template updated", layoutTemplateAcceptedResponseSchema()),
+		Responses: layoutTemplateWriteResponseSpecs("200", "Layout template updated", layoutTemplateAcceptedResponseSchema()),
 	}, RequireSession(services.Auth, app.PermissionUsersManage, func(w http.ResponseWriter, r *http.Request) {
 		session, _ := SessionFromContext(r.Context())
 		var request UpdateLayoutTemplateRequest
@@ -417,6 +417,22 @@ func layoutTemplateResponses(results []app.LayoutTemplateResult) []LayoutTemplat
 		responses = append(responses, layoutTemplateResponse(result))
 	}
 	return responses
+}
+
+func layoutTemplateWriteResponseSpecs(
+	successCode string,
+	successDescription string,
+	successSchema httpapi.Schema,
+) map[string]httpapi.ResponseSpec {
+	return mergeResponseSpecs(
+		protectedResponseSpecs(successCode, successDescription, successSchema),
+		map[string]httpapi.ResponseSpec{
+			"422": {
+				Description: "Layout template publish validation failed",
+				Schema:      httpapi.ProblemSchema(),
+			},
+		},
+	)
 }
 
 func layoutGridSchema() httpapi.Schema {

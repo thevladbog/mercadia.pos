@@ -35,9 +35,18 @@ export function LayoutTemplatePreview({
   const surface: Surface = kind === 'sco' ? 'sco' : 'terminal';
   const categories = grid.categories ?? [];
   const [activeCategoryId, setActiveCategoryId] = useState(ALL_CATEGORIES);
+  const resolvedCategoryId = useMemo(() => {
+    if (activeCategoryId === ALL_CATEGORIES) {
+      return ALL_CATEGORIES;
+    }
+    return categories.some((category) => category.id === activeCategoryId)
+      ? activeCategoryId
+      : ALL_CATEGORIES;
+  }, [activeCategoryId, categories]);
   const previewGrid = useMemo(
-    () => filterGridByCategory(grid, activeCategoryId === ALL_CATEGORIES ? null : activeCategoryId),
-    [activeCategoryId, grid],
+    () =>
+      filterGridByCategory(grid, resolvedCategoryId === ALL_CATEGORIES ? null : resolvedCategoryId),
+    [resolvedCategoryId, grid],
   );
 
   return (
@@ -61,7 +70,7 @@ export function LayoutTemplatePreview({
         <Button type="button">{t('layoutTemplates.previewAction')}</Button>
       </div>
       {categories.length > 0 ? (
-        <Tabs value={activeCategoryId} onValueChange={setActiveCategoryId}>
+        <Tabs value={resolvedCategoryId} onValueChange={setActiveCategoryId}>
           <TabsList aria-label={t('layoutTemplates.gridEditor.categories')}>
             <TabsTrigger value={ALL_CATEGORIES}>
               {t('layoutTemplates.gridEditor.allCategories')}

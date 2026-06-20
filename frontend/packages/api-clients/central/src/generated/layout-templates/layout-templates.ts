@@ -28,6 +28,7 @@ import type {
   CreateLayoutTemplate201,
   CreateLayoutTemplate401,
   CreateLayoutTemplate403,
+  CreateLayoutTemplate422,
   CreateLayoutTemplateBody,
   GetLayoutTemplate200,
   GetLayoutTemplate401,
@@ -39,6 +40,7 @@ import type {
   UpdateLayoutTemplate200,
   UpdateLayoutTemplate401,
   UpdateLayoutTemplate403,
+  UpdateLayoutTemplate422,
   UpdateLayoutTemplateBody
 } from '../models';
 
@@ -203,10 +205,15 @@ export type createLayoutTemplateResponse403 = {
   status: 403
 }
 
+export type createLayoutTemplateResponse422 = {
+  data: CreateLayoutTemplate422
+  status: 422
+}
+
 export type createLayoutTemplateResponseSuccess = (createLayoutTemplateResponse201) & {
   headers: Headers;
 };
-export type createLayoutTemplateResponseError = (createLayoutTemplateResponse401 | createLayoutTemplateResponse403) & {
+export type createLayoutTemplateResponseError = (createLayoutTemplateResponse401 | createLayoutTemplateResponse403 | createLayoutTemplateResponse422) & {
   headers: Headers;
 };
 
@@ -237,7 +244,7 @@ export const createLayoutTemplate = async (createLayoutTemplateBody: CreateLayou
 
 
 
-export const getCreateLayoutTemplateMutationOptions = <TError = CreateLayoutTemplate401 | CreateLayoutTemplate403,
+export const getCreateLayoutTemplateMutationOptions = <TError = CreateLayoutTemplate401 | CreateLayoutTemplate403 | CreateLayoutTemplate422,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLayoutTemplate>>, TError,{data: CreateLayoutTemplateBody}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createLayoutTemplate>>, TError,{data: CreateLayoutTemplateBody}, TContext> => {
 
@@ -266,12 +273,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateLayoutTemplateMutationResult = NonNullable<Awaited<ReturnType<typeof createLayoutTemplate>>>
     export type CreateLayoutTemplateMutationBody = CreateLayoutTemplateBody
-    export type CreateLayoutTemplateMutationError = CreateLayoutTemplate401 | CreateLayoutTemplate403
+    export type CreateLayoutTemplateMutationError = CreateLayoutTemplate401 | CreateLayoutTemplate403 | CreateLayoutTemplate422
 
     /**
  * @summary Create layout template
  */
-export const useCreateLayoutTemplate = <TError = CreateLayoutTemplate401 | CreateLayoutTemplate403,
+export const useCreateLayoutTemplate = <TError = CreateLayoutTemplate401 | CreateLayoutTemplate403 | CreateLayoutTemplate422,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLayoutTemplate>>, TError,{data: CreateLayoutTemplateBody}, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createLayoutTemplate>>,
@@ -425,10 +432,15 @@ export type updateLayoutTemplateResponse403 = {
   status: 403
 }
 
+export type updateLayoutTemplateResponse422 = {
+  data: UpdateLayoutTemplate422
+  status: 422
+}
+
 export type updateLayoutTemplateResponseSuccess = (updateLayoutTemplateResponse200) & {
   headers: Headers;
 };
-export type updateLayoutTemplateResponseError = (updateLayoutTemplateResponse401 | updateLayoutTemplateResponse403) & {
+export type updateLayoutTemplateResponseError = (updateLayoutTemplateResponse401 | updateLayoutTemplateResponse403 | updateLayoutTemplateResponse422) & {
   headers: Headers;
 };
 
@@ -460,7 +472,7 @@ export const updateLayoutTemplate = async (templateId: string,
 
 
 
-export const getUpdateLayoutTemplateMutationOptions = <TError = UpdateLayoutTemplate401 | UpdateLayoutTemplate403,
+export const getUpdateLayoutTemplateMutationOptions = <TError = UpdateLayoutTemplate401 | UpdateLayoutTemplate403 | UpdateLayoutTemplate422,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLayoutTemplate>>, TError,{templateId: string;data: UpdateLayoutTemplateBody}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateLayoutTemplate>>, TError,{templateId: string;data: UpdateLayoutTemplateBody}, TContext> => {
 
@@ -489,12 +501,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateLayoutTemplateMutationResult = NonNullable<Awaited<ReturnType<typeof updateLayoutTemplate>>>
     export type UpdateLayoutTemplateMutationBody = UpdateLayoutTemplateBody
-    export type UpdateLayoutTemplateMutationError = UpdateLayoutTemplate401 | UpdateLayoutTemplate403
+    export type UpdateLayoutTemplateMutationError = UpdateLayoutTemplate401 | UpdateLayoutTemplate403 | UpdateLayoutTemplate422
 
     /**
  * @summary Update layout template
  */
-export const useUpdateLayoutTemplate = <TError = UpdateLayoutTemplate401 | UpdateLayoutTemplate403,
+export const useUpdateLayoutTemplate = <TError = UpdateLayoutTemplate401 | UpdateLayoutTemplate403 | UpdateLayoutTemplate422,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLayoutTemplate>>, TError,{templateId: string;data: UpdateLayoutTemplateBody}, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof updateLayoutTemplate>>,

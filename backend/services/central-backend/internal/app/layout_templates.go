@@ -56,16 +56,19 @@ func (s *LayoutTemplatesService) validatePublishedGrid(
 	}
 	missing := make([]string, 0)
 	for _, tile := range grid.Tiles {
-		if tile.Empty || tile.ProductID == "" {
+		if tile.ProductID == "" {
 			continue
 		}
-		_, err := s.products.FindProduct(ctx, storeID, tile.ProductID)
+		product, err := s.products.FindProduct(ctx, storeID, tile.ProductID)
 		if errors.Is(err, ErrCatalogProductNotFound) {
 			missing = append(missing, tile.ProductID)
 			continue
 		}
 		if err != nil {
 			return err
+		}
+		if !product.Active {
+			missing = append(missing, tile.ProductID)
 		}
 	}
 	if len(missing) > 0 {

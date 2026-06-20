@@ -48,6 +48,7 @@ export function CreateLayoutTemplatePage() {
   const productsQuery = useListStoreCatalogProducts(storeId, {
     query: { enabled: storeId.length > 0 },
   });
+  const catalogReady = storeId.length === 0 || productsQuery.data?.status === 200;
   const knownProductIds = useMemo(() => {
     const products = productsQuery.data?.status === 200 ? productsQuery.data.data.products : [];
     return new Set(products.map((product) => product.id));
@@ -74,10 +75,12 @@ export function CreateLayoutTemplatePage() {
     setErrorMessage(null);
 
     if (status === 'published') {
-      const validation = validateGridForPublish(grid, storeId, knownProductIds);
+      const validation = validateGridForPublish(grid, storeId, { catalogReady, knownProductIds });
       if (!validation.ok) {
         if (validation.reason === 'publishRequiresStore') {
           setErrorMessage(t('layoutTemplates.publishRequiresStore'));
+        } else if (validation.reason === 'catalogNotReady') {
+          setErrorMessage(t('layoutTemplates.catalogNotReady'));
         } else {
           setErrorMessage(
             t('layoutTemplates.invalidProducts', {
@@ -182,6 +185,7 @@ export function CreateLayoutTemplatePage() {
               </select>
             </label>
             <LayoutGridEditor
+              catalogReady={storeId ? catalogReady : undefined}
               grid={grid}
               knownProductIds={storeId ? knownProductIds : undefined}
               onChange={setGrid}

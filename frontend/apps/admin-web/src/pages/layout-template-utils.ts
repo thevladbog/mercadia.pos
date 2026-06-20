@@ -33,7 +33,7 @@ export function gridToApi(grid: LayoutGridSpec) {
       ...(tile.color ? { color: tile.color } : {}),
       ...(tile.productId ? { productId: tile.productId } : {}),
       ...(tile.empty ? { empty: tile.empty } : {}),
-      ...(tile.categoryId ? { categoryId: tile.categoryId } : {}),
+      ...(tile.categoryId && tile.categoryId !== '__all__' ? { categoryId: tile.categoryId } : {}),
       ...(tile.iconUrl ? { iconUrl: tile.iconUrl } : {}),
     })),
   };
@@ -86,7 +86,7 @@ export function filterGridByCategory(
 export function collectLinkedProductIds(grid: LayoutGridSpec): string[] {
   const ids = new Set<string>();
   for (const tile of grid.tiles) {
-    if (tile.productId && !tile.empty) {
+    if (tile.productId) {
       ids.add(tile.productId);
     }
   }
@@ -95,18 +95,25 @@ export function collectLinkedProductIds(grid: LayoutGridSpec): string[] {
 
 export type PublishValidationResult =
   | { ok: true }
-  | { ok: false; reason: 'publishRequiresStore' | 'invalidProducts'; productIds?: string[] };
+  | {
+      ok: false;
+      reason: 'publishRequiresStore' | 'invalidProducts' | 'catalogNotReady';
+      productIds?: string[];
+    };
 
 export function validateGridForPublish(
   grid: LayoutGridSpec,
   storeId: string,
-  knownProductIds: ReadonlySet<string>,
+  options: { catalogReady: boolean; knownProductIds: ReadonlySet<string> },
 ): PublishValidationResult {
   if (!storeId) {
     return { ok: false, reason: 'publishRequiresStore' };
   }
+  if (!options.catalogReady) {
+    return { ok: false, reason: 'catalogNotReady' };
+  }
   const missing = collectLinkedProductIds(grid).filter(
-    (productId) => !knownProductIds.has(productId),
+    (productId) => !options.knownProductIds.has(productId),
   );
   if (missing.length > 0) {
     return { ok: false, reason: 'invalidProducts', productIds: missing };

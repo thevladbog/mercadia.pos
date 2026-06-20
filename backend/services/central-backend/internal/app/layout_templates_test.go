@@ -112,3 +112,52 @@ func TestLayoutTemplatePublishValidatesProducts(t *testing.T) {
 		t.Fatalf("status = %s", result.Template.Status)
 	}
 }
+
+func TestLayoutTemplatePublishRejectsInactiveProducts(t *testing.T) {
+	store := memory.NewStore()
+	seedCentralAdmin(t, store)
+	auth := app.NewAuthService(store, store)
+	layoutTemplates := app.NewLayoutTemplatesService(store, store, store)
+	adminSession, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
+		Email:    "admin@example.com",
+		Password: "admin-pass",
+	})
+	if err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	inactiveProduct, err := domain.NewCatalogProduct(domain.CatalogProduct{
+		ID:             "sku-inactive",
+		StoreID:        "store-1",
+		Name:           "Discontinued",
+		Barcodes:       []string{"4600000000002"},
+		UnitPriceMinor: 9999,
+		TaxCategoryID:  "vat_20",
+		Active:         false,
+	})
+	if err != nil {
+		t.Fatalf("new product: %v", err)
+	}
+	if err := store.SaveProduct(context.Background(), inactiveProduct); err != nil {
+		t.Fatalf("save product: %v", err)
+	}
+
+	_, err = layoutTemplates.CreateLayoutTemplate(context.Background(), app.CreateLayoutTemplateCommand{
+		TemplateID: "published-inactive-product",
+		Name:       "Published Inactive Product",
+		Kind:       domain.LayoutTemplateKindSale,
+		Status:     domain.LayoutTemplateStatusPublished,
+		StoreID:    "store-1",
+		Grid: domain.LayoutGrid{
+			Rows: 2,
+			Cols: 2,
+			Tiles: []domain.LayoutGridTile{
+				{Label: "Discontinued", ProductID: "sku-inactive", Empty: true},
+			},
+		},
+		Session: adminSession,
+	})
+	if !errors.Is(err, app.ErrLayoutTemplateInvalidProducts) {
+		t.Fatalf("expected invalid products for inactive catalog item, got %v", err)
+	}
+}

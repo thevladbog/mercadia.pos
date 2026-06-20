@@ -693,6 +693,7 @@
     "gridJson": "Grid JSON",
     "invalidGrid": "Grid JSON is invalid.",
     "publishRequiresStore": "Select a store before publishing a template with linked products.",
+    "catalogNotReady": "Wait for the store catalog to load before publishing.",
     "invalidProducts": "Unknown product IDs: {{productIds}}",
     "unknownProduct": "Product {{productId}} is not in the selected store catalog.",
     "accent": "Accent",
@@ -722,7 +723,8 @@
       "allCategories": "All",
       "category": "Category",
       "uncategorized": "Uncategorized",
-      "iconUrl": "Icon URL"
+      "iconUrl": "Icon URL",
+      "iconUrlPlaceholder": "https://"
     }
   }
 }
