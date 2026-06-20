@@ -4,6 +4,10 @@
     "eyebrow": "Mercadia Admin"
   },
   "nav": {
+    "sidebarLabel": "Main navigation",
+    "centralGroup": "Central",
+    "storeGroup": "Store operations",
+    "adminGroup": "Administration",
     "dashboard": "Dashboard",
     "reporting": "Reporting",
     "stores": "Stores",
@@ -16,6 +20,11 @@
     "colorSchemes": "Color schemes",
     "layoutTemplates": "Layout templates",
     "logout": "Log out"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "toggle": "Toggle color mode"
   },
   "language": {
     "label": "Language",
@@ -83,7 +92,11 @@
     "eodTitle": "EoD",
     "eodDesc": "Operational day overview and close readiness",
     "usersTitle": "Users",
-    "usersDesc": "Central user and role management"
+    "usersDesc": "Central user and role management",
+    "colorSchemesTitle": "Color schemes",
+    "colorSchemesDesc": "Franchise branding and accent colors",
+    "layoutTemplatesTitle": "Layout templates",
+    "layoutTemplatesDesc": "POS/SCO button grids and accent preview"
   },
   "reporting": {
     "title": "Central Reporting",

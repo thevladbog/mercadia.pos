@@ -6,7 +6,7 @@ Design references live under [`docs/Design/Design/`](../Design/Design/):
 
 | Folder | Application | Notes |
 |--------|-------------|-------|
-| [`Админка/`](../Design/Design/Админка/) | `admin-web` | Light admin; dark mode in follow-up PR |
+| [`Админка/`](../Design/Design/Админка/) | `admin-web` | Sidebar AppShell; light/dark toggle with persist |
 | Root `E _ *.png` | `pos-terminal` | Sale/return accent from layout template |
 | [`КСО/`](../Design/Design/КСО/) | `sco-terminal` | SCO accent preset |
 | [`Старший кассир/`](../Design/Design/Старший кассир/) | `senior-cashier-terminal` | Dark surface |
@@ -28,7 +28,10 @@ Wrap the app root with `ThemeProvider`:
 ```tsx
 import { ThemeProvider } from '@mercadia/ui';
 
-<ThemeProvider defaultTheme={{ surface: 'admin', colorMode: 'light', accentPreset: 'neutral' }}>
+<ThemeProvider
+  defaultTheme={{ surface: 'admin', colorMode: 'light', accentPreset: 'neutral' }}
+  persist
+>
   {children}
 </ThemeProvider>
 ```
@@ -136,7 +139,9 @@ pnpm --filter pos-terminal dev
 
 ## Admin-web migration
 
-- `ThemeProvider` in `Root.tsx` with `surface: 'admin'`, `colorMode: 'light'`, `accentPreset: 'neutral'`.
+- `ThemeProvider` in `Root.tsx` with `surface: 'admin'`, `colorMode: 'light'`, `accentPreset: 'neutral'`, and `persist` (localStorage key `mercadia-ui-theme`).
+- **AppShell** — sidebar navigation in `AppSidebar.tsx` (`AppLayout.tsx`); grouped Central / Store ops / Admin links with `NavLink` active state.
+- **Dark mode** — `ThemeToggle` in the top bar calls `useTheme().setTheme({ ...theme, colorMode })`; shell chrome (`app-sidebar`, `app-header`, panels, tables) uses `--ui-*` tokens so light/dark switches apply without extra CSS files.
 - Prefer `@mercadia/ui` components over native `<button>` with global CSS.
 - Legacy native buttons remain styled via token-based compat rules in `index.css` until pages migrate.
 

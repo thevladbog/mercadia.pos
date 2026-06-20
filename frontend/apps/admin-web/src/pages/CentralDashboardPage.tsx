@@ -60,11 +60,23 @@ export function CentralDashboardPage() {
       },
     ];
     if (canManageCentralUsers(roles)) {
-      links.push({
-        titleKey: 'dashboard.usersTitle',
-        descKey: 'dashboard.usersDesc',
-        to: '/central/users',
-      });
+      links.push(
+        {
+          titleKey: 'dashboard.usersTitle',
+          descKey: 'dashboard.usersDesc',
+          to: '/central/users',
+        },
+        {
+          titleKey: 'dashboard.colorSchemesTitle',
+          descKey: 'dashboard.colorSchemesDesc',
+          to: '/central/color-schemes',
+        },
+        {
+          titleKey: 'dashboard.layoutTemplatesTitle',
+          descKey: 'dashboard.layoutTemplatesDesc',
+          to: '/central/layout-templates',
+        },
+      );
     }
     return links;
   }, [roles]);
