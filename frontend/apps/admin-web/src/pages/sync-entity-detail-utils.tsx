@@ -6,7 +6,9 @@ import { formatMinorAmount, formatTimestamp } from './reporting-utils.js';
 import { syncEntityHref } from './sync-routes.js';
 
 export function fieldLabelFromKey(key: string): string {
-  return key.replace(/([A-Z])/g, ' $1').replace(/^./, (char) => char.toUpperCase());
+  return i18n.t(`sync.entityDetail.fields.${key}`, {
+    defaultValue: key.replace(/([A-Z])/g, ' $1').replace(/^./, (char) => char.toUpperCase()),
+  });
 }
 
 export function formatSyncEntityScalar(key: string, value: unknown): string {
