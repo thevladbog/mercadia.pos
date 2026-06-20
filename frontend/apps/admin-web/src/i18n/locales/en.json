@@ -254,6 +254,12 @@
     "to": "To",
     "actor": "Actor",
     "posted": "Posted",
+    "movementDetail": {
+      "title": "Cash movement detail",
+      "currency": "Currency",
+      "approvedBy": "Approved by",
+      "reason": "Reason"
+    },
     "recounts": "Cash recounts",
     "loadingRecounts": "Loading recounts…",
     "noRecounts": "No cash recounts.",

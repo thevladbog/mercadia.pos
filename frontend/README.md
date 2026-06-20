@@ -137,7 +137,8 @@ Requires central-backend (store list) and store-edge (cash-office APIs). Write o
    journal tables load below.
 3. Confirm data refreshes automatically (every 5 seconds) or via **Refresh**.
 4. Post **Issue change fund** with actor `senior-1` and approver `admin-1` — balances and movements refresh.
-5. Sign in as `central_viewer` — action buttons on Safe are hidden (read-only).
+5. Click a movement ID in the journal table — read-only detail modal shows all movement fields.
+6. Sign in as `central_viewer` — action buttons on Safe are hidden (read-only).
 
 ### Store EoD smoke test
 

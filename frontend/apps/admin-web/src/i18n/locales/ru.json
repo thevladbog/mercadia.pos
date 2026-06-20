@@ -254,6 +254,12 @@
     "to": "Куда",
     "actor": "Исполнитель",
     "posted": "Проведено",
+    "movementDetail": {
+      "title": "Детали движения",
+      "currency": "Валюта",
+      "approvedBy": "Утвердил",
+      "reason": "Причина"
+    },
     "recounts": "Пересчёты",
     "loadingRecounts": "Загрузка пересчётов…",
     "noRecounts": "Нет пересчётов.",

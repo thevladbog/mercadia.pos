@@ -3,6 +3,7 @@ import {
   useListCashBalances,
   useListCashMovements,
   useListCashRecounts,
+  type ListCashMovements200ItemsItem,
   type ListCashRecounts200ItemsItem,
 } from '@mercadia/api-clients-store-edge';
 import { useMemo, useState } from 'react';
@@ -13,6 +14,7 @@ import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { useAuth } from '@/auth/useAuth.js';
 import { canWriteStoreOperations } from '@/auth/permissions.js';
 import { CashActionsPanel } from '@/components/cash/CashActionsPanel.js';
+import { CashMovementDetailModal } from '@/components/cash/CashMovementDetailModal.js';
 import { SafeKpiPanel } from '@/components/cash/SafeKpiPanel.js';
 import { ResolveRecountModal } from '@/components/cash/ResolveRecountModal.js';
 import { PaginationControls } from '@/components/PaginationControls.js';
@@ -44,6 +46,7 @@ export function StoreSafePage() {
   const [movementsOffset, setMovementsOffset] = useState(0);
   const [recountsOffset, setRecountsOffset] = useState(0);
   const [resolveRecount, setResolveRecount] = useState<ListCashRecounts200ItemsItem | null>(null);
+  const [detailMovement, setDetailMovement] = useState<ListCashMovements200ItemsItem | null>(null);
   const [dismissedDeepLinkLocationKey, setDismissedDeepLinkLocationKey] = useState<string | null>(
     null,
   );
@@ -255,7 +258,15 @@ export function StoreSafePage() {
                     <tbody>
                       {movementsPage.items.map((movement) => (
                         <tr key={movement.id}>
-                          <td>{movement.id}</td>
+                          <td>
+                            <button
+                              className="link-button"
+                              onClick={() => setDetailMovement(movement)}
+                              type="button"
+                            >
+                              {movement.id}
+                            </button>
+                          </td>
                           <td>{movement.type}</td>
                           <td>{formatMinorAmount(movement.amountMinor)}</td>
                           <td>
@@ -352,6 +363,13 @@ export function StoreSafePage() {
               recount={activeResolveRecount}
               storeId={activeStoreId}
               onClose={handleResolveRecountClose}
+            />
+          ) : null}
+
+          {detailMovement ? (
+            <CashMovementDetailModal
+              movement={detailMovement}
+              onClose={() => setDetailMovement(null)}
             />
           ) : null}
         </>
