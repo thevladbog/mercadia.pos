@@ -137,7 +137,10 @@ Requires central-backend (store list) and store-edge (cash-office APIs). Write o
    journal tables load below.
 3. Confirm data refreshes automatically (every 5 seconds) or via **Refresh**.
 4. Post **Issue change fund** with actor `senior-1` and approver `admin-1` — balances and movements refresh.
-5. Sign in as `central_viewer` — action buttons on Safe are hidden (read-only).
+5. Click movement and recount IDs in the journal tables — read-only detail modals show all row fields.
+6. Use search boxes above movements and recounts tables — filters apply to the current page only.
+7. As `central_viewer`, follow an EoD blocker deep-link to Safe with `?recount=` — read-only recount detail opens (not resolve).
+8. Sign in as `central_viewer` — action buttons on Safe are hidden (read-only).
 
 ### Store EoD smoke test
 
