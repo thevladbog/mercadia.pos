@@ -122,7 +122,9 @@ Requires central-backend (store list) and store-edge (cash-office APIs). Write o
 `central_admin` role.
 
 1. Sign in as seeded `central_admin` and open **Safe** in the header.
-2. Select a store — balance KPI cards, cash movements table, and recounts table should load.
+2. Select a store — the cash overview KPI panel shows safe/drawer/bank totals, container counts,
+   movement and recount totals, and open recount discrepancies; per-container balances and
+   journal tables load below.
 3. Confirm data refreshes automatically (every 5 seconds) or via **Refresh**.
 4. Post **Issue change fund** with actor `senior-1` and approver `admin-1` — balances and movements refresh.
 5. Sign in as `central_viewer` — action buttons on Safe are hidden (read-only).

@@ -242,6 +242,18 @@
     "counted": "Counted",
     "variance": "Variance",
     "resolution": "Resolution",
+    "kpi": {
+      "title": "Cash overview",
+      "safeTotal": "Safe total",
+      "drawerTotal": "Drawer total",
+      "bankTotal": "Bank total",
+      "nonZeroDrawers": "Non-zero drawers",
+      "containers": "Containers",
+      "movementsTotal": "Cash movements",
+      "recountsTotal": "Cash recounts",
+      "openRecountDiscrepancies": "Open recount discrepancies",
+      "openRecountPartial": "Open recount count is based on the first 100 recounts only."
+    },
     "actions": {
       "title": "Cash operations",
       "column": "Actions",
