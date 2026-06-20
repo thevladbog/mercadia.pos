@@ -1,4 +1,6 @@
 import type { ListCashBalances200BalancesItem } from '@mercadia/api-clients-store-edge';
+import { Field, Label, Select } from '@mercadia/ui';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { containerOptionLabel } from '@/pages/cash-container-utils.js';
@@ -19,13 +21,15 @@ export function ContainerSelect({
   required = true,
 }: ContainerSelectProps) {
   const { t } = useTranslation();
+  const selectId = useId();
 
   return (
-    <label className="field">
-      <span>{label}</span>
-      <select
+    <Field>
+      <Label htmlFor={selectId}>{label}</Label>
+      <Select
         required={required}
         disabled={containers.length === 0}
+        id={selectId}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       >
@@ -35,7 +39,7 @@ export function ContainerSelect({
             {containerOptionLabel(container, t)}
           </option>
         ))}
-      </select>
-    </label>
+      </Select>
+    </Field>
   );
 }

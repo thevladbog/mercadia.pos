@@ -26,6 +26,10 @@
   resize: vertical;
 }
 
+.mercadia-select {
+  min-height: 2.75rem;
+}
+
 .mercadia-field {
   display: grid;
   gap: var(--ui-space-xs);

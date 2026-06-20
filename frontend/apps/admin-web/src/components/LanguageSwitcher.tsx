@@ -1,3 +1,4 @@
+import { Field, Label, Select } from '@mercadia/ui';
 import { useTranslation } from 'react-i18next';
 
 import { changeAppLocale, type AppLocale } from '@/i18n/index.js';
@@ -12,10 +13,13 @@ export function LanguageSwitcher() {
   const { i18n, t } = useTranslation();
 
   return (
-    <label className="field language-switcher">
-      <span className="sr-only">{t('language.label')}</span>
-      <select
+    <Field className="language-switcher">
+      <Label className="sr-only" htmlFor="admin-language">
+        {t('language.label')}
+      </Label>
+      <Select
         aria-label={t('language.label')}
+        id="admin-language"
         value={i18n.language.startsWith('ru') ? 'ru' : 'en'}
         onChange={(event) => changeAppLocale(event.target.value as AppLocale)}
       >
@@ -24,7 +28,7 @@ export function LanguageSwitcher() {
             {t(LOCALE_LABEL_KEYS[locale])}
           </option>
         ))}
-      </select>
-    </label>
+      </Select>
+    </Field>
   );
 }

@@ -27,3 +27,7 @@ export function Input({ className, ...props }: ComponentPropsWithoutRef<'input'>
 export function Textarea({ className, ...props }: ComponentPropsWithoutRef<'textarea'>) {
   return <textarea className={cn('mercadia-input mercadia-textarea', className)} {...props} />;
 }
+
+export function Select({ className, ...props }: ComponentPropsWithoutRef<'select'>) {
+  return <select className={cn('mercadia-input mercadia-select', className)} {...props} />;
+}

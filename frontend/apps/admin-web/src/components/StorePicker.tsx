@@ -1,4 +1,6 @@
 import type { ListStores200StoresItem } from '@mercadia/api-clients-central';
+import { Field, Label, Select } from '@mercadia/ui';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type StorePickerProps = {
@@ -16,15 +18,17 @@ export function StorePicker({
   onChange,
   disabled = false,
   loading = false,
-  className = 'field store-picker',
+  className = 'store-picker',
 }: StorePickerProps) {
   const { t } = useTranslation();
+  const selectId = useId();
 
   return (
-    <label className={className}>
-      <span>{t('common.store')}</span>
-      <select
+    <Field className={className}>
+      <Label htmlFor={selectId}>{t('common.store')}</Label>
+      <Select
         disabled={disabled || loading || stores.length === 0}
+        id={selectId}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       >
@@ -34,7 +38,7 @@ export function StorePicker({
             {store.name} ({store.id})
           </option>
         ))}
-      </select>
-    </label>
+      </Select>
+    </Field>
   );
 }

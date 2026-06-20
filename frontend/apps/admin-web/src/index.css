@@ -364,14 +364,6 @@ th {
   border: 0;
 }
 
-.language-switcher select {
-  border: 1px solid var(--ui-border);
-  border-radius: 0.5rem;
-  padding: 0.375rem 0.5rem;
-  background: var(--ui-surface);
-  color: var(--ui-text);
-}
-
 .view-toggle {
   display: flex;
   gap: 0.5rem;
