@@ -113,6 +113,8 @@ Requires central-backend (store list) and store-edge (monitoring KPIs/terminals)
 5. Confirm the **Terminal events** panel shows **Connected** and lists `terminal_heartbeat`
    events when store-edge emits terminal heartbeats.
 6. Toggle **List** / **Tiles** view and use the search box to filter terminals client-side.
+7. When a terminal has an active receipt, confirm current receipt ID, status, and total appear
+   in list columns and tile cards; click the receipt ID to open the read-only receipt detail modal.
 
 ### Store Safe smoke test
 
