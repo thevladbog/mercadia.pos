@@ -31,7 +31,11 @@ export function AppLayout() {
             <Link to="/store/safe">{t('nav.safe')}</Link>
             <Link to="/store/eod">{t('nav.eod')}</Link>
             {canManageCentralUsers(roles) ? (
-              <Link to="/central/users">{t('nav.users')}</Link>
+              <>
+                <Link to="/central/users">{t('nav.users')}</Link>
+                <Link to="/central/color-schemes">{t('nav.colorSchemes')}</Link>
+                <Link to="/central/layout-templates">{t('nav.layoutTemplates')}</Link>
+              </>
             ) : null}
           </nav>
           <LanguageSwitcher />

@@ -432,6 +432,14 @@ th {
   grid-column: 1 / -1;
 }
 
+.theme-preview-panel {
+  margin-top: 1rem;
+}
+
+.theme-preview-canvas {
+  margin-top: 0.75rem;
+}
+
 textarea {
   font: inherit;
   border: 1px solid #d1d5db;

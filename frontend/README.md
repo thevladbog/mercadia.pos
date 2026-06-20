@@ -19,6 +19,7 @@ registry=https://registry.npmjs.org/
 ```text
 frontend/
   apps/admin-web/                      # Central admin UI (Vite + React)
+  apps/pos-terminal/                   # POS terminal dev shell (Vite + React)
   packages/ui/                         # @mercadia/ui — Radix components + theme system
   packages/api-clients/central/        # Orval client for central-backend OpenAPI
   packages/api-clients/store-edge/     # Orval client for store-edge OpenAPI

@@ -14,3 +14,6 @@
 @import '../components/Label/Label.css';
 @import '../components/Tabs/Tabs.css';
 @import '../components/Card/Card.css';
+@import '../components/LayoutGrid/LayoutGrid.css';
+@import '../components/Numpad/Numpad.css';
+@import '../components/Stepper/Stepper.css';

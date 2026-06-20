@@ -13,6 +13,11 @@ export {
 export { Field, Input, Label, Textarea } from './components/Input/Input.js';
 export { PillTabs, Tabs, TabsContent, TabsList, TabsTrigger } from './components/Tabs/Tabs.js';
 export { Card, CardHeading, cardVariants } from './components/Card/Card.js';
+export { LayoutGrid } from './components/LayoutGrid/LayoutGrid.js';
+export { Numpad } from './components/Numpad/Numpad.js';
+export { Stepper } from './components/Stepper/Stepper.js';
+export { ThemePreview } from './components/ThemePreview/ThemePreview.js';
+export type { LayoutGridSpec, LayoutGridTileSpec } from './components/LayoutGrid/types.js';
 export {
   ThemeProvider,
   useTheme,

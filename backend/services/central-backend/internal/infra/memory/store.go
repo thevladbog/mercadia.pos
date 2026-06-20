@@ -24,6 +24,8 @@ type Store struct {
 	operationalDays map[string]domain.SyncedOperationalDay
 	users           map[string]domain.CentralUser
 	sessions        map[string]domain.CentralSession
+	colorSchemes    map[string]domain.ColorScheme
+	layoutTemplates map[string]domain.LayoutTemplate
 	idempotency     map[string]app.IdempotencyRecord
 }
 
@@ -42,6 +44,8 @@ func NewStore(options ...StoreOption) *Store {
 		operationalDays: map[string]domain.SyncedOperationalDay{},
 		users:           map[string]domain.CentralUser{},
 		sessions:        map[string]domain.CentralSession{},
+		colorSchemes:    map[string]domain.ColorScheme{},
+		layoutTemplates: map[string]domain.LayoutTemplate{},
 		idempotency:     map[string]app.IdempotencyRecord{},
 	}
 	for _, option := range options {

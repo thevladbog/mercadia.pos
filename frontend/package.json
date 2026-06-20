@@ -15,7 +15,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "pnpm orval:central && pnpm orval:store-edge && pnpm typecheck && pnpm lint && pnpm format:check && pnpm --filter @mercadia/ui test && pnpm --filter admin-web build"
+    "verify": "pnpm orval:central && pnpm orval:store-edge && pnpm typecheck && pnpm lint && pnpm format:check && pnpm --filter @mercadia/ui test && pnpm --filter admin-web build && pnpm --filter pos-terminal typecheck"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

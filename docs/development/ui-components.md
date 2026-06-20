@@ -96,8 +96,36 @@ Layout templates and Color Schemes may supply `accentPreset` or `accentColor`; P
 | `Input`, `Textarea`, `Label`, `Field` | Form controls |
 | `Tabs`, `PillTabs` | Radix tabs |
 | `Card`, `CardHeading` | Panel/card layout |
+| `LayoutGrid` | Product tile grid from layout template JSON |
+| `Numpad`, `Stepper` | Touch kiosk controls |
+| `ThemePreview` | Scoped accent preview without mutating global admin theme |
 
 New interactive controls belong in `@mercadia/ui`, not as global CSS in apps.
+
+## Central backend branding APIs
+
+Color schemes and layout templates are stored in central-backend:
+
+| Resource | Endpoints |
+|----------|-----------|
+| Color schemes | `GET/POST /v1/color-schemes`, `GET/PATCH /v1/color-schemes/{schemeId}` |
+| Layout templates | `GET/POST /v1/layout-templates`, `GET/PATCH /v1/layout-templates/{templateId}` |
+
+Layout template responses include `resolvedAccentPreset` and `resolvedAccentColor` for POS/SCO clients.
+
+Accent resolution order: template `accentColor` → template `accentPreset` → linked color scheme → default by `kind` (`sale` / `return` / `sco`).
+
+Admin CRUD lives under `/central/color-schemes` and `/central/layout-templates` (central admin only). Reads require central session or sync API key with reporting permission.
+
+## POS terminal scaffold
+
+`frontend/apps/pos-terminal` loads a template via `?templateId=` or `VITE_LAYOUT_TEMPLATE_ID`, calls `applyTheme` from resolved accent fields, and renders `LayoutGrid` + `Numpad` demo. Set `VITE_CENTRAL_SESSION_TOKEN` for local API access.
+
+```bash
+cd frontend
+pnpm --filter pos-terminal dev
+# open http://localhost:5174/?templateId=sale-standard
+```
 
 ## Adding a new theme dimension
 
