@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
-import { DetailModal } from '@/components/eod/DetailModal.js';
+import { DetailDialog } from '@mercadia/ui';
 import { formatMinorAmount, formatTimestamp } from '@/pages/reporting-utils.js';
 import { syncEntityHref } from '@/pages/sync-routes.js';
 
@@ -83,7 +83,14 @@ export function CentralReceiptDetailModal({
       returnsQuery.data.data.totalCount > RELATED_ENTITY_SCAN_LIMIT);
 
   return (
-    <DetailModal title={t('sync.receiptDetail.title')} onClose={onClose}>
+    <DetailDialog
+      open
+      title={t('sync.receiptDetail.title')}
+      cancelLabel={t('common.cancel')}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <dl className="kpi-grid">
         <div>
           <dt>{t('sync.receiptDetail.receiptId')}</dt>
@@ -157,6 +164,6 @@ export function CentralReceiptDetailModal({
       ) : (
         <p className="muted">{t('sync.receiptDetail.noRelated')}</p>
       )}
-    </DetailModal>
+    </DetailDialog>
   );
 }

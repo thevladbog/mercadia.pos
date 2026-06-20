@@ -696,6 +696,19 @@
     "updated": "Updated",
     "previewTitle": "Template preview",
     "previewAccent": "Resolved accent",
-    "previewAction": "Start sale"
+    "previewAction": "Start sale",
+    "gridEditor": {
+      "rows": "Rows",
+      "cols": "Columns",
+      "tiles": "Tiles",
+      "addTile": "Add tile",
+      "removeTile": "Remove",
+      "tileNumber": "Tile {{number}}",
+      "noTiles": "No tiles yet. Add a tile to populate the grid.",
+      "label": "Label",
+      "color": "Color",
+      "empty": "Empty slot",
+      "productId": "Product ID"
+    }
   }
 }

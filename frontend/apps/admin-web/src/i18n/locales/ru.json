@@ -696,6 +696,19 @@
     "updated": "Обновлено",
     "previewTitle": "Превью шаблона",
     "previewAccent": "Итоговый акцент",
-    "previewAction": "Начать продажу"
+    "previewAction": "Начать продажу",
+    "gridEditor": {
+      "rows": "Строки",
+      "cols": "Столбцы",
+      "tiles": "Плитки",
+      "addTile": "Добавить плитку",
+      "removeTile": "Удалить",
+      "tileNumber": "Плитка {{number}}",
+      "noTiles": "Плиток пока нет. Добавьте плитку для заполнения сетки.",
+      "label": "Подпись",
+      "color": "Цвет",
+      "empty": "Пустая ячейка",
+      "productId": "ID товара"
+    }
   }
 }

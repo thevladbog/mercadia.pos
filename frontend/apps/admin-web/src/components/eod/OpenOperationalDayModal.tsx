@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { useAuth } from '@/auth/useAuth.js';
-import { CashModal } from '@/components/cash/CashModal.js';
+import { FormDialog } from '@mercadia/ui';
 import { createIdempotencyHeaders } from '@/pages/cash-mutation-utils.js';
 import { invalidateEodAfterOpen, todayBusinessDate } from '@/pages/eod-mutation-utils.js';
 import { storePageHref } from '@/pages/store-routes.js';
@@ -76,10 +76,11 @@ export function OpenOperationalDayModal({ storeId, onClose }: OpenOperationalDay
   }
 
   return (
-    <CashModal
+    <FormDialog
+      cancelLabel={t('common.cancel')}
       errorMessage={errorMessage}
       isSubmitting={mutation.isPending}
-      submitLabel={t('eod.actions.openDay')}
+      submitLabel={mutation.isPending ? t('common.submitting') : t('eod.actions.openDay')}
       title={t('eod.forms.openConfirmTitle')}
       onClose={onClose}
       onSubmit={handleSubmit}
@@ -100,6 +101,6 @@ export function OpenOperationalDayModal({ storeId, onClose }: OpenOperationalDay
         <span>{t('eod.forms.openedById')}</span>
         <input readOnly value={openedById} />
       </label>
-    </CashModal>
+    </FormDialog>
   );
 }

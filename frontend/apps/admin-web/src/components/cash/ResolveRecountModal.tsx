@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { ActorFields } from '@/components/cash/ActorFields.js';
-import { CashModal } from '@/components/cash/CashModal.js';
+import { FormDialog } from '@mercadia/ui';
 import {
   actorsMustDiffer,
   createIdempotencyHeaders,
@@ -77,10 +77,11 @@ export function ResolveRecountModal({ storeId, recount, onClose }: ResolveRecoun
   }
 
   return (
-    <CashModal
+    <FormDialog
+      cancelLabel={t('common.cancel')}
       errorMessage={errorMessage}
       isSubmitting={mutation.isPending}
-      submitLabel={t('safe.forms.resolveSubmit')}
+      submitLabel={mutation.isPending ? t('common.submitting') : t('safe.forms.resolveSubmit')}
       title={t('safe.actions.resolveRecount')}
       onClose={onClose}
       onSubmit={handleSubmit}
@@ -106,6 +107,6 @@ export function ResolveRecountModal({ storeId, recount, onClose }: ResolveRecoun
         onActorIdChange={setActorId}
         onApprovedByIdChange={setApprovedById}
       />
-    </CashModal>
+    </FormDialog>
   );
 }

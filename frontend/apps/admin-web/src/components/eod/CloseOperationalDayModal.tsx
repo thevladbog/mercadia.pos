@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { canWriteStoreOperations } from '@/auth/permissions.js';
 import { useAuth } from '@/auth/useAuth.js';
-import { CashModal } from '@/components/cash/CashModal.js';
+import { FormDialog } from '@mercadia/ui';
 import { BlockerActionCell, BlockerReferenceCell } from '@/components/eod/BlockerReferenceCell.js';
 import { ReceiptDetailModal } from '@/components/eod/ReceiptDetailModal.js';
 import { ShiftDetailModal } from '@/components/eod/ShiftDetailModal.js';
@@ -119,10 +119,13 @@ export function CloseOperationalDayModal({
 
   return (
     <>
-      <CashModal
+      <FormDialog
+        cancelLabel={t('common.cancel')}
         errorMessage={errorMessage}
         isSubmitting={mutation.isPending || isFetching}
-        submitLabel={t('eod.actions.closeDay')}
+        submitLabel={
+          mutation.isPending || isFetching ? t('common.submitting') : t('eod.actions.closeDay')
+        }
         title={t('eod.forms.confirmTitle')}
         onClose={onClose}
         onSubmit={handleSubmit}
@@ -202,7 +205,7 @@ export function CloseOperationalDayModal({
             <p className="muted form-hint">{t('safe.forms.actorHint')}</p>
           </div>
         ) : null}
-      </CashModal>
+      </FormDialog>
 
       {detailShiftId ? (
         <ShiftDetailModal

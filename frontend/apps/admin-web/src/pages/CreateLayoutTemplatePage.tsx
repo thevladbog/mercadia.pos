@@ -7,10 +7,11 @@ import {
 } from '@mercadia/api-clients-central';
 import { Button } from '@mercadia/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
+import { LayoutGridEditor } from '@/components/branding/LayoutGridEditor.js';
 import { LayoutTemplatePreview } from '@/components/branding/LayoutTemplatePreview.js';
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import {
@@ -18,7 +19,7 @@ import {
   accentPresetLabel,
   BrandingBackLink,
 } from '@/pages/branding-shared.js';
-import { defaultGrid, gridToApi, parseGridJson } from '@/pages/layout-template-utils.js';
+import { defaultGrid, gridToApi } from '@/pages/layout-template-utils.js';
 
 const KIND_OPTIONS = ['sale', 'return', 'sco'] as const;
 
@@ -40,10 +41,8 @@ export function CreateLayoutTemplatePage() {
   const [storeId, setStoreId] = useState('');
   const [terminalType, setTerminalType] = useState('');
   const [status, setStatus] = useState('draft');
-  const [gridJson, setGridJson] = useState(JSON.stringify(defaultGrid(), null, 2));
+  const [grid, setGrid] = useState(() => defaultGrid());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const grid = useMemo(() => parseGridJson(gridJson) ?? defaultGrid(), [gridJson]);
 
   const mutation = useCreateLayoutTemplate({
     mutation: {
@@ -65,18 +64,12 @@ export function CreateLayoutTemplatePage() {
     event.preventDefault();
     setErrorMessage(null);
 
-    const parsedGrid = parseGridJson(gridJson);
-    if (!parsedGrid) {
-      setErrorMessage(t('layoutTemplates.invalidGrid'));
-      return;
-    }
-
     const payload: CreateLayoutTemplateBody = {
       templateId: templateId.trim(),
       name: name.trim(),
       kind,
       status,
-      grid: gridToApi(parsedGrid),
+      grid: gridToApi(grid),
       ...(accentColor.trim()
         ? { accentColor: accentColor.trim() }
         : accentPreset
@@ -163,10 +156,7 @@ export function CreateLayoutTemplatePage() {
                 <option value="published">{t('branding.status.published')}</option>
               </select>
             </label>
-            <label className="field">
-              <span>{t('layoutTemplates.gridJson')}</span>
-              <textarea rows={8} value={gridJson} onChange={(e) => setGridJson(e.target.value)} />
-            </label>
+            <LayoutGridEditor grid={grid} onChange={setGrid} />
             {errorMessage ? <p className="error">{errorMessage}</p> : null}
             <div className="form-actions">
               <Button disabled={mutation.isPending} type="submit">

@@ -10,10 +10,11 @@ import {
 } from '@mercadia/api-clients-central';
 import { Button } from '@mercadia/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import { LayoutGridEditor } from '@/components/branding/LayoutGridEditor.js';
 import { LayoutTemplatePreview } from '@/components/branding/LayoutTemplatePreview.js';
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import {
@@ -21,7 +22,7 @@ import {
   accentPresetLabel,
   BrandingBackLink,
 } from '@/pages/branding-shared.js';
-import { gridFromApi, gridToApi, parseGridJson } from '@/pages/layout-template-utils.js';
+import { gridFromApi, gridToApi } from '@/pages/layout-template-utils.js';
 
 const KIND_OPTIONS = ['sale', 'return', 'sco'] as const;
 
@@ -47,13 +48,8 @@ function EditLayoutTemplateForm({ template, templateId }: EditLayoutTemplateForm
   const [storeId, setStoreId] = useState(template.storeId ?? '');
   const [terminalType, setTerminalType] = useState(template.terminalType ?? '');
   const [status, setStatus] = useState(template.status);
-  const [gridJson, setGridJson] = useState(JSON.stringify(gridFromApi(template.grid), null, 2));
+  const [grid, setGrid] = useState(() => gridFromApi(template.grid));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const grid = useMemo(
-    () => parseGridJson(gridJson) ?? gridFromApi(template.grid),
-    [gridJson, template.grid],
-  );
 
   const mutation = useUpdateLayoutTemplate({
     mutation: {
@@ -76,17 +72,11 @@ function EditLayoutTemplateForm({ template, templateId }: EditLayoutTemplateForm
     event.preventDefault();
     setErrorMessage(null);
 
-    const parsedGrid = parseGridJson(gridJson);
-    if (!parsedGrid) {
-      setErrorMessage(t('layoutTemplates.invalidGrid'));
-      return;
-    }
-
     const payload: UpdateLayoutTemplateBody = {
       name,
       kind,
       status,
-      grid: gridToApi(parsedGrid),
+      grid: gridToApi(grid),
       accentPreset,
       accentColor,
       colorSchemeId,
@@ -163,10 +153,7 @@ function EditLayoutTemplateForm({ template, templateId }: EditLayoutTemplateForm
             <option value="published">{t('branding.status.published')}</option>
           </select>
         </label>
-        <label className="field">
-          <span>{t('layoutTemplates.gridJson')}</span>
-          <textarea rows={8} value={gridJson} onChange={(e) => setGridJson(e.target.value)} />
-        </label>
+        <LayoutGridEditor grid={grid} onChange={setGrid} />
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
         <div className="form-actions">
           <Button disabled={mutation.isPending} type="submit">
