@@ -117,95 +117,99 @@ export function CloseOperationalDayModal({
     mutation.mutate();
   }
 
+  const detailOpen = detailShiftId != null || detailReceiptId != null;
+
   return (
     <>
-      <FormDialog
-        cancelLabel={t('common.cancel')}
-        errorMessage={errorMessage}
-        isSubmitting={mutation.isPending || isFetching}
-        submitLabel={
-          mutation.isPending || isFetching ? t('common.submitting') : t('eod.actions.closeDay')
-        }
-        title={t('eod.forms.confirmTitle')}
-        onClose={onClose}
-        onSubmit={handleSubmit}
-      >
-        <p className="muted">{t('eod.forms.confirmBody')}</p>
+      {!detailOpen ? (
+        <FormDialog
+          cancelLabel={t('common.cancel')}
+          errorMessage={errorMessage}
+          isSubmitting={mutation.isPending || isFetching}
+          submitLabel={
+            mutation.isPending || isFetching ? t('common.submitting') : t('eod.actions.closeDay')
+          }
+          title={t('eod.forms.confirmTitle')}
+          onClose={onClose}
+          onSubmit={handleSubmit}
+        >
+          <p className="muted">{t('eod.forms.confirmBody')}</p>
 
-        {isFetching && !summary ? (
-          <p className="muted">{t('common.loading')}</p>
-        ) : blockers.length > 0 ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>{t('eod.severity')}</th>
-                  <th>{t('eod.code')}</th>
-                  <th>{t('eod.message')}</th>
-                  <th>{t('eod.reference')}</th>
-                  <th>{t('eod.action')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {blockers.map((blocker) => (
-                  <tr key={`${blocker.code}-${blocker.referenceId ?? blocker.message}`}>
-                    <td>{formatBlockerSeverity(blocker.severity, t)}</td>
-                    <td>{blocker.code}</td>
-                    <td>{formatBlockerMessage(blocker, t)}</td>
-                    <td>
-                      <BlockerReferenceCell
-                        blocker={blocker}
-                        storeId={storeId}
-                        onEodTab={onEodTab ?? (() => undefined)}
-                        onOpenReceipt={setDetailReceiptId}
-                        onOpenShift={setDetailShiftId}
-                      />
-                    </td>
-                    <td>
-                      <BlockerActionCell
-                        blocker={blocker}
-                        storeId={storeId}
-                        onEodTab={onEodTab ?? (() => undefined)}
-                        onOpenReceipt={setDetailReceiptId}
-                        onOpenShift={setDetailShiftId}
-                      />
-                    </td>
+          {isFetching && !summary ? (
+            <p className="muted">{t('common.loading')}</p>
+          ) : blockers.length > 0 ? (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{t('eod.severity')}</th>
+                    <th>{t('eod.code')}</th>
+                    <th>{t('eod.message')}</th>
+                    <th>{t('eod.reference')}</th>
+                    <th>{t('eod.action')}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="muted">{t('eod.noBlockers')}</p>
-        )}
+                </thead>
+                <tbody>
+                  {blockers.map((blocker) => (
+                    <tr key={`${blocker.code}-${blocker.referenceId ?? blocker.message}`}>
+                      <td>{formatBlockerSeverity(blocker.severity, t)}</td>
+                      <td>{blocker.code}</td>
+                      <td>{formatBlockerMessage(blocker, t)}</td>
+                      <td>
+                        <BlockerReferenceCell
+                          blocker={blocker}
+                          storeId={storeId}
+                          onEodTab={onEodTab ?? (() => undefined)}
+                          onOpenReceipt={setDetailReceiptId}
+                          onOpenShift={setDetailShiftId}
+                        />
+                      </td>
+                      <td>
+                        <BlockerActionCell
+                          blocker={blocker}
+                          storeId={storeId}
+                          onEodTab={onEodTab ?? (() => undefined)}
+                          onOpenReceipt={setDetailReceiptId}
+                          onOpenShift={setDetailShiftId}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="muted">{t('eod.noBlockers')}</p>
+          )}
 
-        <label className="field">
-          <span>{t('eod.forms.closedById')}</span>
-          <input readOnly value={closedById} />
-        </label>
+          <label className="field">
+            <span>{t('eod.forms.closedById')}</span>
+            <input readOnly value={closedById} />
+          </label>
 
-        {requiresOverride ? (
-          <div className="stack">
-            <label className="field checkbox-field">
-              <input
-                checked={overrideNoSales}
-                type="checkbox"
-                onChange={(event) => setOverrideNoSales(event.target.checked)}
-              />
-              <span>{t('eod.forms.overrideNoSales')}</span>
-            </label>
-            <label className="field">
-              <span>{t('eod.forms.overrideActorId')}</span>
-              <input
-                required={overrideNoSales}
-                value={overrideActorId}
-                onChange={(event) => setOverrideActorId(event.target.value)}
-              />
-            </label>
-            <p className="muted form-hint">{t('safe.forms.actorHint')}</p>
-          </div>
-        ) : null}
-      </FormDialog>
+          {requiresOverride ? (
+            <div className="stack">
+              <label className="field checkbox-field">
+                <input
+                  checked={overrideNoSales}
+                  type="checkbox"
+                  onChange={(event) => setOverrideNoSales(event.target.checked)}
+                />
+                <span>{t('eod.forms.overrideNoSales')}</span>
+              </label>
+              <label className="field">
+                <span>{t('eod.forms.overrideActorId')}</span>
+                <input
+                  required={overrideNoSales}
+                  value={overrideActorId}
+                  onChange={(event) => setOverrideActorId(event.target.value)}
+                />
+              </label>
+              <p className="muted form-hint">{t('safe.forms.actorHint')}</p>
+            </div>
+          ) : null}
+        </FormDialog>
+      ) : null}
 
       {detailShiftId ? (
         <ShiftDetailModal

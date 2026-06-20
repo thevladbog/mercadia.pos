@@ -104,7 +104,7 @@ export function FormDialog({
     >
       <DialogContent aria-describedby={undefined}>
         <DialogTitle>{title}</DialogTitle>
-        <form onSubmit={onSubmit}>
+        <form className="mercadia-form-dialog" onSubmit={onSubmit}>
           <DialogBody>
             {children}
             {errorMessage ? <p className="mercadia-form-dialog-error">{errorMessage}</p> : null}
