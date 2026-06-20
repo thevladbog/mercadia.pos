@@ -45,6 +45,11 @@
   margin-top: var(--ui-space-lg);
 }
 
+.mercadia-form-dialog-error {
+  margin: 0;
+  color: var(--ui-danger);
+}
+
 @keyframes mercadia-dialog-fade-in {
   from {
     opacity: 0;

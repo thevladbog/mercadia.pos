@@ -9,6 +9,7 @@ export {
   DialogTitle,
   DialogTrigger,
   DetailDialog,
+  FormDialog,
 } from './components/Dialog/Dialog.js';
 export { Field, Input, Label, Textarea } from './components/Input/Input.js';
 export { PillTabs, Tabs, TabsContent, TabsList, TabsTrigger } from './components/Tabs/Tabs.js';

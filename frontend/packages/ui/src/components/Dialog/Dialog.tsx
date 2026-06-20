@@ -1,5 +1,5 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import type { ReactNode } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 
 import { cn } from '../../lib/cn.js';
 import { Button } from '../Button/Button.js';
@@ -66,6 +66,60 @@ export function DetailDialog({
             </Button>
           </DialogClose>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type FormDialogProps = {
+  title: string;
+  children: ReactNode;
+  errorMessage?: string | null;
+  isSubmitting: boolean;
+  submitLabel: string;
+  cancelLabel: string;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+};
+
+/** Form modal with primary submit and secondary cancel — used by admin cash/EoD flows */
+export function FormDialog({
+  title,
+  children,
+  errorMessage,
+  isSubmitting,
+  submitLabel,
+  cancelLabel,
+  onClose,
+  onSubmit,
+}: FormDialogProps) {
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent aria-describedby={undefined}>
+        <DialogTitle>{title}</DialogTitle>
+        <form onSubmit={onSubmit}>
+          <DialogBody>
+            {children}
+            {errorMessage ? <p className="mercadia-form-dialog-error">{errorMessage}</p> : null}
+          </DialogBody>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button disabled={isSubmitting} type="button" variant="secondary">
+                {cancelLabel}
+              </Button>
+            </DialogClose>
+            <Button disabled={isSubmitting} type="submit">
+              {submitLabel}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
