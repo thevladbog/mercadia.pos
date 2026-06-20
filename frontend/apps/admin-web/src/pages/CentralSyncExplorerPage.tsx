@@ -16,13 +16,22 @@ import {
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { PaginationControls } from '@/components/PaginationControls.js';
 import { StorePicker } from '@/components/StorePicker.js';
+import { CentralReceiptDetailModal } from '@/components/sync/CentralReceiptDetailModal.js';
+import { SyncEventDetailModal } from '@/components/sync/SyncEventDetailModal.js';
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { formatMinorAmount, formatTimestamp, PAGE_SIZE } from './reporting-utils.js';
-import { parseSyncTab, syncEntityHref, type SyncEntityType, type SyncTab } from './sync-routes.js';
+import {
+  parseSyncTab,
+  readEventFromSearchParams,
+  syncEntityHref,
+  syncExplorerHref,
+  type SyncEntityType,
+  type SyncTab,
+} from './sync-routes.js';
 
 const SYNC_TABS: { id: SyncTab; labelKey: string }[] = [
   { id: 'sync-events', labelKey: 'sync.tabs.syncEvents' },
@@ -38,10 +47,20 @@ function syncTabLabel(t: TFunction, tabId: SyncTab): string {
   return tab ? t(tab.labelKey) : tabId;
 }
 
+type SyncExplorerTableActions = {
+  onOpenSyncEvent: (event: ListStoreSyncEvents200ItemsItem) => void;
+  onOpenReceipt: (receiptId: string) => void;
+};
+
 export function CentralSyncExplorerPage() {
   const { t } = useTranslation();
-  const [searchParams] = useSearchParams();
-  const initialTab = parseSyncTab(searchParams.get('tab')) ?? 'sync-events';
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const eventDeepLinkId = readEventFromSearchParams(searchParams);
+  const initialTab = eventDeepLinkId
+    ? 'sync-events'
+    : (parseSyncTab(searchParams.get('tab')) ?? 'sync-events');
   const initialStoreId = searchParams.get('store');
 
   const storesQuery = useListStores();
@@ -50,6 +69,13 @@ export function CentralSyncExplorerPage() {
   const activeStoreId = selectedStoreId ?? stores[0]?.id ?? '';
   const [activeTab, setActiveTab] = useState<SyncTab>(initialTab);
   const [offset, setOffset] = useState(0);
+  const [detailSyncEvent, setDetailSyncEvent] = useState<ListStoreSyncEvents200ItemsItem | null>(
+    null,
+  );
+  const [detailReceiptId, setDetailReceiptId] = useState<string | null>(null);
+  const [dismissedDeepLinkLocationKey, setDismissedDeepLinkLocationKey] = useState<string | null>(
+    null,
+  );
 
   const listParams = useMemo(() => ({ limit: PAGE_SIZE, offset }), [offset]);
   const queryEnabled = activeStoreId.length > 0;
@@ -99,11 +125,29 @@ export function CentralSyncExplorerPage() {
   ]);
 
   const pageData = activeQuery.data?.status === 200 ? activeQuery.data.data : null;
+  const syncEventsPage = syncEventsQuery.data?.status === 200 ? syncEventsQuery.data.data : null;
   const totalCount = pageData?.totalCount ?? 0;
   const pageStart = totalCount === 0 ? 0 : offset + 1;
   const pageEnd = Math.min(offset + PAGE_SIZE, totalCount);
   const canGoPrev = offset > 0;
   const canGoNext = offset + PAGE_SIZE < totalCount;
+
+  const deepLinkEventOnPage = useMemo(() => {
+    if (dismissedDeepLinkLocationKey === location.key || !eventDeepLinkId || !syncEventsPage) {
+      return null;
+    }
+
+    return syncEventsPage.items.find((event) => event.eventId === eventDeepLinkId) ?? null;
+  }, [dismissedDeepLinkLocationKey, eventDeepLinkId, location.key, syncEventsPage]);
+
+  const activeDetailSyncEvent = detailSyncEvent ?? deepLinkEventOnPage;
+
+  const showEventNotOnPageNotice =
+    eventDeepLinkId != null &&
+    dismissedDeepLinkLocationKey !== location.key &&
+    activeTab === 'sync-events' &&
+    syncEventsPage != null &&
+    !syncEventsPage.items.some((event) => event.eventId === eventDeepLinkId);
 
   const isLoading = storesQuery.isFetching || activeQuery.isFetching;
   const errorMessage =
@@ -113,12 +157,64 @@ export function CentralSyncExplorerPage() {
         ? getApiErrorMessage(activeQuery.error)
         : null;
 
+  function updateExplorerSearchParams(options: {
+    tab: SyncTab;
+    storeId: string;
+    eventId?: string | null;
+  }) {
+    const params = new URLSearchParams();
+    params.set('tab', options.tab);
+    if (options.storeId.length > 0) {
+      params.set('store', options.storeId);
+    }
+    if (options.eventId) {
+      params.set('event', options.eventId);
+    }
+    setSearchParams(params, { replace: true });
+  }
+
+  function handleStoreChange(storeId: string) {
+    setSelectedStoreId(storeId);
+    setOffset(0);
+    updateExplorerSearchParams({ tab: activeTab, storeId, eventId: null });
+  }
+
+  function handleTabChange(tab: SyncTab) {
+    setActiveTab(tab);
+    setOffset(0);
+    updateExplorerSearchParams({ tab, storeId: activeStoreId, eventId: null });
+  }
+
+  function handleOpenSyncEvent(event: ListStoreSyncEvents200ItemsItem) {
+    setDetailSyncEvent(event);
+    updateExplorerSearchParams({
+      tab: 'sync-events',
+      storeId: activeStoreId,
+      eventId: event.eventId,
+    });
+  }
+
+  function handleCloseSyncEvent() {
+    setDetailSyncEvent(null);
+    if (eventDeepLinkId) {
+      setDismissedDeepLinkLocationKey(location.key);
+      void navigate(syncExplorerHref({ tab: activeTab, storeId: activeStoreId || undefined }), {
+        replace: true,
+      });
+    }
+  }
+
   function refetchAll() {
     void storesQuery.refetch();
     if (queryEnabled) {
       void activeQuery.refetch();
     }
   }
+
+  const tableActions: SyncExplorerTableActions = {
+    onOpenSyncEvent: handleOpenSyncEvent,
+    onOpenReceipt: setDetailReceiptId,
+  };
 
   return (
     <section className="stack reporting-page">
@@ -138,10 +234,7 @@ export function CentralSyncExplorerPage() {
           loading={storesQuery.isLoading}
           stores={stores}
           value={activeStoreId}
-          onChange={(storeId) => {
-            setSelectedStoreId(storeId);
-            setOffset(0);
-          }}
+          onChange={handleStoreChange}
         />
 
         <div className="filters" role="tablist" aria-label={t('sync.title')}>
@@ -150,10 +243,7 @@ export function CentralSyncExplorerPage() {
               key={tab.id}
               id={`sync-tab-${tab.id}`}
               className={activeTab === tab.id ? undefined : 'secondary'}
-              onClick={() => {
-                setActiveTab(tab.id);
-                setOffset(0);
-              }}
+              onClick={() => handleTabChange(tab.id)}
               role="tab"
               type="button"
               aria-selected={activeTab === tab.id}
@@ -168,6 +258,12 @@ export function CentralSyncExplorerPage() {
       {errorMessage ? (
         <div className="panel error-panel">
           <p className="error">{errorMessage}</p>
+        </div>
+      ) : null}
+
+      {showEventNotOnPageNotice ? (
+        <div className="panel">
+          <p className="muted">{t('sync.eventDetail.notOnPage')}</p>
         </div>
       ) : null}
 
@@ -203,6 +299,8 @@ export function CentralSyncExplorerPage() {
                       activeTab,
                       activeStoreId,
                       pageData.items as SyncExplorerItem[],
+                      tableActions,
+                      t,
                     )}
                   </tbody>
                 </table>
@@ -220,6 +318,17 @@ export function CentralSyncExplorerPage() {
           )}
         </div>
       )}
+
+      {activeDetailSyncEvent ? (
+        <SyncEventDetailModal event={activeDetailSyncEvent} onClose={handleCloseSyncEvent} />
+      ) : null}
+      {detailReceiptId ? (
+        <CentralReceiptDetailModal
+          receiptId={detailReceiptId}
+          storeId={activeStoreId}
+          onClose={() => setDetailReceiptId(null)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -229,20 +338,20 @@ function renderTableHead(activeTab: SyncTab, t: TFunction) {
     case 'sync-events':
       return (
         <tr>
-          <th>Source event ID</th>
-          <th>Event type</th>
-          <th>Occurred</th>
+          <th>{t('sync.columns.sourceEventId')}</th>
+          <th>{t('sync.columns.eventType')}</th>
+          <th>{t('sync.columns.occurredAt')}</th>
           <th>{t('monitoring.eventReceived')}</th>
         </tr>
       );
     case 'payments':
       return (
         <tr>
-          <th>Payment ID</th>
-          <th>Method</th>
+          <th>{t('sync.columns.paymentId')}</th>
+          <th>{t('sync.columns.method')}</th>
           <th>{t('safe.amount')}</th>
           <th>{t('monitoring.status')}</th>
-          <th>Captured</th>
+          <th>{t('sync.columns.capturedAt')}</th>
         </tr>
       );
     case 'cash-movements':
@@ -257,28 +366,28 @@ function renderTableHead(activeTab: SyncTab, t: TFunction) {
     case 'fiscal-documents':
       return (
         <tr>
-          <th>Document ID</th>
+          <th>{t('sync.columns.documentId')}</th>
           <th>{t('monitoring.kind')}</th>
           <th>{t('safe.amount')}</th>
-          <th>Fiscalized</th>
+          <th>{t('sync.columns.fiscalizedAt')}</th>
         </tr>
       );
     case 'returns':
       return (
         <tr>
-          <th>Return ID</th>
-          <th>Receipt ID</th>
-          <th>Total</th>
-          <th>Settled</th>
+          <th>{t('sync.columns.returnId')}</th>
+          <th>{t('sync.columns.receiptId')}</th>
+          <th>{t('sync.columns.total')}</th>
+          <th>{t('sync.columns.settledAt')}</th>
         </tr>
       );
     case 'operational-days':
       return (
         <tr>
-          <th>Day ID</th>
+          <th>{t('sync.columns.dayId')}</th>
           <th>{t('eod.businessDate')}</th>
           <th>{t('eod.closedAt')}</th>
-          <th>Closed by</th>
+          <th>{t('sync.columns.closedBy')}</th>
         </tr>
       );
   }
@@ -296,13 +405,68 @@ function entityIdLink(storeId: string, tab: SyncEntityType, entityId: string) {
   return <Link to={syncEntityHref(storeId, tab, entityId)}>{entityId}</Link>;
 }
 
-function renderTableBody(activeTab: SyncTab, storeId: string, items: SyncExplorerItem[]) {
+function syncEventLinkButton(
+  label: string,
+  event: ListStoreSyncEvents200ItemsItem,
+  onOpenSyncEvent: (event: ListStoreSyncEvents200ItemsItem) => void,
+  ariaLabel: string,
+) {
+  return (
+    <button
+      className="link-button"
+      type="button"
+      onClick={() => onOpenSyncEvent(event)}
+      aria-label={ariaLabel}
+    >
+      {label}
+    </button>
+  );
+}
+
+function receiptLinkButton(
+  receiptId: string,
+  onOpenReceipt: (receiptId: string) => void,
+  ariaLabel: string,
+) {
+  return (
+    <button
+      className="link-button"
+      type="button"
+      onClick={() => onOpenReceipt(receiptId)}
+      aria-label={ariaLabel}
+    >
+      {receiptId}
+    </button>
+  );
+}
+
+function renderTableBody(
+  activeTab: SyncTab,
+  storeId: string,
+  items: SyncExplorerItem[],
+  actions: SyncExplorerTableActions,
+  t: TFunction,
+) {
   switch (activeTab) {
     case 'sync-events':
       return (items as ListStoreSyncEvents200ItemsItem[]).map((row) => (
         <tr key={row.eventId}>
-          <td>{row.sourceEventId}</td>
-          <td>{row.eventType}</td>
+          <td>
+            {syncEventLinkButton(
+              row.sourceEventId,
+              row,
+              actions.onOpenSyncEvent,
+              t('sync.eventDetail.openDetails', { eventId: row.eventId }),
+            )}
+          </td>
+          <td>
+            {syncEventLinkButton(
+              row.eventType,
+              row,
+              actions.onOpenSyncEvent,
+              t('sync.eventDetail.openDetails', { eventId: row.eventId }),
+            )}
+          </td>
           <td>{formatTimestamp(row.occurredAt)}</td>
           <td>{formatTimestamp(row.receivedAt)}</td>
         </tr>
@@ -339,7 +503,15 @@ function renderTableBody(activeTab: SyncTab, storeId: string, items: SyncExplore
       return (items as ListStoreReturns200ItemsItem[]).map((row) => (
         <tr key={row.id}>
           <td>{entityIdLink(storeId, 'returns', row.id)}</td>
-          <td>{row.receiptId}</td>
+          <td>
+            {row.receiptId.length > 0
+              ? receiptLinkButton(
+                  row.receiptId,
+                  actions.onOpenReceipt,
+                  t('monitoring.openReceiptDetails', { receiptId: row.receiptId }),
+                )
+              : t('common.emDash')}
+          </td>
           <td>{formatMinorAmount(row.totalMinor)}</td>
           <td>{formatTimestamp(row.settledAt)}</td>
         </tr>

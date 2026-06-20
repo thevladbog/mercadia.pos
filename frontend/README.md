@@ -114,6 +114,18 @@ store-edge sync events (see dev seed flow).
 3. Use the search box to filter rows by product ID, name, barcode, or tax category.
 4. Confirm **Refresh** reloads products for the selected store.
 
+### Central sync explorer smoke test
+
+Requires central-backend (store list and sync read-models). Data is populated via store-edge sync.
+
+1. Sign in and open **Sync** in the header.
+2. Select a store — sync events and entity tabs load (or empty state if no sync yet).
+3. On **Sync events**, click a source event ID or event type — read-only detail modal shows payload JSON.
+4. Change tab or store — URL updates with `tab` and `store` query params; shared links restore state.
+5. Open a payment or return entity detail page — click `receiptId` to open the central receipt summary modal; on returns,
+   `paymentIds` link to payment entity pages.
+6. On the **Returns** tab, click a receipt ID — central receipt summary modal lists related sync projections.
+
 ### Store monitoring smoke test
 
 Requires central-backend (store list) and store-edge (monitoring KPIs/terminals):
@@ -127,6 +139,8 @@ Requires central-backend (store list) and store-edge (monitoring KPIs/terminals)
 6. Toggle **List** / **Tiles** view and use the search box to filter terminals client-side.
 7. When a terminal has an active receipt, confirm current receipt ID, status, and total appear
    in list columns and tile cards; click the receipt ID to open the read-only receipt detail modal.
+8. Click a terminal ID to open terminal detail — current receipt fields use the same drill-down;
+   click shift ID to open read-only shift detail modal.
 
 ### Store Safe smoke test
 
