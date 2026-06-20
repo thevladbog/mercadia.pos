@@ -159,9 +159,12 @@ Requires central-backend (store list) and store-edge (store-operations APIs):
    collecting cash) — row disappears and overview blockers refresh.
 7. On overview blockers, click a reference ID or action — open shift/receipt detail modals,
    navigate to Safe (drawer balance / recount), or switch to the Open shifts tab.
-8. Expanded overview KPI panels show receipt, cash, payment, and fiscal rollups from the summary API.
-9. Sign in as `central_viewer` — open/close action panels and shift row actions are hidden;
-   blocker drill-down remains read-only (detail modals, no write CTAs).
+8. On **Open shifts**, click a shift ID — read-only shift detail modal opens.
+9. On **Journal**, click reference IDs — shift/receipt/return detail modals, or navigate to Safe
+   for movement/recount entries (movement detail via `?movement=` deep link).
+10. Expanded overview KPI panels show receipt, cash, payment, and fiscal rollups from the summary API.
+11. Sign in as `central_viewer` — open/close action panels and shift row actions are hidden;
+    blocker and journal drill-down remains read-only (detail modals, no write CTAs).
 
 Optional env vars when APIs are not same-origin (bypass Vite proxy):
 

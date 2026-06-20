@@ -263,7 +263,8 @@
       "title": "Cash movement detail",
       "currency": "Currency",
       "approvedBy": "Approved by",
-      "reason": "Reason"
+      "reason": "Reason",
+      "notOnPage": "Linked movement is not on the current page. Navigate pages to find it."
     },
     "recounts": {
       "title": "Cash recounts",
@@ -485,6 +486,28 @@
       "receiptId": "Receipt ID",
       "total": "Total",
       "lineCount": "Line items"
+    },
+    "returnDetail": {
+      "title": "Return details",
+      "returnId": "Return ID",
+      "kind": "Kind",
+      "receiptId": "Receipt ID",
+      "total": "Total",
+      "lineCount": "Line items",
+      "reason": "Reason"
+    },
+    "journalReference": {
+      "link": "Open details for {{reference}}"
+    },
+    "operationTypes": {
+      "shift.opened": "Shift opened",
+      "shift.closed": "Shift closed",
+      "cash.movement.created": "Cash movement created",
+      "cash.recount.created": "Cash recount created",
+      "cash.recount.resolved": "Cash recount resolved",
+      "discount.applied": "Discount applied",
+      "return.completed": "Return completed",
+      "return.settled": "Return settled"
     }
   },
   "users": {

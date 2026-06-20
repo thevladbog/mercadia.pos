@@ -19,11 +19,14 @@ import { CloseShiftModal } from '@/components/eod/CloseShiftModal.js';
 import { BlockerActionCell, BlockerReferenceCell } from '@/components/eod/BlockerReferenceCell.js';
 import { EodActionsPanel } from '@/components/eod/EodActionsPanel.js';
 import { EodOpenPanel } from '@/components/eod/EodOpenPanel.js';
+import { JournalReferenceCell } from '@/components/eod/JournalReferenceCell.js';
 import { ReceiptDetailModal } from '@/components/eod/ReceiptDetailModal.js';
+import { ReturnDetailModal } from '@/components/eod/ReturnDetailModal.js';
 import { ShiftDetailModal } from '@/components/eod/ShiftDetailModal.js';
 import { PaginationControls } from '@/components/PaginationControls.js';
 import { StorePicker } from '@/components/StorePicker.js';
 import { formatBlockerMessage, formatBlockerSeverity } from './eod-mutation-utils.js';
+import { journalOperationTypeKey } from './eod-journal-utils.js';
 import { formatMinorAmount, formatTimestamp, PAGE_SIZE } from './reporting-utils.js';
 import { readStoreFromSearchParams } from './store-routes.js';
 import { STORE_POLL_INTERVAL_MS } from './store-polling.js';
@@ -55,6 +58,7 @@ export function StoreEodPage() {
   );
   const [detailShiftId, setDetailShiftId] = useState<string | null>(null);
   const [detailReceiptId, setDetailReceiptId] = useState<string | null>(null);
+  const [detailReturnId, setDetailReturnId] = useState<string | null>(null);
 
   const pollOptions = useMemo(
     () => ({
@@ -162,6 +166,10 @@ export function StoreEodPage() {
 
   function handleOpenReceipt(receiptId: string) {
     setDetailReceiptId(receiptId);
+  }
+
+  function handleOpenReturn(returnId: string) {
+    setDetailReturnId(returnId);
   }
 
   return (
@@ -512,7 +520,15 @@ export function StoreEodPage() {
                     <tbody>
                       {openShifts.map((shift) => (
                         <tr key={shift.id}>
-                          <td>{shift.id}</td>
+                          <td>
+                            <button
+                              className="link-button"
+                              onClick={() => handleOpenShift(shift.id)}
+                              type="button"
+                            >
+                              {shift.id}
+                            </button>
+                          </td>
                           <td>{shift.cashierId}</td>
                           <td>{shift.terminalId}</td>
                           <td>{shift.status}</td>
@@ -570,10 +586,22 @@ export function StoreEodPage() {
                         {journalPage.items.map((entry) => (
                           <tr key={entry.id}>
                             <td>{formatTimestamp(entry.createdAt)}</td>
-                            <td>{entry.operationType}</td>
+                            <td>
+                              {t(journalOperationTypeKey(entry.operationType), {
+                                defaultValue: entry.operationType,
+                              })}
+                            </td>
                             <td>{entry.actorId}</td>
                             <td>{entry.summary ?? t('common.emDash')}</td>
-                            <td>{entry.referenceId ?? t('common.emDash')}</td>
+                            <td>
+                              <JournalReferenceCell
+                                entry={entry}
+                                storeId={activeStoreId}
+                                onOpenReceipt={handleOpenReceipt}
+                                onOpenReturn={handleOpenReturn}
+                                onOpenShift={handleOpenShift}
+                              />
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -606,6 +634,17 @@ export function StoreEodPage() {
 
       {detailReceiptId ? (
         <ReceiptDetailModal receiptId={detailReceiptId} onClose={() => setDetailReceiptId(null)} />
+      ) : null}
+
+      {detailReturnId ? (
+        <ReturnDetailModal
+          returnId={detailReturnId}
+          onClose={() => setDetailReturnId(null)}
+          onOpenReceipt={(receiptId) => {
+            setDetailReturnId(null);
+            setDetailReceiptId(receiptId);
+          }}
+        />
       ) : null}
     </section>
   );

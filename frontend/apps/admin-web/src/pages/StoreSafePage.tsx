@@ -24,6 +24,7 @@ import { formatMinorAmount, formatTimestamp, PAGE_SIZE } from './reporting-utils
 import { computeSafeBalanceRollups, countOpenRecountDiscrepancies } from './safe-kpi-utils.js';
 import { matchesMovementSearch, matchesRecountSearch } from './safe-search-utils.js';
 import {
+  readMovementFromSearchParams,
   readRecountFromSearchParams,
   readStoreFromSearchParams,
   storePageHref,
@@ -38,6 +39,7 @@ export function StoreSafePage() {
   const [searchParams] = useSearchParams();
   const initialStoreId = readStoreFromSearchParams(searchParams);
   const recountDeepLinkId = readRecountFromSearchParams(searchParams);
+  const movementDeepLinkId = readMovementFromSearchParams(searchParams);
   const canWrite = canWriteStoreOperations(roles);
 
   const storesQuery = useListStores();
@@ -126,6 +128,14 @@ export function StoreSafePage() {
     return recountsPage.items.find((recount) => recount.id === recountDeepLinkId) ?? null;
   }, [dismissedDeepLinkLocationKey, location.key, recountDeepLinkId, recountsPage]);
 
+  const deepLinkMovementOnPage = useMemo(() => {
+    if (dismissedDeepLinkLocationKey === location.key || !movementDeepLinkId || !movementsPage) {
+      return null;
+    }
+
+    return movementsPage.items.find((movement) => movement.id === movementDeepLinkId) ?? null;
+  }, [dismissedDeepLinkLocationKey, location.key, movementDeepLinkId, movementsPage]);
+
   const deepLinkResolveRecount = useMemo(() => {
     if (!canWrite || !deepLinkRecountOnPage || deepLinkRecountOnPage.resolutionStatus !== 'open') {
       return null;
@@ -146,14 +156,33 @@ export function StoreSafePage() {
     return deepLinkRecountOnPage;
   }, [canWrite, detailRecount, deepLinkRecountOnPage, dismissedDeepLinkLocationKey, location.key]);
 
+  const deepLinkDetailMovement = useMemo(() => {
+    if (
+      dismissedDeepLinkLocationKey === location.key ||
+      detailMovement ||
+      !deepLinkMovementOnPage
+    ) {
+      return null;
+    }
+
+    return deepLinkMovementOnPage;
+  }, [detailMovement, deepLinkMovementOnPage, dismissedDeepLinkLocationKey, location.key]);
+
   const showRecountNotOnPageNotice =
     recountDeepLinkId != null &&
     dismissedDeepLinkLocationKey !== location.key &&
     recountsPage != null &&
     !recountsPage.items.some((recount) => recount.id === recountDeepLinkId);
 
+  const showMovementNotOnPageNotice =
+    movementDeepLinkId != null &&
+    dismissedDeepLinkLocationKey !== location.key &&
+    movementsPage != null &&
+    !movementsPage.items.some((movement) => movement.id === movementDeepLinkId);
+
   const activeResolveRecount = resolveRecount ?? deepLinkResolveRecount;
   const activeDetailRecount = detailRecount ?? deepLinkDetailRecount;
+  const activeDetailMovement = detailMovement ?? deepLinkDetailMovement;
 
   function handleResolveRecountClose() {
     setResolveRecount(null);
@@ -166,6 +195,14 @@ export function StoreSafePage() {
   function handleDetailRecountClose() {
     setDetailRecount(null);
     if (recountDeepLinkId) {
+      setDismissedDeepLinkLocationKey(location.key);
+      void navigate(storePageHref('/store/safe', activeStoreId), { replace: true });
+    }
+  }
+
+  function handleDetailMovementClose() {
+    setDetailMovement(null);
+    if (movementDeepLinkId) {
       setDismissedDeepLinkLocationKey(location.key);
       void navigate(storePageHref('/store/safe', activeStoreId), { replace: true });
     }
@@ -288,6 +325,9 @@ export function StoreSafePage() {
 
           <div className="panel">
             <h3>{t('safe.movements.title')}</h3>
+            {showMovementNotOnPageNotice ? (
+              <p className="muted">{t('safe.movementDetail.notOnPage')}</p>
+            ) : null}
             {movementsQuery.isLoading && !movementsPage ? (
               <p className="muted">{t('safe.loadingMovements')}</p>
             ) : movementsPage && movementsPage.items.length > 0 ? (
@@ -453,10 +493,10 @@ export function StoreSafePage() {
             />
           ) : null}
 
-          {detailMovement ? (
+          {activeDetailMovement ? (
             <CashMovementDetailModal
-              movement={detailMovement}
-              onClose={() => setDetailMovement(null)}
+              movement={activeDetailMovement}
+              onClose={handleDetailMovementClose}
             />
           ) : null}
 
