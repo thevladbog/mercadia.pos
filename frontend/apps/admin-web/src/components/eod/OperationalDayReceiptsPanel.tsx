@@ -1,6 +1,6 @@
 import { useListOperationalDayReceipts } from '@mercadia/api-clients-store-edge';
 import { Button } from '@mercadia/ui';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
@@ -19,7 +19,6 @@ export function OperationalDayReceiptsPanel({
 }: OperationalDayReceiptsPanelProps) {
   const { t } = useTranslation();
   const [offset, setOffset] = useState(0);
-  const [statusFilter, setStatusFilter] = useState('');
 
   const receiptsQuery = useListOperationalDayReceipts(
     operationalDayId,
@@ -33,40 +32,15 @@ export function OperationalDayReceiptsPanel({
   );
   const page = receiptsQuery.data?.status === 200 ? receiptsQuery.data.data : null;
   const errorMessage = receiptsQuery.error != null ? getApiErrorMessage(receiptsQuery.error) : null;
-
-  const filteredItems = useMemo(() => {
-    const items = page?.items ?? [];
-    if (!statusFilter) {
-      return items;
-    }
-    return items.filter((item) => item.status === statusFilter);
-  }, [page?.items, statusFilter]);
-
-  const statusOptions = useMemo(() => {
-    const statuses = new Set((page?.items ?? []).map((item) => item.status));
-    return [...statuses].sort();
-  }, [page?.items]);
+  const items = page?.items ?? [];
 
   return (
     <div className="panel">
       <h3>{t('eod.tabs.receipts')}</h3>
       {errorMessage ? <p className="error">{errorMessage}</p> : null}
-      {statusOptions.length > 0 ? (
-        <label className="field">
-          <span>{t('eod.receipts.statusFilter')}</span>
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            <option value="">{t('eod.receipts.allStatuses')}</option>
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
       {receiptsQuery.isLoading && !page ? (
         <p className="muted">{t('eod.receipts.loading')}</p>
-      ) : filteredItems.length > 0 ? (
+      ) : items.length > 0 ? (
         <>
           <div className="table-wrap">
             <table>
@@ -81,7 +55,7 @@ export function OperationalDayReceiptsPanel({
                 </tr>
               </thead>
               <tbody>
-                {filteredItems.map((receipt) => (
+                {items.map((receipt) => (
                   <tr key={receipt.id}>
                     <td>
                       <Button
@@ -103,15 +77,13 @@ export function OperationalDayReceiptsPanel({
               </tbody>
             </table>
           </div>
-          {!statusFilter ? (
-            <PaginationControls
-              canGoNext={offset + PAGE_SIZE < (page?.totalCount ?? 0)}
-              canGoPrev={offset > 0}
-              disabled={receiptsQuery.isFetching}
-              onNext={() => setOffset((value) => value + PAGE_SIZE)}
-              onPrev={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))}
-            />
-          ) : null}
+          <PaginationControls
+            canGoNext={offset + PAGE_SIZE < (page?.totalCount ?? 0)}
+            canGoPrev={offset > 0}
+            disabled={receiptsQuery.isFetching}
+            onNext={() => setOffset((value) => value + PAGE_SIZE)}
+            onPrev={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))}
+          />
         </>
       ) : (
         <p className="muted">{t('eod.receipts.empty')}</p>

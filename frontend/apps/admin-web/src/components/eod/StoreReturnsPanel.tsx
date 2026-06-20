@@ -10,15 +10,34 @@ import { STORE_POLL_INTERVAL_MS } from '@/pages/store-polling.js';
 
 type StoreReturnsPanelProps = {
   storeId: string;
-  businessDate: string;
+  operationalDayOpenedAt: string;
+  operationalDayClosedAt?: string;
   onOpenReturn: (returnId: string) => void;
 };
 
-function isReturnOnBusinessDate(createdAt: string, businessDate: string): boolean {
-  return createdAt.slice(0, 10) === businessDate;
+function isReturnInOperationalDay(
+  createdAt: string,
+  openedAt: string,
+  closedAt?: string,
+): boolean {
+  const createdMs = Date.parse(createdAt);
+  const openedMs = Date.parse(openedAt);
+  if (Number.isNaN(createdMs) || Number.isNaN(openedMs) || createdMs < openedMs) {
+    return false;
+  }
+  if (!closedAt) {
+    return true;
+  }
+  const closedMs = Date.parse(closedAt);
+  return !Number.isNaN(closedMs) && createdMs <= closedMs;
 }
 
-export function StoreReturnsPanel({ storeId, businessDate, onOpenReturn }: StoreReturnsPanelProps) {
+export function StoreReturnsPanel({
+  storeId,
+  operationalDayOpenedAt,
+  operationalDayClosedAt,
+  onOpenReturn,
+}: StoreReturnsPanelProps) {
   const { t } = useTranslation();
   const [offset, setOffset] = useState(0);
 
@@ -38,14 +57,16 @@ export function StoreReturnsPanel({ storeId, businessDate, onOpenReturn }: Store
 
   const dayReturns = useMemo(() => {
     return (page?.items ?? []).filter((item) =>
-      isReturnOnBusinessDate(item.createdAt, businessDate),
+      isReturnInOperationalDay(item.createdAt, operationalDayOpenedAt, operationalDayClosedAt),
     );
-  }, [businessDate, page?.items]);
+  }, [operationalDayClosedAt, operationalDayOpenedAt, page?.items]);
+
+  const showPagination = page != null && (page.items.length > 0 || offset > 0);
 
   return (
     <div className="panel">
       <h3>{t('eod.tabs.returns')}</h3>
-      <p className="muted">{t('eod.returns.dayHint', { businessDate })}</p>
+      <p className="muted">{t('eod.returns.dayHint')}</p>
       {errorMessage ? <p className="error">{errorMessage}</p> : null}
       {returnsQuery.isLoading && !page ? (
         <p className="muted">{t('eod.returns.loading')}</p>
@@ -86,6 +107,19 @@ export function StoreReturnsPanel({ storeId, businessDate, onOpenReturn }: Store
               </tbody>
             </table>
           </div>
+          {showPagination ? (
+            <PaginationControls
+              canGoNext={offset + PAGE_SIZE < (page?.totalCount ?? 0)}
+              canGoPrev={offset > 0}
+              disabled={returnsQuery.isFetching}
+              onNext={() => setOffset((value) => value + PAGE_SIZE)}
+              onPrev={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))}
+            />
+          ) : null}
+        </>
+      ) : showPagination ? (
+        <>
+          <p className="muted">{t('eod.returns.emptyOnPage')}</p>
           <PaginationControls
             canGoNext={offset + PAGE_SIZE < (page?.totalCount ?? 0)}
             canGoPrev={offset > 0}

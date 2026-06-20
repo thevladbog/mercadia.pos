@@ -525,6 +525,7 @@ export function StoreEodPage() {
 
           {activeTab === 'receipts' ? (
             <OperationalDayReceiptsPanel
+              key={operationalDayId}
               operationalDayId={operationalDayId}
               onOpenReceipt={handleOpenReceipt}
             />
@@ -532,6 +533,7 @@ export function StoreEodPage() {
 
           {activeTab === 'shifts' ? (
             <OperationalDayShiftsPanel
+              key={operationalDayId}
               operationalDayId={operationalDayId}
               onOpenShift={handleOpenShift}
             />
@@ -539,7 +541,9 @@ export function StoreEodPage() {
 
           {activeTab === 'returns' ? (
             <StoreReturnsPanel
-              businessDate={operationalDay.businessDate}
+              key={`${activeStoreId}-${operationalDayId}`}
+              operationalDayClosedAt={operationalDay.closedAt}
+              operationalDayOpenedAt={operationalDay.openedAt}
               storeId={activeStoreId}
               onOpenReturn={handleOpenReturn}
             />

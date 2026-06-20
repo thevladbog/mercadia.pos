@@ -599,9 +599,7 @@
     },
     "receipts": {
       "loading": "Loading receipts…",
-      "empty": "No receipts for this operational day.",
-      "statusFilter": "Status filter",
-      "allStatuses": "All statuses"
+      "empty": "No receipts for this operational day."
     },
     "shifts": {
       "loading": "Loading shifts…",
@@ -609,8 +607,9 @@
     },
     "returns": {
       "loading": "Loading returns…",
-      "empty": "No returns for this business date.",
-      "dayHint": "Showing returns created on {{businessDate}}."
+      "empty": "No returns for this operational day.",
+      "emptyOnPage": "No returns on this page for the current operational day.",
+      "dayHint": "Showing returns recorded during the current operational day."
     },
     "lines": {
       "product": "Product",
