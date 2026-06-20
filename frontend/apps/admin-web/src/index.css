@@ -350,18 +350,18 @@ button:not(.mercadia-button):not(.mercadia-tabs-trigger).link-button:hover {
 }
 
 .status-online {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--ui-success-muted);
+  color: var(--ui-success);
 }
 
 .status-offline {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-muted);
 }
 
 .status-attention {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--ui-danger-muted);
+  color: var(--ui-danger);
 }
 
 .table-wrap {
@@ -471,7 +471,7 @@ th {
 .terminal-card-meta dt {
   margin: 0;
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--ui-text-muted);
 }
 
 .terminal-card-meta dd {
@@ -482,10 +482,10 @@ th {
 }
 
 .safe-balance-highlight {
-  border: 1px solid #93c5fd;
+  border: 1px solid var(--ui-info);
   border-radius: 0.5rem;
   padding: 0.75rem;
-  background: #eff6ff;
+  background: var(--ui-info-muted);
 }
 
 .balance-meta {
@@ -503,22 +503,6 @@ th {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-}
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: var(--ui-overlay);
-}
-
-.modal-panel {
-  width: min(100%, 32rem);
-  max-height: calc(100vh - 2rem);
-  overflow-y: auto;
 }
 
 .form-grid {
@@ -560,4 +544,39 @@ textarea {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 0.8125rem;
+}
+
+.layout-grid-editor-dimensions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.75rem;
+}
+
+.layout-grid-editor-tiles-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.layout-grid-editor-tiles-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.layout-grid-editor-tile {
+  gap: 0.75rem;
+}
+
+.layout-grid-editor-tile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.layout-grid-editor-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
 }

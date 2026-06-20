@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { ActorFields } from '@/components/cash/ActorFields.js';
 import { AmountField } from '@/components/cash/AmountField.js';
-import { CashModal } from '@/components/cash/CashModal.js';
+import { FormDialog } from '@mercadia/ui';
 import { ContainerSelect } from '@/components/cash/ContainerSelect.js';
 import { containersByType, firstContainerByType } from '@/pages/cash-container-utils.js';
 import {
@@ -101,10 +101,11 @@ export function BusinessExpenseModal({ storeId, balances, onClose }: BusinessExp
   }
 
   return (
-    <CashModal
+    <FormDialog
+      cancelLabel={t('common.cancel')}
       errorMessage={errorMessage}
       isSubmitting={mutation.isPending}
-      submitLabel={t('safe.forms.submit')}
+      submitLabel={mutation.isPending ? t('common.submitting') : t('safe.forms.submit')}
       title={t('safe.actions.businessExpense')}
       onClose={onClose}
       onSubmit={handleSubmit}
@@ -130,6 +131,6 @@ export function BusinessExpenseModal({ storeId, balances, onClose }: BusinessExp
         onActorIdChange={setActorId}
         onApprovedByIdChange={setApprovedById}
       />
-    </CashModal>
+    </FormDialog>
   );
 }

@@ -2,7 +2,7 @@ import { useGetReturn } from '@mercadia/api-clients-store-edge';
 import { useTranslation } from 'react-i18next';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
-import { DetailModal } from '@/components/eod/DetailModal.js';
+import { DetailDialog } from '@mercadia/ui';
 import { formatMinorAmount, formatTimestamp } from '@/pages/reporting-utils.js';
 
 type ReturnDetailModalProps = {
@@ -21,7 +21,14 @@ export function ReturnDetailModal({ returnId, onClose, onOpenReceipt }: ReturnDe
   const emDash = t('common.emDash');
 
   return (
-    <DetailModal title={t('eod.returnDetail.title')} onClose={onClose}>
+    <DetailDialog
+      open
+      title={t('eod.returnDetail.title')}
+      cancelLabel={t('common.cancel')}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       {returnQuery.isLoading && !returnData ? (
         <p className="muted">{t('common.loading')}</p>
       ) : errorMessage ? (
@@ -92,6 +99,6 @@ export function ReturnDetailModal({ returnId, onClose, onOpenReceipt }: ReturnDe
       ) : (
         <p className="muted">{t('common.noData')}</p>
       )}
-    </DetailModal>
+    </DetailDialog>
   );
 }

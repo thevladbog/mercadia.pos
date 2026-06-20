@@ -1,7 +1,7 @@
 import type { ListCashRecounts200ItemsItem } from '@mercadia/api-clients-store-edge';
 import { useTranslation } from 'react-i18next';
 
-import { DetailModal } from '@/components/eod/DetailModal.js';
+import { DetailDialog } from '@mercadia/ui';
 import { formatMinorAmount, formatTimestamp } from '@/pages/reporting-utils.js';
 
 type CashRecountDetailModalProps = {
@@ -14,7 +14,14 @@ export function CashRecountDetailModal({ recount, onClose }: CashRecountDetailMo
   const emDash = t('common.emDash');
 
   return (
-    <DetailModal title={t('safe.recountDetail.title')} onClose={onClose}>
+    <DetailDialog
+      open
+      title={t('safe.recountDetail.title')}
+      cancelLabel={t('common.cancel')}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <dl className="kpi-grid">
         <div>
           <dt>{t('safe.recountId')}</dt>
@@ -102,6 +109,6 @@ export function CashRecountDetailModal({ recount, onClose }: CashRecountDetailMo
           <dd>{formatTimestamp(recount.createdAt)}</dd>
         </div>
       </dl>
-    </DetailModal>
+    </DetailDialog>
   );
 }

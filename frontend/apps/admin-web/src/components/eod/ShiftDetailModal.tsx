@@ -2,7 +2,7 @@ import { useGetShift } from '@mercadia/api-clients-store-edge';
 import { useTranslation } from 'react-i18next';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
-import { DetailModal } from '@/components/eod/DetailModal.js';
+import { DetailDialog } from '@mercadia/ui';
 import type { EodTab } from '@/pages/eod-blocker-utils.js';
 import { formatMinorAmount, formatTimestamp } from '@/pages/reporting-utils.js';
 
@@ -27,7 +27,8 @@ export function ShiftDetailModal({ shiftId, canWrite, onClose, onEodTab }: Shift
   }
 
   return (
-    <DetailModal
+    <DetailDialog
+      open
       footer={
         canWrite ? (
           <button type="button" onClick={handleOpenShiftsTab}>
@@ -36,7 +37,10 @@ export function ShiftDetailModal({ shiftId, canWrite, onClose, onEodTab }: Shift
         ) : undefined
       }
       title={t('eod.shiftDetail.title')}
-      onClose={onClose}
+      cancelLabel={t('common.cancel')}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
     >
       {shiftQuery.isLoading && !shift ? (
         <p className="muted">{t('common.loading')}</p>
@@ -84,6 +88,6 @@ export function ShiftDetailModal({ shiftId, canWrite, onClose, onEodTab }: Shift
       ) : (
         <p className="muted">{t('common.noData')}</p>
       )}
-    </DetailModal>
+    </DetailDialog>
   );
 }

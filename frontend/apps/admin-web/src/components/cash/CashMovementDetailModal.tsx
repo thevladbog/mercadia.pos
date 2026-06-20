@@ -1,7 +1,7 @@
 import type { ListCashMovements200ItemsItem } from '@mercadia/api-clients-store-edge';
 import { useTranslation } from 'react-i18next';
 
-import { DetailModal } from '@/components/eod/DetailModal.js';
+import { DetailDialog } from '@mercadia/ui';
 import { formatMinorAmount, formatTimestamp } from '@/pages/reporting-utils.js';
 
 type CashMovementDetailModalProps = {
@@ -14,7 +14,14 @@ export function CashMovementDetailModal({ movement, onClose }: CashMovementDetai
   const emDash = t('common.emDash');
 
   return (
-    <DetailModal title={t('safe.movementDetail.title')} onClose={onClose}>
+    <DetailDialog
+      open
+      title={t('safe.movementDetail.title')}
+      cancelLabel={t('common.cancel')}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <dl className="kpi-grid">
         <div>
           <dt>{t('safe.movementId')}</dt>
@@ -79,6 +86,6 @@ export function CashMovementDetailModal({ movement, onClose }: CashMovementDetai
           <dd>{formatTimestamp(movement.createdAt)}</dd>
         </div>
       </dl>
-    </DetailModal>
+    </DetailDialog>
   );
 }

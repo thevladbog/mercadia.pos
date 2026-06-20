@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { ActorFields } from '@/components/cash/ActorFields.js';
-import { CashModal } from '@/components/cash/CashModal.js';
+import { FormDialog } from '@mercadia/ui';
 import { ContainerSelect } from '@/components/cash/ContainerSelect.js';
 import { containersByType, firstContainerByType } from '@/pages/cash-container-utils.js';
 import { actorsMustDiffer, createIdempotencyHeaders } from '@/pages/cash-mutation-utils.js';
@@ -110,10 +110,11 @@ export function CloseShiftModal({ storeId, shift, balances, onClose }: CloseShif
   }
 
   return (
-    <CashModal
+    <FormDialog
+      cancelLabel={t('common.cancel')}
       errorMessage={errorMessage}
       isSubmitting={mutation.isPending}
-      submitLabel={t('eod.actions.closeShift')}
+      submitLabel={mutation.isPending ? t('common.submitting') : t('eod.actions.closeShift')}
       title={t('eod.forms.closeShiftTitle')}
       onClose={onClose}
       onSubmit={handleSubmit}
@@ -168,6 +169,6 @@ export function CloseShiftModal({ storeId, shift, balances, onClose }: CloseShif
           />
         </>
       ) : null}
-    </CashModal>
+    </FormDialog>
   );
 }

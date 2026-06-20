@@ -95,11 +95,12 @@ Layout templates and Color Schemes may supply `accentPreset` or `accentColor`; P
 |-----------|-------|
 | `Button` | `primary` uses `--ui-accent`; `secondary`, `ghost`, `link` |
 | `Badge` | Semantic + `accent` variant |
-| `Dialog`, `DetailDialog` | Radix dialog; `DetailDialog` replaces admin `DetailModal` pattern |
+| `Dialog`, `DetailDialog`, `FormDialog` | Radix dialog; `DetailDialog` read-only; `FormDialog` submit forms (Safe/EoD) |
 | `Input`, `Textarea`, `Label`, `Field` | Form controls |
 | `Tabs`, `PillTabs` | Radix tabs |
 | `Card`, `CardHeading` | Panel/card layout |
 | `LayoutGrid` | Product tile grid from layout template JSON |
+| `LayoutGridEditor` (admin-web) | Controlled editor for layout template grid JSON on create/edit forms |
 | `Numpad`, `Stepper` | Touch kiosk controls |
 | `ThemePreview` | Scoped accent preview without mutating global admin theme |
 
@@ -144,6 +145,8 @@ pnpm --filter pos-terminal dev
 - **Dark mode** — `ThemeToggle` in the top bar calls `useTheme().setTheme({ ...theme, colorMode })`; shell chrome (`app-sidebar`, `app-header`, panels, tables) uses `--ui-*` tokens so light/dark switches apply without extra CSS files.
 - Prefer `@mercadia/ui` components over native `<button>` with global CSS.
 - Legacy native buttons remain styled via token-based compat rules in `index.css` until pages migrate.
+- Cash/EoD form modals use `FormDialog` directly from `@mercadia/ui`; read-only drill-down modals use `DetailDialog`. Legacy `CashModal` / `DetailModal` wrappers and `.modal-backdrop` CSS removed.
+- Layout template create/edit forms use `LayoutGridEditor` instead of raw JSON textarea.
 
 ## Verification
 

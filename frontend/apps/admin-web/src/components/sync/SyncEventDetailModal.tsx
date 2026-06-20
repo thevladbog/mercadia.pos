@@ -1,7 +1,7 @@
 import type { ListStoreSyncEvents200ItemsItem } from '@mercadia/api-clients-central';
 import { useTranslation } from 'react-i18next';
 
-import { DetailModal } from '@/components/eod/DetailModal.js';
+import { DetailDialog } from '@mercadia/ui';
 import { formatTimestamp } from '@/pages/reporting-utils.js';
 
 type SyncEventDetailModalProps = {
@@ -21,7 +21,14 @@ export function SyncEventDetailModal({ event, onClose }: SyncEventDetailModalPro
   const { t } = useTranslation();
 
   return (
-    <DetailModal title={t('sync.eventDetail.title')} onClose={onClose}>
+    <DetailDialog
+      open
+      title={t('sync.eventDetail.title')}
+      cancelLabel={t('common.cancel')}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <dl className="kpi-grid">
         <div>
           <dt>{t('sync.eventDetail.eventId')}</dt>
@@ -46,6 +53,6 @@ export function SyncEventDetailModal({ event, onClose }: SyncEventDetailModalPro
       </dl>
       <h4>{t('sync.eventDetail.payload')}</h4>
       <pre className="sync-event-payload">{formatPayload(event.payload)}</pre>
-    </DetailModal>
+    </DetailDialog>
   );
 }

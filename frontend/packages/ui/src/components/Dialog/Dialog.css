@@ -34,15 +34,30 @@
 .mercadia-dialog-body {
   display: grid;
   gap: var(--ui-space-lg);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+}
+
+.mercadia-form-dialog {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
 }
 
 .mercadia-dialog-footer {
   display: flex;
+  flex-shrink: 0;
   flex-wrap: wrap;
   gap: var(--ui-space-md);
   align-items: center;
   margin-top: var(--ui-space-lg);
+}
+
+.mercadia-form-dialog-error {
+  margin: 0;
+  color: var(--ui-danger);
 }
 
 @keyframes mercadia-dialog-fade-in {
