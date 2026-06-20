@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	ErrColorSchemeNotFound        = errors.New("color scheme not found")
-	ErrInvalidColorSchemeCommand  = errors.New("invalid color scheme command")
-	ErrLayoutTemplateNotFound     = errors.New("layout template not found")
-	ErrInvalidLayoutTemplateCmd   = errors.New("invalid layout template command")
+	ErrColorSchemeNotFound       = errors.New("color scheme not found")
+	ErrInvalidColorSchemeCommand = errors.New("invalid color scheme command")
+	ErrLayoutTemplateNotFound    = errors.New("layout template not found")
+	ErrInvalidLayoutTemplateCmd  = errors.New("invalid layout template command")
 )
 
 type ColorSchemeRepository interface {

@@ -148,6 +148,9 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
+      - name: Test UI package
+        run: pnpm --filter @mercadia/ui test
+
       - name: Build admin-web
         run: pnpm --filter admin-web build
 

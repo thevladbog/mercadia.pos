@@ -20,14 +20,14 @@ export function ThemePreview({ children, className, theme }: ThemePreviewProps) 
       accent: theme.accent,
       accentPreset: theme.accentPreset,
     });
-    const derived = deriveAccentTokens(accentHex);
+    const derived = deriveAccentTokens(accentHex, theme.colorMode ?? 'light');
     return {
       '--ui-accent': derived.accent,
       '--ui-accent-hover': derived.accentHover,
       '--ui-accent-muted': derived.accentMuted,
       '--ui-accent-foreground': derived.accentForeground,
     } as CSSProperties;
-  }, [theme.accent, theme.accentPreset]);
+  }, [theme.accent, theme.accentPreset, theme.colorMode]);
 
   return (
     <div

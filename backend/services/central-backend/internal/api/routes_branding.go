@@ -10,17 +10,17 @@ import (
 )
 
 type ColorSchemeResponse struct {
-	ID              string                    `json:"id"`
-	Name            string                    `json:"name"`
-	LogoURL         string                    `json:"logoUrl"`
-	AccentPreset    domain.AccentPreset       `json:"accentPreset,omitempty"`
-	AccentColor     string                    `json:"accentColor,omitempty"`
-	BackgroundColor string                    `json:"backgroundColor,omitempty"`
-	ResolvedAccent  string                    `json:"resolvedAccentColor"`
-	Status          domain.ColorSchemeStatus  `json:"status"`
-	StoreIDs        []string                  `json:"storeIds"`
-	CreatedAt       time.Time                 `json:"createdAt"`
-	UpdatedAt       time.Time                 `json:"updatedAt"`
+	ID              string                   `json:"id"`
+	Name            string                   `json:"name"`
+	LogoURL         string                   `json:"logoUrl"`
+	AccentPreset    domain.AccentPreset      `json:"accentPreset,omitempty"`
+	AccentColor     string                   `json:"accentColor,omitempty"`
+	BackgroundColor string                   `json:"backgroundColor,omitempty"`
+	ResolvedAccent  string                   `json:"resolvedAccentColor"`
+	Status          domain.ColorSchemeStatus `json:"status"`
+	StoreIDs        []string                 `json:"storeIds"`
+	CreatedAt       time.Time                `json:"createdAt"`
+	UpdatedAt       time.Time                `json:"updatedAt"`
 }
 
 type ColorSchemesResponse struct {
@@ -66,21 +66,21 @@ type LayoutGridResponse struct {
 }
 
 type LayoutTemplateResponse struct {
-	ID                   string                       `json:"id"`
-	Name                 string                       `json:"name"`
-	Kind                 domain.LayoutTemplateKind    `json:"kind"`
-	AccentPreset         domain.AccentPreset          `json:"accentPreset,omitempty"`
-	AccentColor          string                       `json:"accentColor,omitempty"`
-	ColorSchemeID        string                       `json:"colorSchemeId,omitempty"`
-	ResolvedAccentPreset domain.AccentPreset          `json:"resolvedAccentPreset"`
-	ResolvedAccentColor  string                       `json:"resolvedAccentColor"`
-	Grid                 LayoutGridResponse           `json:"grid"`
-	StoreID              string                       `json:"storeId,omitempty"`
-	TerminalType         string                       `json:"terminalType,omitempty"`
-	Status               domain.LayoutTemplateStatus  `json:"status"`
-	Version              int                          `json:"version"`
-	CreatedAt            time.Time                    `json:"createdAt"`
-	UpdatedAt            time.Time                    `json:"updatedAt"`
+	ID                   string                      `json:"id"`
+	Name                 string                      `json:"name"`
+	Kind                 domain.LayoutTemplateKind   `json:"kind"`
+	AccentPreset         domain.AccentPreset         `json:"accentPreset,omitempty"`
+	AccentColor          string                      `json:"accentColor,omitempty"`
+	ColorSchemeID        string                      `json:"colorSchemeId,omitempty"`
+	ResolvedAccentPreset domain.AccentPreset         `json:"resolvedAccentPreset"`
+	ResolvedAccentColor  string                      `json:"resolvedAccentColor"`
+	Grid                 LayoutGridResponse          `json:"grid"`
+	StoreID              string                      `json:"storeId,omitempty"`
+	TerminalType         string                      `json:"terminalType,omitempty"`
+	Status               domain.LayoutTemplateStatus `json:"status"`
+	Version              int                         `json:"version"`
+	CreatedAt            time.Time                   `json:"createdAt"`
+	UpdatedAt            time.Time                   `json:"updatedAt"`
 }
 
 type LayoutTemplatesResponse struct {
@@ -105,15 +105,15 @@ type CreateLayoutTemplateRequest struct {
 }
 
 type UpdateLayoutTemplateRequest struct {
-	Name          *string                        `json:"name,omitempty"`
-	Kind          *domain.LayoutTemplateKind     `json:"kind,omitempty"`
-	AccentPreset  *domain.AccentPreset           `json:"accentPreset,omitempty"`
-	AccentColor   *string                        `json:"accentColor,omitempty"`
-	ColorSchemeID *string                        `json:"colorSchemeId,omitempty"`
-	Grid          *domain.LayoutGrid             `json:"grid,omitempty"`
-	StoreID       *string                        `json:"storeId,omitempty"`
-	TerminalType  *string                        `json:"terminalType,omitempty"`
-	Status        *domain.LayoutTemplateStatus   `json:"status,omitempty"`
+	Name          *string                      `json:"name,omitempty"`
+	Kind          *domain.LayoutTemplateKind   `json:"kind,omitempty"`
+	AccentPreset  *domain.AccentPreset         `json:"accentPreset,omitempty"`
+	AccentColor   *string                      `json:"accentColor,omitempty"`
+	ColorSchemeID *string                      `json:"colorSchemeId,omitempty"`
+	Grid          *domain.LayoutGrid           `json:"grid,omitempty"`
+	StoreID       *string                      `json:"storeId,omitempty"`
+	TerminalType  *string                      `json:"terminalType,omitempty"`
+	Status        *domain.LayoutTemplateStatus `json:"status,omitempty"`
 }
 
 func mountBrandingRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {

@@ -20,7 +20,7 @@ export function applyTheme(
     accent: config.accent,
     accentPreset: config.accentPreset,
   });
-  const derived = deriveAccentTokens(accentHex);
+  const derived = deriveAccentTokens(accentHex, config.colorMode);
 
   root.style.setProperty('--ui-accent', derived.accent);
   root.style.setProperty('--ui-accent-hover', derived.accentHover);

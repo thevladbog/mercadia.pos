@@ -1,4 +1,4 @@
-import type { DerivedAccentTokens } from './types.js';
+import type { ColorMode, DerivedAccentTokens } from './types.js';
 
 function parseHex(hex: string): { r: number; g: number; b: number } {
   const normalized = hex.replace('#', '');
@@ -32,12 +32,25 @@ function relativeLuminance(hex: string): number {
   return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 }
 
-export function deriveAccentTokens(accent: string): DerivedAccentTokens {
+export function deriveAccentTokens(
+  accent: string,
+  colorMode: ColorMode = 'light',
+): DerivedAccentTokens {
   const normalized = accent.startsWith('#') ? accent : `#${accent}`;
+  const { r, g, b } = parseHex(normalized);
+  const accentMuted =
+    colorMode === 'dark'
+      ? `rgb(${r} ${g} ${b} / 0.15)`
+      : mix(normalized, { r: 255, g: 255, b: 255 }, 0.88);
+  const accentHover =
+    colorMode === 'dark'
+      ? mix(normalized, { r: 255, g: 255, b: 255 }, 0.12)
+      : mix(normalized, { r: 0, g: 0, b: 0 }, 0.12);
+
   return {
     accent: normalized.toUpperCase(),
-    accentHover: mix(normalized, { r: 0, g: 0, b: 0 }, 0.12),
-    accentMuted: mix(normalized, { r: 255, g: 255, b: 255 }, 0.88),
+    accentHover,
+    accentMuted,
     accentForeground: relativeLuminance(normalized) > 0.55 ? '#1A1A1A' : '#FFFFFF',
   };
 }

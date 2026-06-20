@@ -23,4 +23,11 @@ describe('applyTheme', () => {
       '',
     );
   });
+
+  it('uses dark-mode muted accent derivation', () => {
+    applyTheme({ surface: 'senior-cashier', colorMode: 'dark', accentPreset: 'sale' });
+    expect(document.documentElement.style.getPropertyValue('--ui-accent-muted').trim()).toBe(
+      'rgb(255 102 0 / 0.15)',
+    );
+  });
 });

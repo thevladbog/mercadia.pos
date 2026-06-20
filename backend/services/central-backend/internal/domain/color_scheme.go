@@ -22,10 +22,10 @@ const (
 type AccentPreset string
 
 const (
-	AccentPresetSale     AccentPreset = "sale"
-	AccentPresetReturn   AccentPreset = "return"
-	AccentPresetSco      AccentPreset = "sco"
-	AccentPresetNeutral  AccentPreset = "neutral"
+	AccentPresetSale    AccentPreset = "sale"
+	AccentPresetReturn  AccentPreset = "return"
+	AccentPresetSco     AccentPreset = "sco"
+	AccentPresetNeutral AccentPreset = "neutral"
 )
 
 var validAccentPresets = map[AccentPreset]struct{}{

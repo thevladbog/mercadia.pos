@@ -16,6 +16,12 @@ describe('deriveAccentTokens', () => {
     const tokens = deriveAccentTokens('#FF6600');
     expect(tokens.accentForeground).toBe('#FFFFFF');
   });
+
+  it('derives translucent muted accent for dark mode', () => {
+    const tokens = deriveAccentTokens('#FF6600', 'dark');
+    expect(tokens.accentMuted).toBe('rgb(255 102 0 / 0.15)');
+    expect(tokens.accentMuted).not.toContain('#FF');
+  });
 });
 
 describe('resolveAccentHex', () => {

@@ -11,7 +11,7 @@ input {
 }
 
 /* Legacy native buttons until pages migrate to @mercadia/ui Button */
-button:not(.mercadia-button) {
+button:not(.mercadia-button):not(.mercadia-tabs-trigger) {
   border: none;
   border-radius: var(--ui-radius-md, 0.5rem);
   padding: 0.625rem 1rem;
@@ -20,18 +20,18 @@ button:not(.mercadia-button) {
   cursor: pointer;
 }
 
-button:not(.mercadia-button):disabled {
+button:not(.mercadia-button):not(.mercadia-tabs-trigger):disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-button:not(.mercadia-button).secondary {
+button:not(.mercadia-button):not(.mercadia-tabs-trigger).secondary {
   background: var(--ui-surface);
   color: var(--ui-text);
   border: 1px solid var(--ui-border);
 }
 
-button:not(.mercadia-button).link-button {
+button:not(.mercadia-button):not(.mercadia-tabs-trigger).link-button {
   background: none;
   border: none;
   border-radius: 0;
@@ -40,7 +40,7 @@ button:not(.mercadia-button).link-button {
   text-decoration: underline;
 }
 
-button:not(.mercadia-button).link-button:hover {
+button:not(.mercadia-button):not(.mercadia-tabs-trigger).link-button:hover {
   color: var(--ui-link-hover);
 }
 
@@ -420,6 +420,22 @@ th {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(15 23 42 / 0.45);
+}
+
+.modal-panel {
+  width: min(100%, 32rem);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
 }
 
 .form-grid {
