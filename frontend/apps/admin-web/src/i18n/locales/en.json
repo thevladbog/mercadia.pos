@@ -450,6 +450,9 @@
     "blockerDisclaimer": "Blocker list reflects store-edge close rules.",
     "tabs": {
       "overview": "Overview",
+      "receipts": "Receipts",
+      "shifts": "Shifts",
+      "returns": "Returns",
       "openShifts": "Open shifts",
       "journal": "Journal"
     },
@@ -572,13 +575,17 @@
     "shiftDetail": {
       "title": "Shift details",
       "drawerId": "Drawer",
-      "closingCash": "Closing cash"
+      "closingCash": "Closing cash",
+      "receiptsSection": "Shift receipts",
+      "noReceipts": "No receipts for this shift."
     },
     "receiptDetail": {
       "title": "Receipt details",
       "receiptId": "Receipt ID",
       "total": "Total",
-      "lineCount": "Line items"
+      "lineCount": "Line items",
+      "linesSection": "Line items",
+      "paymentsSection": "Payments"
     },
     "returnDetail": {
       "title": "Return details",
@@ -587,7 +594,35 @@
       "receiptId": "Receipt ID",
       "total": "Total",
       "lineCount": "Line items",
-      "reason": "Reason"
+      "reason": "Reason",
+      "linesSection": "Return lines"
+    },
+    "receipts": {
+      "loading": "Loading receipts…",
+      "empty": "No receipts for this operational day.",
+      "statusFilter": "Status filter",
+      "allStatuses": "All statuses"
+    },
+    "shifts": {
+      "loading": "Loading shifts…",
+      "empty": "No shifts for this operational day."
+    },
+    "returns": {
+      "loading": "Loading returns…",
+      "empty": "No returns for this business date.",
+      "dayHint": "Showing returns created on {{businessDate}}."
+    },
+    "lines": {
+      "product": "Product",
+      "quantity": "Qty",
+      "unitPrice": "Unit price",
+      "total": "Total",
+      "empty": "No line items."
+    },
+    "payments": {
+      "capturedAt": "Captured at",
+      "refunded": "Refunded",
+      "empty": "No payments recorded."
     },
     "journalReference": {
       "link": "Open details for {{reference}}"
