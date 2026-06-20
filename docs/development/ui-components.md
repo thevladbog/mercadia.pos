@@ -96,7 +96,7 @@ Layout templates and Color Schemes may supply `accentPreset` or `accentColor`; P
 | `Button` | `primary` uses `--ui-accent`; `secondary`, `ghost`, `link` |
 | `Badge` | Semantic + `accent` variant |
 | `Dialog`, `DetailDialog`, `FormDialog` | Radix dialog; `DetailDialog` read-only; `FormDialog` submit forms (Safe/EoD) |
-| `Input`, `Textarea`, `Label`, `Field` | Form controls |
+| `Input`, `Select`, `Textarea`, `Label`, `Field` | Form controls |
 | `Tabs`, `PillTabs` | Radix tabs |
 | `Card`, `CardHeading` | Panel/card layout |
 | `LayoutGrid` | Product tile grid from layout template JSON |
