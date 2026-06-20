@@ -39,6 +39,11 @@ export function CentralDashboardPage() {
         to: '/central/sync',
       },
       {
+        titleKey: 'dashboard.catalogTitle',
+        descKey: 'dashboard.catalogDesc',
+        to: '/central/catalog',
+      },
+      {
         titleKey: 'dashboard.monitoringTitle',
         descKey: 'dashboard.monitoringDesc',
         to: '/store/monitoring',

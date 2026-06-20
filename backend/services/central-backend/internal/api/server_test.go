@@ -193,7 +193,7 @@ func TestRegisterStoreAndStatus(t *testing.T) {
 func TestSyncEventsAndCatalogEndpoints(t *testing.T) {
 	server := newTestServer()
 
-	loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-1")
+	token := loginAdminAndRegisterStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-1")
 
 	since := time.Now().UTC().Add(-time.Hour).Format(time.RFC3339)
 	syncBody := bytes.NewBufferString(`{"events":[{"eventId":"evt-1","eventType":"catalog.product.upserted","payload":{"productId":"sku-1","name":"Milk","barcodes":["4600000000000"],"unitPriceMinor":19999,"taxCategoryId":"vat_20"}}]}`)
@@ -206,9 +206,7 @@ func TestSyncEventsAndCatalogEndpoints(t *testing.T) {
 		t.Fatalf("sync status = %d body=%s", syncResponse.Code, syncResponse.Body.String())
 	}
 
-	productsResponse := httptest.NewRecorder()
-	productsRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/catalog/products", nil)
-	server.ServeHTTP(productsResponse, productsRequest)
+	productsResponse := authorizedGet(t, server, "/v1/stores/store-1/catalog/products", token)
 	if productsResponse.Code != http.StatusOK {
 		t.Fatalf("products status = %d body=%s", productsResponse.Code, productsResponse.Body.String())
 	}
@@ -792,6 +790,9 @@ func TestSyncReadModelsRequireSession(t *testing.T) {
 
 func TestCatalogRequiresSyncAPIKeyWhenConfigured(t *testing.T) {
 	store := memory.NewStore()
+	if err := seedHTTPTestViewer(store); err != nil {
+		t.Fatalf("seed viewer: %v", err)
+	}
 	server := api.NewServerWithServices(newTestServicesWithSyncAPIKey(store, "test-key"))
 
 	registerTestStore(t, server, `{"storeId":"store-1","name":"Main Street"}`, "register-catalog-key", registerTestStoreAuth{syncAPIKey: "test-key"})
@@ -811,6 +812,12 @@ func TestCatalogRequiresSyncAPIKeyWhenConfigured(t *testing.T) {
 	server.ServeHTTP(authorizedProducts, authorizedProductsRequest)
 	if authorizedProducts.Code != http.StatusOK {
 		t.Fatalf("products with key status = %d body=%s", authorizedProducts.Code, authorizedProducts.Body.String())
+	}
+
+	viewerToken := loginTestSession(t, server, "viewer@example.com", "viewer-pass")
+	viewerProducts := authorizedGet(t, server, "/v1/stores/store-1/catalog/products", viewerToken)
+	if viewerProducts.Code != http.StatusOK {
+		t.Fatalf("products with viewer session status = %d body=%s", viewerProducts.Code, viewerProducts.Body.String())
 	}
 
 	unauthorizedDelta := httptest.NewRecorder()

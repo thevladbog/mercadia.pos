@@ -2,6 +2,7 @@ export { ApiError, customFetch, getApiBaseUrl, setApiBaseUrl } from './mutator.j
 export { clearSessionToken, getSessionToken, setSessionToken } from './session.js';
 
 export * from './generated/auth/auth.js';
+export * from './generated/catalog/catalog.js';
 export * from './generated/central-users/central-users.js';
 export * from './generated/reporting/reporting.js';
 export * from './generated/stores/stores.js';

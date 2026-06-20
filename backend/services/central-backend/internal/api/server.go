@@ -530,18 +530,15 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, services Services) {
 		Path:        "/v1/stores/{storeId}/catalog/products",
 		OperationID: "listStoreCatalogProducts",
 		Summary:     "List catalog products for a store",
-		Description: syncAPIKeyProtectedDescription("Lists catalog products for a store."),
+		Description: catalogListProtectedDescription("Lists catalog products for a store."),
 		Tags:        []string{"catalog"},
-		Responses: mergeResponseSpecs(
-			map[string]httpapi.ResponseSpec{
-				"200": {Description: "Catalog products", Schema: catalogProductsResponseSchema()},
-				"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
-			},
-			map[string]httpapi.ResponseSpec{
-				"401": {Description: "Sync API key is missing or invalid", Schema: httpapi.ProblemSchema()},
-			},
-		),
-	}, RequireSyncAPIKey(services.SyncAPIKey, func(w http.ResponseWriter, r *http.Request) {
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Catalog products", Schema: catalogProductsResponseSchema()},
+			"401": {Description: "Sync API key or session is missing or invalid", Schema: httpapi.ProblemSchema()},
+			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Store not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, RequireSyncAPIKeyOrSessionAuth(services.Auth, services.SyncAPIKey, app.PermissionReportingRead, func(w http.ResponseWriter, r *http.Request) {
 		result, err := services.Catalog.ListProducts(r.Context(), r.PathValue("storeId"))
 		if err != nil {
 			writeAppError(w, err)

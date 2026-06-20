@@ -27,6 +27,7 @@ import type {
   GetStoreCatalogDelta404,
   ListStoreCatalogProducts200,
   ListStoreCatalogProducts401,
+  ListStoreCatalogProducts403,
   ListStoreCatalogProducts404
 } from '../models';
 
@@ -192,6 +193,11 @@ export type listStoreCatalogProductsResponse401 = {
   status: 401
 }
 
+export type listStoreCatalogProductsResponse403 = {
+  data: ListStoreCatalogProducts403
+  status: 403
+}
+
 export type listStoreCatalogProductsResponse404 = {
   data: ListStoreCatalogProducts404
   status: 404
@@ -200,7 +206,7 @@ export type listStoreCatalogProductsResponse404 = {
 export type listStoreCatalogProductsResponseSuccess = (listStoreCatalogProductsResponse200) & {
   headers: Headers;
 };
-export type listStoreCatalogProductsResponseError = (listStoreCatalogProductsResponse401 | listStoreCatalogProductsResponse404) & {
+export type listStoreCatalogProductsResponseError = (listStoreCatalogProductsResponse401 | listStoreCatalogProductsResponse403 | listStoreCatalogProductsResponse404) & {
   headers: Headers;
 };
 
@@ -215,7 +221,7 @@ export const getListStoreCatalogProductsUrl = (storeId: string,) => {
 }
 
 /**
- * Lists catalog products for a store. When `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` is set, requires `X-Sync-Api-Key` header.
+ * Lists catalog products for a store. Requires `X-Session-Token` with `reporting.read`, or `X-Sync-Api-Key` when configured.
  * @summary List catalog products for a store
  */
 export const listStoreCatalogProducts = async (storeId: string, options?: RequestInit): Promise<listStoreCatalogProductsResponse> => {
@@ -240,7 +246,7 @@ export const getListStoreCatalogProductsQueryKey = (storeId: string,) => {
     }
 
 
-export const getListStoreCatalogProductsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts404>(storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getListStoreCatalogProductsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts403 | ListStoreCatalogProducts404>(storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -259,10 +265,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListStoreCatalogProductsQueryResult = NonNullable<Awaited<ReturnType<typeof listStoreCatalogProducts>>>
-export type ListStoreCatalogProductsQueryError = ListStoreCatalogProducts401 | ListStoreCatalogProducts404
+export type ListStoreCatalogProductsQueryError = ListStoreCatalogProducts401 | ListStoreCatalogProducts403 | ListStoreCatalogProducts404
 
 
-export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts404>(
+export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts403 | ListStoreCatalogProducts404>(
  storeId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listStoreCatalogProducts>>,
@@ -272,7 +278,7 @@ export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof li
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts404>(
+export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts403 | ListStoreCatalogProducts404>(
  storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listStoreCatalogProducts>>,
@@ -282,7 +288,7 @@ export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof li
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts404>(
+export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts403 | ListStoreCatalogProducts404>(
  storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -290,7 +296,7 @@ export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof li
  * @summary List catalog products for a store
  */
 
-export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts404>(
+export function useListStoreCatalogProducts<TData = Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError = ListStoreCatalogProducts401 | ListStoreCatalogProducts403 | ListStoreCatalogProducts404>(
  storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreCatalogProducts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

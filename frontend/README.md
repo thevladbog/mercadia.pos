@@ -102,6 +102,16 @@ Requires a seeded user with the `central_admin` role (default seed admin):
 5. Sign in as a `central_viewer` user: the **Users** nav link is hidden and direct
    `/central/users` URLs redirect back to `/central/dashboard`.
 
+### Central catalog smoke test
+
+Requires central-backend (store list and catalog read-model). Catalog data is populated via
+store-edge sync events (see dev seed flow).
+
+1. Sign in as seeded `central_viewer` and open **Catalog** in the header.
+2. Select a store — the product table loads (or empty state if no catalog sync yet).
+3. Use the search box to filter rows by product ID, name, barcode, or tax category.
+4. Confirm **Refresh** reloads products for the selected store.
+
 ### Store monitoring smoke test
 
 Requires central-backend (store list) and store-edge (monitoring KPIs/terminals):
