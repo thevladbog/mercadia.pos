@@ -1,0 +1,32 @@
+.mercadia-input {
+  width: 100%;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  padding: 0.625rem 0.75rem;
+  font: inherit;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+}
+
+.mercadia-input::placeholder {
+  color: var(--ui-text-muted);
+}
+
+.mercadia-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mercadia-input:focus-visible {
+  border-color: var(--ui-accent);
+}
+
+.mercadia-textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.mercadia-field {
+  display: grid;
+  gap: var(--ui-space-xs);
+}

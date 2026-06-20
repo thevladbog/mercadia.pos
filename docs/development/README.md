@@ -10,6 +10,7 @@ This folder contains engineering and agent-facing guidance for building Mercadia
 - [Dependency and version policy](dependency-policy.md) - current, maintained, and secure component rules.
 - [Continuous integration](ci.md) - GitHub Actions jobs, path filters, and branch protection.
 - [Documentation backlog](documentation-backlog.md) - important topics that are not yet described deeply enough.
+- [UI components and theme](ui-components.md) - `@mercadia/ui` package, token layers, and accent presets.
 
 The short entry point for automated coding agents is:
 

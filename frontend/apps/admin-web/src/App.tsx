@@ -7,14 +7,20 @@ import { RequireCentralAdmin } from '@/auth/RequireCentralAdmin.js';
 import { UnauthorizedBridge } from '@/auth/UnauthorizedBridge.js';
 import { AppLayout } from '@/layout/AppLayout.js';
 import { CentralCatalogPage } from '@/pages/CentralCatalogPage.js';
+import { CentralColorSchemesPage } from '@/pages/CentralColorSchemesPage.js';
 import { CentralDashboardPage } from '@/pages/CentralDashboardPage.js';
+import { CentralLayoutTemplatesPage } from '@/pages/CentralLayoutTemplatesPage.js';
 import { CentralReportingPage } from '@/pages/CentralReportingPage.js';
 import { CentralStoresPage } from '@/pages/CentralStoresPage.js';
 import { CentralSyncExplorerPage } from '@/pages/CentralSyncExplorerPage.js';
 import { SyncEntityDetailPage } from '@/pages/SyncEntityDetailPage.js';
 import { CentralUsersPage } from '@/pages/CentralUsersPage.js';
 import { CreateCentralUserPage } from '@/pages/CreateCentralUserPage.js';
+import { CreateColorSchemePage } from '@/pages/CreateColorSchemePage.js';
+import { CreateLayoutTemplatePage } from '@/pages/CreateLayoutTemplatePage.js';
 import { EditCentralUserPage } from '@/pages/EditCentralUserPage.js';
+import { EditColorSchemePage } from '@/pages/EditColorSchemePage.js';
+import { EditLayoutTemplatePage } from '@/pages/EditLayoutTemplatePage.js';
 import { RegisterStorePage } from '@/pages/RegisterStorePage.js';
 import { StoreMonitoringPage } from '@/pages/StoreMonitoringPage.js';
 import { StoreSafePage } from '@/pages/StoreSafePage.js';
@@ -68,6 +74,15 @@ export function App() {
               <Route element={<CentralUsersPage />} path="/central/users" />
               <Route element={<CreateCentralUserPage />} path="/central/users/new" />
               <Route element={<EditCentralUserPage />} path="/central/users/:userId" />
+              <Route element={<CentralColorSchemesPage />} path="/central/color-schemes" />
+              <Route element={<CreateColorSchemePage />} path="/central/color-schemes/new" />
+              <Route element={<EditColorSchemePage />} path="/central/color-schemes/:schemeId" />
+              <Route element={<CentralLayoutTemplatesPage />} path="/central/layout-templates" />
+              <Route element={<CreateLayoutTemplatePage />} path="/central/layout-templates/new" />
+              <Route
+                element={<EditLayoutTemplatePage />}
+                path="/central/layout-templates/:templateId"
+              />
             </Route>
           </Route>
         </Route>

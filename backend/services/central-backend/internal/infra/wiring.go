@@ -22,6 +22,8 @@ type Repository interface {
 	app.ReportingRepository
 	app.CentralUserRepository
 	app.CentralSessionRepository
+	app.ColorSchemeRepository
+	app.LayoutTemplateRepository
 	app.IdempotencyStore
 }
 

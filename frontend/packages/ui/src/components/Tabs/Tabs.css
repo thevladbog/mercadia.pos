@@ -1,0 +1,42 @@
+.mercadia-tabs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-md);
+}
+
+.mercadia-tabs-trigger {
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-pill);
+  padding: 0.5rem 0.875rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--ui-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.mercadia-tabs-trigger:hover {
+  color: var(--ui-text);
+  background: var(--ui-surface-elevated);
+}
+
+.mercadia-tabs-trigger[data-state='active'] {
+  color: var(--ui-accent);
+  background: var(--ui-accent-muted);
+  border-color: transparent;
+}
+
+.mercadia-tabs-trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
+}
+
+.mercadia-tabs-content {
+  margin-top: var(--ui-space-lg);
+}
+
+.mercadia-tabs-count {
+  margin-left: 0.25rem;
+  opacity: 0.85;
+}

@@ -29,6 +29,8 @@ type Services struct {
 	Reporting       *app.ReportingService
 	Auth            *app.AuthService
 	CentralUsers    *app.CentralUsersService
+	ColorSchemes    *app.ColorSchemesService
+	LayoutTemplates *app.LayoutTemplatesService
 	SyncAPIKey      *app.SyncAPIKeyService
 }
 
@@ -298,6 +300,8 @@ func newServices(repo infra.Repository) Services {
 		Reporting:       app.NewReportingService(repo, repo),
 		Auth:            app.NewAuthService(repo, repo),
 		CentralUsers:    app.NewCentralUsersService(repo),
+		ColorSchemes:    app.NewColorSchemesService(repo),
+		LayoutTemplates: app.NewLayoutTemplatesService(repo, repo),
 		SyncAPIKey:      app.NewSyncAPIKeyServiceFromEnv(),
 	}
 }
@@ -336,6 +340,7 @@ func newMuxAndSpec(services Services, readinessChecks []func(context.Context) er
 	}
 	httpapi.MountSystemRoutes(mux, spec, info, systemOptions...)
 	mountAuthRoutes(mux, spec, services)
+	mountBrandingRoutes(mux, spec, services)
 	mountRoutes(mux, spec, services)
 
 	return mux, spec
@@ -986,6 +991,14 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_central_user_command", "Invalid central user command", err.Error())
 	case errors.Is(err, app.ErrCentralUserConflict):
 		httpapi.WriteProblem(w, http.StatusConflict, "central_user_conflict", "Central user already exists", err.Error())
+	case errors.Is(err, app.ErrColorSchemeNotFound):
+		httpapi.WriteProblem(w, http.StatusNotFound, "color_scheme_not_found", "Color scheme was not found", err.Error())
+	case errors.Is(err, app.ErrInvalidColorSchemeCommand), errors.Is(err, domain.ErrInvalidColorSchemeInput):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_color_scheme_command", "Invalid color scheme command", err.Error())
+	case errors.Is(err, app.ErrLayoutTemplateNotFound):
+		httpapi.WriteProblem(w, http.StatusNotFound, "layout_template_not_found", "Layout template was not found", err.Error())
+	case errors.Is(err, app.ErrInvalidLayoutTemplateCmd), errors.Is(err, domain.ErrInvalidLayoutTemplateInput):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_layout_template_command", "Invalid layout template command", err.Error())
 	case errors.Is(err, domain.ErrInvalidCentralUserInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_central_user_command", "Invalid central user command", err.Error())
 	case errors.Is(err, app.ErrSyncAPIKeyRequired):

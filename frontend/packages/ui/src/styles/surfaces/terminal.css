@@ -1,0 +1,5 @@
+[data-surface='terminal'] {
+  --ui-sidebar-width: 72px;
+  --ui-touch-min: 48px;
+  --ui-density: comfortable;
+}

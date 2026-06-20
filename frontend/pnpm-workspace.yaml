@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/api-clients/*
+  - packages/ui
 
 onlyBuiltDependencies:
   - esbuild

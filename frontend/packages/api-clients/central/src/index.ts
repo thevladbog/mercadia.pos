@@ -4,6 +4,8 @@ export { clearSessionToken, getSessionToken, setSessionToken } from './session.j
 export * from './generated/auth/auth.js';
 export * from './generated/catalog/catalog.js';
 export * from './generated/central-users/central-users.js';
+export * from './generated/color-schemes/color-schemes.js';
+export * from './generated/layout-templates/layout-templates.js';
 export * from './generated/reporting/reporting.js';
 export * from './generated/stores/stores.js';
 export * from './generated/sync/sync.js';

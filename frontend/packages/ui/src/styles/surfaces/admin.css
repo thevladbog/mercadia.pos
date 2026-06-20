@@ -1,0 +1,23 @@
+[data-surface='admin'] {
+  --ui-sidebar-width: 240px;
+  --ui-density: compact;
+  --ui-touch-min: 40px;
+}
+
+[data-surface='terminal'] {
+  --ui-sidebar-width: 72px;
+  --ui-density: comfortable;
+  --ui-touch-min: 48px;
+}
+
+[data-surface='sco'] {
+  --ui-sidebar-width: 0px;
+  --ui-density: spacious;
+  --ui-touch-min: 56px;
+}
+
+[data-surface='senior-cashier'] {
+  --ui-sidebar-width: 320px;
+  --ui-density: comfortable;
+  --ui-touch-min: 48px;
+}

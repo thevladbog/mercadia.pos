@@ -288,6 +288,8 @@ The design shows new KSO modal and a pairing/status screen with code and QR.
 
 Layout templates configure POS/SCO product buttons and grids.
 
+Central API: `GET/POST /v1/layout-templates`, `GET/PATCH /v1/layout-templates/{templateId}` with `accentPreset`, `accentColor`, `grid`, and `resolvedAccent*` fields. Admin UI: `/central/layout-templates`. See [`ui-components.md`](../development/ui-components.md).
+
 Requirements:
 
 - List templates.
@@ -342,6 +344,8 @@ Receipt template requirements:
 - Validate required legal fields.
 
 ## Color Schemes And Franchise Branding
+
+Central API: `GET/POST /v1/color-schemes`, `GET/PATCH /v1/color-schemes/{schemeId}`. Admin UI: `/central/color-schemes`. See [`ui-components.md`](../development/ui-components.md).
 
 Branding requirements:
 

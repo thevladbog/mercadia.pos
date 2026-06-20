@@ -1,3 +1,4 @@
+import { Button } from '@mercadia/ui';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -30,7 +31,11 @@ export function AppLayout() {
             <Link to="/store/safe">{t('nav.safe')}</Link>
             <Link to="/store/eod">{t('nav.eod')}</Link>
             {canManageCentralUsers(roles) ? (
-              <Link to="/central/users">{t('nav.users')}</Link>
+              <>
+                <Link to="/central/users">{t('nav.users')}</Link>
+                <Link to="/central/color-schemes">{t('nav.colorSchemes')}</Link>
+                <Link to="/central/layout-templates">{t('nav.layoutTemplates')}</Link>
+              </>
             ) : null}
           </nav>
           <LanguageSwitcher />
@@ -38,9 +43,9 @@ export function AppLayout() {
             <span>{userId}</span>
             {roles.length > 0 ? <span className="muted">{roles.join(', ')}</span> : null}
           </div>
-          <button className="secondary" onClick={logout} type="button">
+          <Button variant="secondary" onClick={logout} type="button">
             {t('nav.logout')}
-          </button>
+          </Button>
         </div>
       </header>
       <main className="app-main">

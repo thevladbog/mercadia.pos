@@ -1,0 +1,50 @@
+.mercadia-numpad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ui-space-sm);
+  max-width: 18rem;
+}
+
+.mercadia-numpad-key {
+  min-height: var(--ui-touch-min, 48px);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mercadia-numpad-key:hover:not(:disabled) {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-muted);
+}
+
+.mercadia-numpad-key:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
+}
+
+.mercadia-numpad-key--accent {
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+  color: var(--ui-accent-foreground);
+}
+
+.mercadia-numpad-key--wide {
+  grid-column: span 2;
+}
+
+.mercadia-numpad-display {
+  grid-column: 1 / -1;
+  min-height: 2.5rem;
+  padding: var(--ui-space-sm) var(--ui-space-md);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-elevated);
+  text-align: right;
+  font-size: 1.25rem;
+  font-weight: 600;
+}

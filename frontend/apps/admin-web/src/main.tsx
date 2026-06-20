@@ -7,6 +7,7 @@ import {
 } from '@/auth/api-client-config.js';
 import { initI18n } from '@/i18n/index.js';
 import { Root } from '@/Root.js';
+import '@mercadia/ui/styles.css';
 import './index.css';
 
 configureCentralApiClient();

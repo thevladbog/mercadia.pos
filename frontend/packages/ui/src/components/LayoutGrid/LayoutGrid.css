@@ -1,0 +1,42 @@
+.mercadia-layout-grid {
+  display: grid;
+  gap: var(--ui-space-sm);
+}
+
+.mercadia-layout-grid-tile {
+  display: grid;
+  place-items: center;
+  min-height: var(--ui-touch-min, 48px);
+  padding: var(--ui-space-sm);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+.mercadia-layout-grid-tile:hover:not(:disabled) {
+  border-color: var(--ui-accent);
+}
+
+.mercadia-layout-grid-tile:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
+}
+
+.mercadia-layout-grid-tile--empty {
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-muted);
+  cursor: default;
+  border-style: dashed;
+}
+
+.mercadia-layout-grid-tile--accent {
+  background: var(--ui-accent-muted);
+  border-color: transparent;
+  color: var(--ui-accent);
+}

@@ -1,0 +1,50 @@
+.mercadia-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-sm);
+}
+
+.mercadia-stepper-value {
+  min-width: 2.5rem;
+  text-align: center;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.mercadia-stepper-button {
+  min-width: var(--ui-touch-min, 48px);
+  min-height: var(--ui-touch-min, 48px);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mercadia-stepper-button:hover:not(:disabled) {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-muted);
+}
+
+.mercadia-stepper-button:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
+}
+
+.mercadia-stepper-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mercadia-stepper-button--primary {
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+  color: var(--ui-accent-foreground);
+}
+
+.mercadia-stepper-button--primary:hover:not(:disabled) {
+  background: var(--ui-accent-hover);
+}

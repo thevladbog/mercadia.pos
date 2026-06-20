@@ -1,0 +1,150 @@
+# UI Components and Theme System
+
+Mercadia frontends share interactive UI through `@mercadia/ui` (`frontend/packages/ui`).
+
+Design references live under [`docs/Design/Design/`](../Design/Design/):
+
+| Folder | Application | Notes |
+|--------|-------------|-------|
+| [`Админка/`](../Design/Design/Админка/) | `admin-web` | Light admin; dark mode in follow-up PR |
+| Root `E _ *.png` | `pos-terminal` | Sale/return accent from layout template |
+| [`КСО/`](../Design/Design/КСО/) | `sco-terminal` | SCO accent preset |
+| [`Старший кассир/`](../Design/Design/Старший кассир/) | `senior-cashier-terminal` | Dark surface |
+
+## Stack
+
+- **Radix UI** for accessible primitives (Dialog, Tabs, Label, Slot).
+- **CSS custom properties** for theming — no Tailwind, no shadcn.
+- **class-variance-authority** for component variants.
+
+Apps import styles once:
+
+```ts
+import '@mercadia/ui/styles.css';
+```
+
+Wrap the app root with `ThemeProvider`:
+
+```tsx
+import { ThemeProvider } from '@mercadia/ui';
+
+<ThemeProvider defaultTheme={{ surface: 'admin', colorMode: 'light', accentPreset: 'neutral' }}>
+  {children}
+</ThemeProvider>
+```
+
+## Three-layer token model
+
+### Layer 1 — Primitives (`primitives.css`)
+
+Raw palette values (`--primitive-*`). **Components must not reference these directly.**
+
+### Layer 2 — Semantic tokens (`semantic-light.css`, `semantic-dark.css`)
+
+Components and app layout utilities use **`--ui-*`** only:
+
+- `--ui-bg`, `--ui-surface`, `--ui-text`, `--ui-border`
+- `--ui-accent`, `--ui-accent-hover`, `--ui-accent-muted`, `--ui-accent-foreground`
+- `--ui-success`, `--ui-warning`, `--ui-danger`, `--ui-info` (+ muted variants)
+
+Active color mode is selected via `data-color-mode="light|dark"` on `<html>`.
+
+### Layer 3 — Surface presets + runtime accent
+
+**Surface** (`data-surface`) adds layout/density tokens without changing accent logic:
+
+- `admin`, `terminal`, `sco`, `senior-cashier`
+
+**Runtime accent** is applied by `applyTheme()` / `ThemeProvider`:
+
+```tsx
+import { applyTheme } from '@mercadia/ui';
+
+applyTheme({
+  surface: 'terminal',
+  colorMode: 'light',
+  accentPreset: 'return', // or accent: '#2563EB' from layout template API
+});
+```
+
+This sets inline CSS variables on `<html>`:
+
+```html
+<html data-surface="terminal" data-color-mode="light" style="--ui-accent: #2563EB; ...">
+```
+
+## Accent presets
+
+Built-in presets in `presets.ts` (extend the record, no new CSS file):
+
+| Preset | Use case | Default hex |
+|--------|----------|-------------|
+| `sale` | Sale register | `#FF6600` |
+| `return` | Return register | `#2563EB` |
+| `sco` | Self-checkout | `#F25F1C` |
+| `neutral` | Admin default | `#FF6600` |
+
+Layout templates and Color Schemes may supply `accentPreset` or `accentColor`; POS terminals call `applyTheme` when binding a template at shift start.
+
+## Components (v1)
+
+| Component | Notes |
+|-----------|-------|
+| `Button` | `primary` uses `--ui-accent`; `secondary`, `ghost`, `link` |
+| `Badge` | Semantic + `accent` variant |
+| `Dialog`, `DetailDialog` | Radix dialog; `DetailDialog` replaces admin `DetailModal` pattern |
+| `Input`, `Textarea`, `Label`, `Field` | Form controls |
+| `Tabs`, `PillTabs` | Radix tabs |
+| `Card`, `CardHeading` | Panel/card layout |
+| `LayoutGrid` | Product tile grid from layout template JSON |
+| `Numpad`, `Stepper` | Touch kiosk controls |
+| `ThemePreview` | Scoped accent preview without mutating global admin theme |
+
+New interactive controls belong in `@mercadia/ui`, not as global CSS in apps.
+
+## Central backend branding APIs
+
+Color schemes and layout templates are stored in central-backend:
+
+| Resource | Endpoints |
+|----------|-----------|
+| Color schemes | `GET/POST /v1/color-schemes`, `GET/PATCH /v1/color-schemes/{schemeId}` |
+| Layout templates | `GET/POST /v1/layout-templates`, `GET/PATCH /v1/layout-templates/{templateId}` |
+
+Layout template responses include `resolvedAccentPreset` and `resolvedAccentColor` for POS/SCO clients.
+
+Accent resolution order: template `accentColor` → template `accentPreset` → linked color scheme → default by `kind` (`sale` / `return` / `sco`).
+
+Admin CRUD lives under `/central/color-schemes` and `/central/layout-templates` (central admin only). Reads require central session or sync API key with reporting permission.
+
+## POS terminal scaffold
+
+`frontend/apps/pos-terminal` loads a template via `?templateId=` or `VITE_LAYOUT_TEMPLATE_ID`, calls `applyTheme` from resolved accent fields, and renders `LayoutGrid` + `Numpad` demo. Set `VITE_CENTRAL_SESSION_TOKEN` for local API access.
+
+```bash
+cd frontend
+pnpm --filter pos-terminal dev
+# open http://localhost:5174/?templateId=sale-standard
+```
+
+## Adding a new theme dimension
+
+1. **New surface** — add `surfaces/foo.css`, extend `Surface` in `types.ts`, document design folder mapping.
+2. **New accent preset** — add entry to `ACCENT_PRESETS` in `presets.ts`.
+3. **Custom accent** — pass `accent: '#hex'` in `ThemeConfig` (template/API).
+4. **New color mode** — add `semantic-*.css` and wire `ColorMode` (v1: `light` + `dark` only).
+
+## Admin-web migration
+
+- `ThemeProvider` in `Root.tsx` with `surface: 'admin'`, `colorMode: 'light'`, `accentPreset: 'neutral'`.
+- Prefer `@mercadia/ui` components over native `<button>` with global CSS.
+- Legacy native buttons remain styled via token-based compat rules in `index.css` until pages migrate.
+
+## Verification
+
+```bash
+cd frontend
+pnpm --filter @mercadia/ui test
+pnpm --filter @mercadia/ui typecheck
+pnpm verify
+```

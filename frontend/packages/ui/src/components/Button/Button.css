@@ -1,0 +1,81 @@
+.mercadia-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ui-space-sm);
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-md);
+  padding: 0.625rem 1rem;
+  font: inherit;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.mercadia-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mercadia-button--primary {
+  background: var(--ui-accent);
+  color: var(--ui-accent-foreground);
+}
+
+.mercadia-button--primary:hover:not(:disabled) {
+  background: var(--ui-accent-hover);
+}
+
+.mercadia-button--secondary {
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  border-color: var(--ui-border);
+}
+
+.mercadia-button--secondary:hover:not(:disabled) {
+  background: var(--ui-surface-elevated);
+}
+
+.mercadia-button--ghost {
+  background: transparent;
+  color: var(--ui-text);
+}
+
+.mercadia-button--ghost:hover:not(:disabled) {
+  background: var(--ui-surface-elevated);
+}
+
+.mercadia-button--link {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  color: var(--ui-link);
+  text-decoration: underline;
+  font-weight: inherit;
+}
+
+.mercadia-button--link:hover:not(:disabled) {
+  color: var(--ui-link-hover);
+}
+
+.mercadia-button--sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.mercadia-button--lg {
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  min-height: var(--ui-touch-min, 48px);
+}
+
+.mercadia-button--icon {
+  padding: 0.5rem;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+}
