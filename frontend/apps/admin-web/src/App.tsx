@@ -6,6 +6,7 @@ import { ProtectedRoute } from '@/auth/ProtectedRoute.js';
 import { RequireCentralAdmin } from '@/auth/RequireCentralAdmin.js';
 import { UnauthorizedBridge } from '@/auth/UnauthorizedBridge.js';
 import { AppLayout } from '@/layout/AppLayout.js';
+import { CentralCatalogPage } from '@/pages/CentralCatalogPage.js';
 import { CentralDashboardPage } from '@/pages/CentralDashboardPage.js';
 import { CentralReportingPage } from '@/pages/CentralReportingPage.js';
 import { CentralStoresPage } from '@/pages/CentralStoresPage.js';
@@ -34,6 +35,7 @@ export function App() {
             <Route element={<StoreReportingPage />} path="/central/reporting/stores/:storeId" />
             <Route element={<CentralStoresPage />} path="/central/stores" />
             <Route element={<CentralSyncExplorerPage />} path="/central/sync" />
+            <Route element={<CentralCatalogPage />} path="/central/catalog" />
             <Route
               element={<SyncEntityDetailPage />}
               path="/central/sync/stores/:storeId/payments/:paymentId"

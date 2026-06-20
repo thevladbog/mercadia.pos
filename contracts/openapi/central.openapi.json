@@ -2527,7 +2527,7 @@
     },
     "/v1/stores/{storeId}/catalog/products": {
       "get": {
-        "description": "Lists catalog products for a store. When `MERCADIA_CENTRAL_BACKEND_SYNC_API_KEY` is set, requires `X-Sync-Api-Key` header.",
+        "description": "Lists catalog products for a store. Requires `X-Session-Token` with `reporting.read`, or `X-Sync-Api-Key` when configured.",
         "operationId": "listStoreCatalogProducts",
         "parameters": [
           {
@@ -2639,7 +2639,41 @@
                 }
               }
             },
-            "description": "Sync API key is missing or invalid"
+            "description": "Session is missing or invalid"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Permission denied"
           },
           "404": {
             "content": {

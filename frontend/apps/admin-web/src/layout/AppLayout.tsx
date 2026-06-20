@@ -25,6 +25,7 @@ export function AppLayout() {
             <Link to="/central/reporting">{t('nav.reporting')}</Link>
             <Link to="/central/stores">{t('nav.stores')}</Link>
             <Link to="/central/sync">{t('nav.sync')}</Link>
+            <Link to="/central/catalog">{t('nav.catalog')}</Link>
             <Link to="/store/monitoring">{t('nav.monitoring')}</Link>
             <Link to="/store/safe">{t('nav.safe')}</Link>
             <Link to="/store/eod">{t('nav.eod')}</Link>

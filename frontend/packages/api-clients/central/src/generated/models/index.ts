@@ -90,6 +90,7 @@ export * from './listStoreCashMovementsParams.ts';
 export * from './listStoreCatalogProducts200.ts';
 export * from './listStoreCatalogProducts200ProductsItem.ts';
 export * from './listStoreCatalogProducts401.ts';
+export * from './listStoreCatalogProducts403.ts';
 export * from './listStoreCatalogProducts404.ts';
 export * from './listStoreFiscalDocuments200.ts';
 export * from './listStoreFiscalDocuments200ItemsItem.ts';
