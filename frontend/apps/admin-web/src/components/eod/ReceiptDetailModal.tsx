@@ -20,12 +20,10 @@ export function ReceiptDetailModal({ receiptId, onClose }: ReceiptDetailModalPro
   });
   const receipt = receiptQuery.data?.status === 200 ? receiptQuery.data.data : null;
   const payments = paymentsQuery.data?.status === 200 ? paymentsQuery.data.data.payments : null;
-  const errorMessage =
-    receiptQuery.error != null
-      ? getApiErrorMessage(receiptQuery.error)
-      : paymentsQuery.error != null
-        ? getApiErrorMessage(paymentsQuery.error)
-        : null;
+  const receiptErrorMessage =
+    receiptQuery.error != null ? getApiErrorMessage(receiptQuery.error) : null;
+  const paymentsErrorMessage =
+    paymentsQuery.error != null ? getApiErrorMessage(paymentsQuery.error) : null;
   const emDash = t('common.emDash');
 
   return (
@@ -39,8 +37,8 @@ export function ReceiptDetailModal({ receiptId, onClose }: ReceiptDetailModalPro
     >
       {receiptQuery.isLoading && !receipt ? (
         <p className="muted">{t('common.loading')}</p>
-      ) : errorMessage ? (
-        <p className="error">{errorMessage}</p>
+      ) : receiptErrorMessage ? (
+        <p className="error">{receiptErrorMessage}</p>
       ) : receipt ? (
         <div className="stack">
           <dl className="kpi-grid">
@@ -102,7 +100,9 @@ export function ReceiptDetailModal({ receiptId, onClose }: ReceiptDetailModalPro
 
           <div>
             <h4>{t('eod.receiptDetail.paymentsSection')}</h4>
-            {paymentsQuery.isLoading && !payments ? (
+            {paymentsErrorMessage ? (
+              <p className="error">{paymentsErrorMessage}</p>
+            ) : paymentsQuery.isLoading && !payments ? (
               <p className="muted">{t('common.loading')}</p>
             ) : payments && payments.length > 0 ? (
               <div className="table-wrap">

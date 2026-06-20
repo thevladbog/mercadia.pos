@@ -30,12 +30,9 @@ export function ShiftDetailModal({
   });
   const shift = shiftQuery.data?.status === 200 ? shiftQuery.data.data : null;
   const receipts = receiptsQuery.data?.status === 200 ? receiptsQuery.data.data.receipts : null;
-  const errorMessage =
-    shiftQuery.error != null
-      ? getApiErrorMessage(shiftQuery.error)
-      : receiptsQuery.error != null
-        ? getApiErrorMessage(receiptsQuery.error)
-        : null;
+  const shiftErrorMessage = shiftQuery.error != null ? getApiErrorMessage(shiftQuery.error) : null;
+  const receiptsErrorMessage =
+    receiptsQuery.error != null ? getApiErrorMessage(receiptsQuery.error) : null;
 
   function handleOpenShiftsTab() {
     onEodTab('open-shifts');
@@ -60,8 +57,8 @@ export function ShiftDetailModal({
     >
       {shiftQuery.isLoading && !shift ? (
         <p className="muted">{t('common.loading')}</p>
-      ) : errorMessage ? (
-        <p className="error">{errorMessage}</p>
+      ) : shiftErrorMessage ? (
+        <p className="error">{shiftErrorMessage}</p>
       ) : shift ? (
         <div className="stack">
           <dl className="kpi-grid">
@@ -105,7 +102,9 @@ export function ShiftDetailModal({
 
           <div>
             <h4>{t('eod.shiftDetail.receiptsSection')}</h4>
-            {receiptsQuery.isLoading && !receipts ? (
+            {receiptsErrorMessage ? (
+              <p className="error">{receiptsErrorMessage}</p>
+            ) : receiptsQuery.isLoading && !receipts ? (
               <p className="muted">{t('common.loading')}</p>
             ) : receipts && receipts.length > 0 ? (
               <div className="table-wrap">

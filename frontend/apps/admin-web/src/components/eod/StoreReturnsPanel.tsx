@@ -15,11 +15,7 @@ type StoreReturnsPanelProps = {
   onOpenReturn: (returnId: string) => void;
 };
 
-function isReturnInOperationalDay(
-  createdAt: string,
-  openedAt: string,
-  closedAt?: string,
-): boolean {
+function isReturnInOperationalDay(createdAt: string, openedAt: string, closedAt?: string): boolean {
   const createdMs = Date.parse(createdAt);
   const openedMs = Date.parse(openedAt);
   if (Number.isNaN(createdMs) || Number.isNaN(openedMs) || createdMs < openedMs) {
