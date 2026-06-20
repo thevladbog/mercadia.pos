@@ -60,7 +60,7 @@ Recommendation:
   access to local MSR/iButton hardware.
 - Use TanStack Query for server state and cache lifecycle.
 - Use TanStack Table for dense operational grids.
-- Use Radix UI primitives and a custom Mercadia component layer instead of adopting a heavy
+- Use Radix UI primitives and `@mercadia/ui` (custom Mercadia component layer with CSS-variable theming) instead of adopting a heavy
   opinionated admin template.
 
 Why:

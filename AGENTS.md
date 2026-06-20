@@ -15,6 +15,7 @@ Before implementing or changing behavior, read:
 7. The relevant module spec in `docs/modules`
 8. Relevant ADRs in `docs/adr`
 9. `docs/development/admin-web-i18n.md` when changing `frontend/apps/admin-web`
+10. `docs/development/ui-components.md` when changing `@mercadia/ui` or app theming
 
 ## Non-Negotiable Rules
 

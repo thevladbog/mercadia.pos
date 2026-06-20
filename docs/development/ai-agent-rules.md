@@ -51,6 +51,7 @@ Before implementing a feature, read:
 - **Admin-web store-edge commands:** send `Idempotency-Key` on every POST command; invalidate React Query caches after `202`. See [`admin-web-i18n.md`](admin-web-i18n.md) §Store-edge integration.
 - **Admin-web dev proxy:** route store-edge `/v1` prefixes to `:8081` before the central catch-all. Document new prefixes when adding store-edge API usage.
 - **Cash UI:** collect `actorId` and `approvedById` for separation-of-duties; permissions are enforced server-side, not UI-only.
+- **UI components:** use `@mercadia/ui` for interactive controls and theming. See [`ui-components.md`](ui-components.md). Do not add global button styles in apps; use `--ui-*` tokens or package components.
 
 ## Backend Rules
 

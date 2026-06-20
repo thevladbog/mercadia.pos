@@ -1,0 +1,17 @@
+.mercadia-label {
+  display: grid;
+  gap: var(--ui-space-xs);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--ui-text);
+}
+
+.mercadia-label-text {
+  line-height: 1.4;
+}
+
+.mercadia-label-hint {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--ui-text-muted);
+}

@@ -35,6 +35,8 @@ Frontend apps must use generated API clients from `frontend/packages/api-clients
 generated client package defined by the frontend workspace. They must not hand-roll backend DTOs
 when OpenAPI and Orval can generate them.
 
+Shared UI lives in `frontend/packages/ui` (`@mercadia/ui`). See [`ui-components.md`](ui-components.md).
+
 ## Backend Layout
 
 Backend code lives under `backend/`.

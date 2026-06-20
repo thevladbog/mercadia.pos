@@ -1,3 +1,4 @@
+import { Button } from '@mercadia/ui';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -38,9 +39,9 @@ export function AppLayout() {
             <span>{userId}</span>
             {roles.length > 0 ? <span className="muted">{roles.join(', ')}</span> : null}
           </div>
-          <button className="secondary" onClick={logout} type="button">
+          <Button variant="secondary" onClick={logout} type="button">
             {t('nav.logout')}
-          </button>
+          </Button>
         </div>
       </header>
       <main className="app-main">

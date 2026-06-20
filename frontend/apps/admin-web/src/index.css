@@ -1,29 +1,8 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+/* Layout and page utilities — interactive controls use @mercadia/ui components or legacy-compat below */
 
 body {
   margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
   line-height: 1.5;
-  color: #111827;
-  background: #f3f4f6;
-}
-
-a {
-  color: #1d4ed8;
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
 }
 
 button,
@@ -31,46 +10,46 @@ input {
   font: inherit;
 }
 
-button {
+/* Legacy native buttons until pages migrate to @mercadia/ui Button */
+button:not(.mercadia-button) {
   border: none;
-  border-radius: 0.5rem;
+  border-radius: var(--ui-radius-md, 0.5rem);
   padding: 0.625rem 1rem;
-  background: #1d4ed8;
-  color: #fff;
+  background: var(--ui-accent);
+  color: var(--ui-accent-foreground);
   cursor: pointer;
 }
 
-button:disabled {
+button:not(.mercadia-button):disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-button.secondary {
-  background: #fff;
-  color: #111827;
-  border: 1px solid #d1d5db;
+button:not(.mercadia-button).secondary {
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
 }
 
-button.link-button {
+button:not(.mercadia-button).link-button {
   background: none;
   border: none;
   border-radius: 0;
   padding: 0;
-  color: #1d4ed8;
+  color: var(--ui-link);
   text-decoration: underline;
-  font: inherit;
 }
 
-button.link-button:hover {
-  color: #1e40af;
+button:not(.mercadia-button).link-button:hover {
+  color: var(--ui-link-hover);
 }
 
 .panel {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg, 0.75rem);
   padding: 1.5rem;
-  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+  box-shadow: var(--ui-shadow-card, 0 1px 2px rgb(15 23 42 / 0.05));
 }
 
 .login-panel {
@@ -95,7 +74,7 @@ button.link-button:hover {
 }
 
 .muted {
-  color: #6b7280;
+  color: var(--ui-text-muted);
 }
 
 .error {
@@ -106,7 +85,7 @@ button.link-button:hover {
 .eyebrow {
   margin: 0;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--ui-text-muted);
 }
 
 .app-shell {
@@ -153,16 +132,16 @@ button.link-button:hover {
 
 .button-link {
   display: inline-block;
-  border-radius: 0.5rem;
+  border-radius: var(--ui-radius-md, 0.5rem);
   padding: 0.625rem 1rem;
-  background: #1d4ed8;
-  color: #fff;
+  background: var(--ui-accent);
+  color: var(--ui-accent-foreground);
   text-decoration: none;
 }
 
 .button-link:hover {
   text-decoration: none;
-  background: #1e40af;
+  background: var(--ui-accent-hover);
 }
 
 .users-page {
@@ -441,22 +420,6 @@ th {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-}
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgb(15 23 42 / 0.45);
-}
-
-.modal-panel {
-  width: min(100%, 32rem);
-  max-height: calc(100vh - 2rem);
-  overflow-y: auto;
 }
 
 .form-grid {

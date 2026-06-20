@@ -19,6 +19,7 @@ registry=https://registry.npmjs.org/
 ```text
 frontend/
   apps/admin-web/                      # Central admin UI (Vite + React)
+  packages/ui/                         # @mercadia/ui — Radix components + theme system
   packages/api-clients/central/        # Orval client for central-backend OpenAPI
   packages/api-clients/store-edge/     # Orval client for store-edge OpenAPI
 ```
@@ -31,7 +32,7 @@ pnpm install
 pnpm verify
 ```
 
-`pnpm verify` runs, in order: Orval generation, typecheck, ESLint, Prettier check, and
+`pnpm verify` runs, in order: Orval generation, typecheck, ESLint, Prettier check, `@mercadia/ui` unit tests, and
 admin-web production build.
 
 CI workflow details: [`docs/development/ci.md`](../docs/development/ci.md).

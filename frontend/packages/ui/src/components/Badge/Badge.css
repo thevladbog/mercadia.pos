@@ -1,0 +1,47 @@
+.mercadia-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: var(--ui-radius-pill);
+  padding: 0.125rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.mercadia-badge--default {
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+}
+
+.mercadia-badge--accent {
+  background: var(--ui-accent-muted);
+  color: var(--ui-accent);
+}
+
+.mercadia-badge--success {
+  background: var(--ui-success-muted);
+  color: var(--ui-success);
+}
+
+.mercadia-badge--warning {
+  background: var(--ui-warning-muted);
+  color: var(--ui-warning);
+}
+
+.mercadia-badge--danger {
+  background: var(--ui-danger-muted);
+  color: var(--ui-danger);
+}
+
+.mercadia-badge--info {
+  background: var(--ui-info-muted);
+  color: var(--ui-info);
+}
+
+.mercadia-badge--outline {
+  background: transparent;
+  border: 1px solid currentColor;
+}

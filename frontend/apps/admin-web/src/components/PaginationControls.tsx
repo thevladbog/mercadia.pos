@@ -1,3 +1,4 @@
+import { Button } from '@mercadia/ui';
 import { useTranslation } from 'react-i18next';
 
 type PaginationControlsProps = {
@@ -19,22 +20,12 @@ export function PaginationControls({
 
   return (
     <div className="pagination">
-      <button
-        className="secondary"
-        disabled={!canGoPrev || disabled}
-        onClick={onPrev}
-        type="button"
-      >
+      <Button variant="secondary" disabled={!canGoPrev || disabled} onClick={onPrev} type="button">
         {t('common.previous')}
-      </button>
-      <button
-        className="secondary"
-        disabled={!canGoNext || disabled}
-        onClick={onNext}
-        type="button"
-      >
+      </Button>
+      <Button variant="secondary" disabled={!canGoNext || disabled} onClick={onNext} type="button">
         {t('common.next')}
-      </button>
+      </Button>
     </div>
   );
 }

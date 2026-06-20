@@ -1,0 +1,16 @@
+@import './primitives.css';
+@import './semantic-light.css';
+@import './semantic-dark.css';
+@import './surfaces/admin.css';
+@import './surfaces/terminal.css';
+@import './surfaces/sco.css';
+@import './surfaces/senior-cashier.css';
+@import './base.css';
+
+@import '../components/Button/Button.css';
+@import '../components/Badge/Badge.css';
+@import '../components/Dialog/Dialog.css';
+@import '../components/Input/Input.css';
+@import '../components/Label/Label.css';
+@import '../components/Tabs/Tabs.css';
+@import '../components/Card/Card.css';
