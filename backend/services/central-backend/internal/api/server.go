@@ -301,7 +301,7 @@ func newServices(repo infra.Repository) Services {
 		Auth:            app.NewAuthService(repo, repo),
 		CentralUsers:    app.NewCentralUsersService(repo),
 		ColorSchemes:    app.NewColorSchemesService(repo),
-		LayoutTemplates: app.NewLayoutTemplatesService(repo, repo),
+		LayoutTemplates: app.NewLayoutTemplatesService(repo, repo, repo),
 		SyncAPIKey:      app.NewSyncAPIKeyServiceFromEnv(),
 	}
 }
@@ -997,6 +997,10 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_color_scheme_command", "Invalid color scheme command", err.Error())
 	case errors.Is(err, app.ErrLayoutTemplateNotFound):
 		httpapi.WriteProblem(w, http.StatusNotFound, "layout_template_not_found", "Layout template was not found", err.Error())
+	case errors.Is(err, app.ErrLayoutTemplatePublishRequiresStore):
+		httpapi.WriteProblem(w, http.StatusUnprocessableEntity, "layout_template_publish_requires_store", "Layout template publish requires a store scope", err.Error())
+	case errors.Is(err, app.ErrLayoutTemplateInvalidProducts):
+		httpapi.WriteProblem(w, http.StatusUnprocessableEntity, "layout_template_invalid_products", "Layout template references unknown products", err.Error())
 	case errors.Is(err, app.ErrInvalidLayoutTemplateCmd), errors.Is(err, domain.ErrInvalidLayoutTemplateInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_layout_template_command", "Invalid layout template command", err.Error())
 	case errors.Is(err, domain.ErrInvalidCentralUserInput):

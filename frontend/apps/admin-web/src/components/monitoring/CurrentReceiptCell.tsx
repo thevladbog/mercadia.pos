@@ -1,3 +1,4 @@
+import { Button } from '@mercadia/ui';
 import { useTranslation } from 'react-i18next';
 
 import { formatMinorAmount } from '@/pages/reporting-utils.js';
@@ -27,14 +28,15 @@ export function CurrentReceiptCell({
       return <span>{receiptId}</span>;
     }
     return (
-      <button
-        className="link-button"
+      <Button
+        variant="link"
+        size="sm"
         type="button"
         onClick={() => onOpenReceipt(receiptId)}
         aria-label={t('monitoring.openReceiptDetails', { receiptId })}
       >
         {receiptId}
-      </button>
+      </Button>
     );
   }
 

@@ -2,6 +2,7 @@ import {
   useGetCentralReportingSummary,
   useListCentralStoreReportingSummaries,
 } from '@mercadia/api-clients-central';
+import { Button } from '@mercadia/ui';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -93,9 +94,9 @@ export function CentralReportingPage() {
               {formatTimestamp(applied.until)} UTC
             </p>
           </div>
-          <button className="secondary" disabled={isLoading} onClick={refetchAll} type="button">
+          <Button variant="secondary" disabled={isLoading} onClick={refetchAll} type="button">
             {isLoading ? t('common.refreshing') : t('common.refresh')}
-          </button>
+          </Button>
         </div>
 
         <form
@@ -132,9 +133,9 @@ export function CentralReportingPage() {
               onChange={(event) => setRegionInput(event.target.value)}
             />
           </label>
-          <button disabled={isLoading} type="submit">
+          <Button disabled={isLoading} type="submit">
             {t('common.apply')}
-          </button>
+          </Button>
         </form>
       </div>
 

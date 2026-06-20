@@ -1,12 +1,18 @@
 import {
   Button,
   LayoutGrid,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   ThemePreview,
   type AccentPreset,
   type LayoutGridSpec,
   type Surface,
 } from '@mercadia/ui';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import { filterGridByCategory } from '@/pages/layout-template-utils.js';
 
 type LayoutTemplatePreviewProps = {
   kind: string;
@@ -15,6 +21,8 @@ type LayoutTemplatePreviewProps = {
   resolvedAccentColor?: string;
   grid: LayoutGridSpec;
 };
+
+const ALL_CATEGORIES = '__all__';
 
 export function LayoutTemplatePreview({
   kind,
@@ -25,6 +33,12 @@ export function LayoutTemplatePreview({
 }: LayoutTemplatePreviewProps) {
   const { t } = useTranslation();
   const surface: Surface = kind === 'sco' ? 'sco' : 'terminal';
+  const categories = grid.categories ?? [];
+  const [activeCategoryId, setActiveCategoryId] = useState(ALL_CATEGORIES);
+  const previewGrid = useMemo(
+    () => filterGridByCategory(grid, activeCategoryId === ALL_CATEGORIES ? null : activeCategoryId),
+    [activeCategoryId, grid],
+  );
 
   return (
     <ThemePreview
@@ -46,7 +60,21 @@ export function LayoutTemplatePreview({
         </div>
         <Button type="button">{t('layoutTemplates.previewAction')}</Button>
       </div>
-      <LayoutGrid grid={grid} />
+      {categories.length > 0 ? (
+        <Tabs value={activeCategoryId} onValueChange={setActiveCategoryId}>
+          <TabsList aria-label={t('layoutTemplates.gridEditor.categories')}>
+            <TabsTrigger value={ALL_CATEGORIES}>
+              {t('layoutTemplates.gridEditor.allCategories')}
+            </TabsTrigger>
+            {categories.map((category) => (
+              <TabsTrigger key={category.id} value={category.id}>
+                {category.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      ) : null}
+      <LayoutGrid grid={previewGrid} />
     </ThemePreview>
   );
 }

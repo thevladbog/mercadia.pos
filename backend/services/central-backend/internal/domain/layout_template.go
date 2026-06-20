@@ -24,17 +24,25 @@ const (
 	LayoutTemplateStatusPublished LayoutTemplateStatus = "published"
 )
 
+type LayoutGridCategory struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
 type LayoutGridTile struct {
-	Label     string `json:"label"`
-	Color     string `json:"color,omitempty"`
-	ProductID string `json:"productId,omitempty"`
-	Empty     bool   `json:"empty,omitempty"`
+	Label      string `json:"label"`
+	Color      string `json:"color,omitempty"`
+	ProductID  string `json:"productId,omitempty"`
+	Empty      bool   `json:"empty,omitempty"`
+	CategoryID string `json:"categoryId,omitempty"`
+	IconURL    string `json:"iconUrl,omitempty"`
 }
 
 type LayoutGrid struct {
-	Rows  int              `json:"rows"`
-	Cols  int              `json:"cols"`
-	Tiles []LayoutGridTile `json:"tiles"`
+	Rows       int                  `json:"rows"`
+	Cols       int                  `json:"cols"`
+	Categories []LayoutGridCategory `json:"categories,omitempty"`
+	Tiles      []LayoutGridTile     `json:"tiles"`
 }
 
 type LayoutTemplate struct {
@@ -92,6 +100,9 @@ func NewLayoutTemplate(template LayoutTemplate) (LayoutTemplate, error) {
 	if template.Grid.Tiles == nil {
 		template.Grid.Tiles = []LayoutGridTile{}
 	}
+	if template.Grid.Categories == nil {
+		template.Grid.Categories = []LayoutGridCategory{}
+	}
 	now := time.Now().UTC()
 	if template.CreatedAt.IsZero() {
 		template.CreatedAt = now
@@ -145,6 +156,9 @@ func ParseLayoutGrid(raw json.RawMessage) (LayoutGrid, error) {
 	}
 	if grid.Tiles == nil {
 		grid.Tiles = []LayoutGridTile{}
+	}
+	if grid.Categories == nil {
+		grid.Categories = []LayoutGridCategory{}
 	}
 	return grid, nil
 }

@@ -1,4 +1,5 @@
 import { useListCentralUsers } from '@mercadia/api-clients-central';
+import { Button } from '@mercadia/ui';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
@@ -20,14 +21,14 @@ export function CentralUsersPage() {
             <p className="muted">{t('users.subtitle')}</p>
           </div>
           <div className="header-actions-inline">
-            <button
-              className="secondary"
+            <Button
+              variant="secondary"
               disabled={usersQuery.isFetching}
               onClick={() => void usersQuery.refetch()}
               type="button"
             >
               {usersQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
-            </button>
+            </Button>
             <Link className="button-link" to="/central/users/new">
               {t('users.createUser')}
             </Link>

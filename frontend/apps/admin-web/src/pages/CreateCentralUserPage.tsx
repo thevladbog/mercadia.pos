@@ -4,6 +4,7 @@ import {
   useCreateCentralUser,
   type CreateCentralUserBody,
 } from '@mercadia/api-clients-central';
+import { Button } from '@mercadia/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -100,9 +101,9 @@ export function CreateCentralUserPage() {
           <CentralRoleFields roles={roles} onChange={setRoles} />
           {errorMessage ? <p className="error">{errorMessage}</p> : null}
           <div className="form-actions">
-            <button disabled={mutation.isPending} type="submit">
+            <Button disabled={mutation.isPending} type="submit">
               {mutation.isPending ? t('users.creating') : t('users.createUser')}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

@@ -13,6 +13,7 @@ import {
   useListStoreSyncEvents,
   useListStores,
 } from '@mercadia/api-clients-central';
+import { Button } from '@mercadia/ui';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -224,9 +225,9 @@ export function CentralSyncExplorerPage() {
             <h2>{t('sync.title')}</h2>
             <p className="muted">{t('sync.subtitle')}</p>
           </div>
-          <button className="secondary" disabled={isLoading} onClick={refetchAll} type="button">
+          <Button variant="secondary" disabled={isLoading} onClick={refetchAll} type="button">
             {isLoading ? t('common.refreshing') : t('common.refresh')}
-          </button>
+          </Button>
         </div>
 
         <StorePicker
@@ -239,10 +240,10 @@ export function CentralSyncExplorerPage() {
 
         <div className="filters" role="tablist" aria-label={t('sync.title')}>
           {SYNC_TABS.map((tab) => (
-            <button
+            <Button
               key={tab.id}
               id={`sync-tab-${tab.id}`}
-              className={activeTab === tab.id ? undefined : 'secondary'}
+              variant={activeTab === tab.id ? 'primary' : 'secondary'}
               onClick={() => handleTabChange(tab.id)}
               role="tab"
               type="button"
@@ -250,7 +251,7 @@ export function CentralSyncExplorerPage() {
               aria-controls={`sync-tab-panel-${tab.id}`}
             >
               {t(tab.labelKey)}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -412,14 +413,15 @@ function syncEventLinkButton(
   ariaLabel: string,
 ) {
   return (
-    <button
-      className="link-button"
+    <Button
+      variant="link"
+      size="sm"
       type="button"
       onClick={() => onOpenSyncEvent(event)}
       aria-label={ariaLabel}
     >
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -429,14 +431,15 @@ function receiptLinkButton(
   ariaLabel: string,
 ) {
   return (
-    <button
-      className="link-button"
+    <Button
+      variant="link"
+      size="sm"
       type="button"
       onClick={() => onOpenReceipt(receiptId)}
       aria-label={ariaLabel}
     >
       {receiptId}
-    </button>
+    </Button>
   );
 }
 

@@ -7,8 +7,10 @@
  */
 
 export type CreateLayoutTemplateBodyGridTilesItem = {
+  categoryId?: string;
   color?: string;
   empty?: boolean;
+  iconUrl?: string;
   label?: string;
   productId?: string;
 };

@@ -8,6 +8,7 @@ import {
   useListOperationJournal,
   type ListOpenStoreShifts200ShiftsItem,
 } from '@mercadia/api-clients-store-edge';
+import { Button } from '@mercadia/ui';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -180,9 +181,9 @@ export function StoreEodPage() {
             <h2>{t('eod.title')}</h2>
             <p className="muted">{t('eod.subtitle')}</p>
           </div>
-          <button className="secondary" disabled={isLoading} onClick={refetchAll} type="button">
+          <Button variant="secondary" disabled={isLoading} onClick={refetchAll} type="button">
             {isLoading ? t('common.refreshing') : t('common.refresh')}
-          </button>
+          </Button>
         </div>
 
         <StorePicker
@@ -220,27 +221,27 @@ export function StoreEodPage() {
       ) : (
         <>
           <div className="panel tab-bar">
-            <button
-              className={activeTab === 'overview' ? undefined : 'secondary'}
+            <Button
+              variant={activeTab === 'overview' ? 'primary' : 'secondary'}
               onClick={() => setActiveTab('overview')}
               type="button"
             >
               {t('eod.tabs.overview')}
-            </button>
-            <button
-              className={activeTab === 'open-shifts' ? undefined : 'secondary'}
+            </Button>
+            <Button
+              variant={activeTab === 'open-shifts' ? 'primary' : 'secondary'}
               onClick={() => setActiveTab('open-shifts')}
               type="button"
             >
               {t('eod.tabs.openShifts')}
-            </button>
-            <button
-              className={activeTab === 'journal' ? undefined : 'secondary'}
+            </Button>
+            <Button
+              variant={activeTab === 'journal' ? 'primary' : 'secondary'}
               onClick={() => setActiveTab('journal')}
               type="button"
             >
               {t('eod.tabs.journal')}
-            </button>
+            </Button>
           </div>
 
           {activeTab === 'overview' ? (
@@ -521,13 +522,14 @@ export function StoreEodPage() {
                       {openShifts.map((shift) => (
                         <tr key={shift.id}>
                           <td>
-                            <button
-                              className="link-button"
+                            <Button
+                              variant="link"
+                              size="sm"
                               onClick={() => handleOpenShift(shift.id)}
                               type="button"
                             >
                               {shift.id}
-                            </button>
+                            </Button>
                           </td>
                           <td>{shift.cashierId}</td>
                           <td>{shift.terminalId}</td>
@@ -536,13 +538,14 @@ export function StoreEodPage() {
                           <td>{formatMinorAmount(shift.openingCashMinor)}</td>
                           {canWrite ? (
                             <td>
-                              <button
-                                className="secondary"
+                              <Button
+                                variant="secondary"
+                                size="sm"
                                 onClick={() => setCloseShiftTarget(shift)}
                                 type="button"
                               >
                                 {t('eod.actions.closeShift')}
-                              </button>
+                              </Button>
                             </td>
                           ) : null}
                         </tr>

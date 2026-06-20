@@ -1,4 +1,5 @@
 import { useListStoreCatalogProducts, useListStores } from '@mercadia/api-clients-central';
+import { Button } from '@mercadia/ui';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -67,9 +68,9 @@ export function CentralCatalogPage() {
             <h2>{t('catalog.title')}</h2>
             <p className="muted">{t('catalog.subtitle')}</p>
           </div>
-          <button className="secondary" disabled={isLoading} onClick={refetchAll} type="button">
+          <Button variant="secondary" disabled={isLoading} onClick={refetchAll} type="button">
             {isLoading ? t('common.refreshing') : t('common.refresh')}
-          </button>
+          </Button>
         </div>
 
         <StorePicker

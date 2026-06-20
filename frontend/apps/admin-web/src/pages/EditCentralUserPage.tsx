@@ -7,6 +7,7 @@ import {
   type GetCentralUser200User,
   type UpdateCentralUserBody,
 } from '@mercadia/api-clients-central';
+import { Button } from '@mercadia/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -109,9 +110,9 @@ function EditCentralUserForm({ user, userId }: EditCentralUserFormProps) {
         </label>
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
         <div className="form-actions">
-          <button disabled={mutation.isPending} type="submit">
+          <Button disabled={mutation.isPending} type="submit">
             {mutation.isPending ? t('users.saving') : t('common.save')}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

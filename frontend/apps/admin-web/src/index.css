@@ -1,4 +1,4 @@
-/* Layout and page utilities — interactive controls use @mercadia/ui components or legacy-compat below */
+/* Layout and page utilities — interactive controls use @mercadia/ui components */
 
 body {
   margin: 0;
@@ -10,40 +10,6 @@ body {
 button,
 input {
   font: inherit;
-}
-
-/* Legacy native buttons until pages migrate to @mercadia/ui Button */
-button:not(.mercadia-button):not(.mercadia-tabs-trigger) {
-  border: none;
-  border-radius: var(--ui-radius-md, 0.5rem);
-  padding: 0.625rem 1rem;
-  background: var(--ui-accent);
-  color: var(--ui-accent-foreground);
-  cursor: pointer;
-}
-
-button:not(.mercadia-button):not(.mercadia-tabs-trigger):disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-button:not(.mercadia-button):not(.mercadia-tabs-trigger).secondary {
-  background: var(--ui-surface);
-  color: var(--ui-text);
-  border: 1px solid var(--ui-border);
-}
-
-button:not(.mercadia-button):not(.mercadia-tabs-trigger).link-button {
-  background: none;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  color: var(--ui-link);
-  text-decoration: underline;
-}
-
-button:not(.mercadia-button):not(.mercadia-tabs-trigger).link-button:hover {
-  color: var(--ui-link-hover);
 }
 
 .panel {

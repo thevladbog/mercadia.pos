@@ -7,8 +7,10 @@
  */
 
 export type ListLayoutTemplates200TemplatesItemGridTilesItem = {
+  categoryId?: string;
   color?: string;
   empty?: boolean;
+  iconUrl?: string;
   label?: string;
   productId?: string;
 };

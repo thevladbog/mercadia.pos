@@ -2264,6 +2264,21 @@
                           "grid": {
                             "additionalProperties": false,
                             "properties": {
+                              "categories": {
+                                "items": {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "label": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "type": "object"
+                                },
+                                "type": "array"
+                              },
                               "cols": {
                                 "type": "integer"
                               },
@@ -2274,11 +2289,17 @@
                                 "items": {
                                   "additionalProperties": false,
                                   "properties": {
+                                    "categoryId": {
+                                      "type": "string"
+                                    },
                                     "color": {
                                       "type": "string"
                                     },
                                     "empty": {
                                       "type": "boolean"
+                                    },
+                                    "iconUrl": {
+                                      "type": "string"
                                     },
                                     "label": {
                                       "type": "string"
@@ -2446,6 +2467,21 @@
                   "grid": {
                     "additionalProperties": false,
                     "properties": {
+                      "categories": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "label": {
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
                       "cols": {
                         "type": "integer"
                       },
@@ -2456,11 +2492,17 @@
                         "items": {
                           "additionalProperties": false,
                           "properties": {
+                            "categoryId": {
+                              "type": "string"
+                            },
                             "color": {
                               "type": "string"
                             },
                             "empty": {
                               "type": "boolean"
+                            },
+                            "iconUrl": {
+                              "type": "string"
                             },
                             "label": {
                               "type": "string"
@@ -2533,6 +2575,21 @@
                         "grid": {
                           "additionalProperties": false,
                           "properties": {
+                            "categories": {
+                              "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
                             "cols": {
                               "type": "integer"
                             },
@@ -2543,11 +2600,17 @@
                               "items": {
                                 "additionalProperties": false,
                                 "properties": {
+                                  "categoryId": {
+                                    "type": "string"
+                                  },
                                   "color": {
                                     "type": "string"
                                   },
                                   "empty": {
                                     "type": "boolean"
+                                  },
+                                  "iconUrl": {
+                                    "type": "string"
                                   },
                                   "label": {
                                     "type": "string"
@@ -2733,6 +2796,21 @@
                         "grid": {
                           "additionalProperties": false,
                           "properties": {
+                            "categories": {
+                              "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
                             "cols": {
                               "type": "integer"
                             },
@@ -2743,11 +2821,17 @@
                               "items": {
                                 "additionalProperties": false,
                                 "properties": {
+                                  "categoryId": {
+                                    "type": "string"
+                                  },
                                   "color": {
                                     "type": "string"
                                   },
                                   "empty": {
                                     "type": "boolean"
+                                  },
+                                  "iconUrl": {
+                                    "type": "string"
                                   },
                                   "label": {
                                     "type": "string"
@@ -2957,6 +3041,21 @@
                   "grid": {
                     "additionalProperties": false,
                     "properties": {
+                      "categories": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "label": {
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
                       "cols": {
                         "type": "integer"
                       },
@@ -2967,11 +3066,17 @@
                         "items": {
                           "additionalProperties": false,
                           "properties": {
+                            "categoryId": {
+                              "type": "string"
+                            },
                             "color": {
                               "type": "string"
                             },
                             "empty": {
                               "type": "boolean"
+                            },
+                            "iconUrl": {
+                              "type": "string"
                             },
                             "label": {
                               "type": "string"
@@ -3036,6 +3141,21 @@
                         "grid": {
                           "additionalProperties": false,
                           "properties": {
+                            "categories": {
+                              "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
                             "cols": {
                               "type": "integer"
                             },
@@ -3046,11 +3166,17 @@
                               "items": {
                                 "additionalProperties": false,
                                 "properties": {
+                                  "categoryId": {
+                                    "type": "string"
+                                  },
                                   "color": {
                                     "type": "string"
                                   },
                                   "empty": {
                                     "type": "boolean"
+                                  },
+                                  "iconUrl": {
+                                    "type": "string"
                                   },
                                   "label": {
                                     "type": "string"

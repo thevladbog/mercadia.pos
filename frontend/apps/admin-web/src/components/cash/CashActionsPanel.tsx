@@ -1,4 +1,5 @@
 import type { ListCashBalances200BalancesItem } from '@mercadia/api-clients-store-edge';
+import { Button } from '@mercadia/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -49,33 +50,33 @@ export function CashActionsPanel({ storeId, balances, canWrite }: CashActionsPan
           <p className="muted">{t('safe.actions.noContainers')}</p>
         ) : (
           <div className="cash-actions">
-            <button onClick={() => openMovement('change_fund')} type="button">
+            <Button onClick={() => openMovement('change_fund')} type="button">
               {t('safe.actions.issueChangeFund')}
-            </button>
-            <button
-              className="secondary"
+            </Button>
+            <Button
+              variant="secondary"
               onClick={() => openMovement('drawer_to_safe')}
               type="button"
             >
               {t('safe.actions.receiveFromCashier')}
-            </button>
-            <button
-              className="secondary"
+            </Button>
+            <Button
+              variant="secondary"
               onClick={() => setActiveAction('bank_collection')}
               type="button"
             >
               {t('safe.actions.bankCollection')}
-            </button>
-            <button
-              className="secondary"
+            </Button>
+            <Button
+              variant="secondary"
               onClick={() => setActiveAction('business_expense')}
               type="button"
             >
               {t('safe.actions.businessExpense')}
-            </button>
-            <button className="secondary" onClick={() => setActiveAction('recount')} type="button">
+            </Button>
+            <Button variant="secondary" onClick={() => setActiveAction('recount')} type="button">
               {t('safe.actions.recountSafe')}
-            </button>
+            </Button>
           </div>
         )}
       </div>

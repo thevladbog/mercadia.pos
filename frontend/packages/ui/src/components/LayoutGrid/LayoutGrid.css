@@ -6,6 +6,7 @@
 .mercadia-layout-grid-tile {
   display: grid;
   place-items: center;
+  gap: var(--ui-space-xs);
   min-height: var(--ui-touch-min, 48px);
   padding: var(--ui-space-sm);
   border: 1px solid var(--ui-border);
@@ -39,4 +40,10 @@
   background: var(--ui-accent-muted);
   border-color: transparent;
   color: var(--ui-accent);
+}
+
+.mercadia-layout-grid-tile-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  object-fit: contain;
 }

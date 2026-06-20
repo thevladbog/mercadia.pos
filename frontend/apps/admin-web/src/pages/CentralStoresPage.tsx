@@ -1,4 +1,5 @@
 import { useListStores } from '@mercadia/api-clients-central';
+import { Button } from '@mercadia/ui';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
@@ -24,14 +25,14 @@ export function CentralStoresPage() {
             <p className="muted">{t('stores.subtitle')}</p>
           </div>
           <div className="header-actions-inline">
-            <button
-              className="secondary"
+            <Button
+              variant="secondary"
               disabled={storesQuery.isFetching}
               onClick={() => void storesQuery.refetch()}
               type="button"
             >
               {storesQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
-            </button>
+            </Button>
             {canRegister ? (
               <Link className="button-link" to="/central/stores/new">
                 {t('stores.registerStore')}

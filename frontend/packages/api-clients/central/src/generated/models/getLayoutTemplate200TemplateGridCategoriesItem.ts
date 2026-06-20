@@ -6,11 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type CreateLayoutTemplate201TemplateGridTilesItem = {
-  categoryId?: string;
-  color?: string;
-  empty?: boolean;
-  iconUrl?: string;
+export type GetLayoutTemplate200TemplateGridCategoriesItem = {
+  id?: string;
   label?: string;
-  productId?: string;
 };

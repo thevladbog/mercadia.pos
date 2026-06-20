@@ -52,17 +52,25 @@ type UpdateColorSchemeRequest struct {
 	StoreIDs        []string                  `json:"storeIds,omitempty"`
 }
 
+type LayoutGridCategoryResponse struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
 type LayoutGridTileResponse struct {
-	Label     string `json:"label"`
-	Color     string `json:"color,omitempty"`
-	ProductID string `json:"productId,omitempty"`
-	Empty     bool   `json:"empty,omitempty"`
+	Label      string `json:"label"`
+	Color      string `json:"color,omitempty"`
+	ProductID  string `json:"productId,omitempty"`
+	Empty      bool   `json:"empty,omitempty"`
+	CategoryID string `json:"categoryId,omitempty"`
+	IconURL    string `json:"iconUrl,omitempty"`
 }
 
 type LayoutGridResponse struct {
-	Rows  int                      `json:"rows"`
-	Cols  int                      `json:"cols"`
-	Tiles []LayoutGridTileResponse `json:"tiles"`
+	Rows       int                          `json:"rows"`
+	Cols       int                          `json:"cols"`
+	Categories []LayoutGridCategoryResponse `json:"categories,omitempty"`
+	Tiles      []LayoutGridTileResponse     `json:"tiles"`
 }
 
 type LayoutTemplateResponse struct {
@@ -356,16 +364,30 @@ func colorSchemeResponses(schemes []domain.ColorScheme) []ColorSchemeResponse {
 }
 
 func layoutGridResponse(grid domain.LayoutGrid) LayoutGridResponse {
+	categories := make([]LayoutGridCategoryResponse, 0, len(grid.Categories))
+	for _, category := range grid.Categories {
+		categories = append(categories, LayoutGridCategoryResponse{
+			ID:    category.ID,
+			Label: category.Label,
+		})
+	}
 	tiles := make([]LayoutGridTileResponse, 0, len(grid.Tiles))
 	for _, tile := range grid.Tiles {
 		tiles = append(tiles, LayoutGridTileResponse{
-			Label:     tile.Label,
-			Color:     tile.Color,
-			ProductID: tile.ProductID,
-			Empty:     tile.Empty,
+			Label:      tile.Label,
+			Color:      tile.Color,
+			ProductID:  tile.ProductID,
+			Empty:      tile.Empty,
+			CategoryID: tile.CategoryID,
+			IconURL:    tile.IconURL,
 		})
 	}
-	return LayoutGridResponse{Rows: grid.Rows, Cols: grid.Cols, Tiles: tiles}
+	return LayoutGridResponse{
+		Rows:       grid.Rows,
+		Cols:       grid.Cols,
+		Categories: categories,
+		Tiles:      tiles,
+	}
 }
 
 func layoutTemplateResponse(result app.LayoutTemplateResult) LayoutTemplateResponse {
@@ -399,18 +421,28 @@ func layoutTemplateResponses(results []app.LayoutTemplateResult) []LayoutTemplat
 
 func layoutGridSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"rows":  {"type": "integer"},
-		"cols":  {"type": "integer"},
-		"tiles": httpapi.ArraySchema(layoutGridTileSchema()),
+		"rows":       {"type": "integer"},
+		"cols":       {"type": "integer"},
+		"categories": httpapi.ArraySchema(layoutGridCategorySchema()),
+		"tiles":      httpapi.ArraySchema(layoutGridTileSchema()),
+	})
+}
+
+func layoutGridCategorySchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"id":    httpapi.StringSchema(),
+		"label": httpapi.StringSchema(),
 	})
 }
 
 func layoutGridTileSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"label":     httpapi.StringSchema(),
-		"color":     httpapi.StringSchema(),
-		"productId": httpapi.StringSchema(),
-		"empty":     {"type": "boolean"},
+		"label":      httpapi.StringSchema(),
+		"color":      httpapi.StringSchema(),
+		"productId":  httpapi.StringSchema(),
+		"empty":      {"type": "boolean"},
+		"categoryId": httpapi.StringSchema(),
+		"iconUrl":    httpapi.StringSchema(),
 	})
 }
 

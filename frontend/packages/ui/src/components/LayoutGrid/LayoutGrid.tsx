@@ -34,6 +34,9 @@ export function LayoutGrid({ grid, className, onTileClick }: LayoutGridProps) {
             style={tile.color ? { background: tile.color, borderColor: tile.color } : undefined}
             type="button"
           >
+            {!isEmpty && tile.iconUrl ? (
+              <img alt="" className="mercadia-layout-grid-tile-icon" src={tile.iconUrl} />
+            ) : null}
             {isEmpty ? '—' : tile.label}
           </button>
         );
@@ -42,4 +45,4 @@ export function LayoutGrid({ grid, className, onTileClick }: LayoutGridProps) {
   );
 }
 
-export type { LayoutGridSpec, LayoutGridTileSpec } from './types.js';
+export type { LayoutGridSpec, LayoutGridTileSpec, LayoutGridCategorySpec } from './types.js';

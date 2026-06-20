@@ -1,4 +1,5 @@
 import { useCreateCentralAuthSession } from '@mercadia/api-clients-central';
+import { Button } from '@mercadia/ui';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -74,9 +75,9 @@ export function LoginPage() {
           />
         </label>
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
-        <button disabled={mutation.isPending} type="submit">
+        <Button disabled={mutation.isPending} type="submit">
           {mutation.isPending ? t('auth.signingIn') : t('auth.signIn')}
-        </button>
+        </Button>
       </form>
     </section>
   );
