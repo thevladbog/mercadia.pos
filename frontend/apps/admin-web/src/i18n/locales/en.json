@@ -244,7 +244,12 @@
     "containerType": "Type",
     "balance": "Balance",
     "lastMovement": "Last movement",
-    "movements": "Cash movements",
+    "movements": {
+      "title": "Cash movements",
+      "searchPlaceholder": "Search movements…",
+      "searchHint": "Filters rows on the current page",
+      "noSearchResults": "No movements match the search on this page."
+    },
     "loadingMovements": "Loading movements…",
     "noMovements": "No cash movements.",
     "movementId": "Movement ID",
@@ -260,7 +265,22 @@
       "approvedBy": "Approved by",
       "reason": "Reason"
     },
-    "recounts": "Cash recounts",
+    "recounts": {
+      "title": "Cash recounts",
+      "searchPlaceholder": "Search recounts…",
+      "searchHint": "Filters rows on the current page",
+      "noSearchResults": "No recounts match the search on this page."
+    },
+    "recountDetail": {
+      "title": "Cash recount detail",
+      "currency": "Currency",
+      "approvedBy": "Approved by",
+      "reason": "Reason",
+      "resolutionNote": "Resolution note",
+      "resolvedBy": "Resolved by",
+      "resolvedAt": "Resolved at",
+      "notOnPage": "Linked recount is not on the current page. Navigate pages to find it."
+    },
     "loadingRecounts": "Loading recounts…",
     "noRecounts": "No cash recounts.",
     "recountId": "Recount ID",

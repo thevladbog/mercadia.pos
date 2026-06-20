@@ -244,7 +244,12 @@
     "containerType": "Тип",
     "balance": "Остаток",
     "lastMovement": "Последнее движение",
-    "movements": "Движения наличных",
+    "movements": {
+      "title": "Движения наличных",
+      "searchPlaceholder": "Поиск движений…",
+      "searchHint": "Фильтр по строкам на текущей странице",
+      "noSearchResults": "На этой странице нет движений по запросу."
+    },
     "loadingMovements": "Загрузка движений…",
     "noMovements": "Нет движений наличных.",
     "movementId": "ID движения",
@@ -260,7 +265,22 @@
       "approvedBy": "Утвердил",
       "reason": "Причина"
     },
-    "recounts": "Пересчёты",
+    "recounts": {
+      "title": "Пересчёты",
+      "searchPlaceholder": "Поиск пересчётов…",
+      "searchHint": "Фильтр по строкам на текущей странице",
+      "noSearchResults": "На этой странице нет пересчётов по запросу."
+    },
+    "recountDetail": {
+      "title": "Детали пересчёта",
+      "currency": "Валюта",
+      "approvedBy": "Утвердил",
+      "reason": "Причина",
+      "resolutionNote": "Примечание к резолюции",
+      "resolvedBy": "Закрыл",
+      "resolvedAt": "Закрыт",
+      "notOnPage": "Пересчёт по ссылке не на текущей странице. Перейдите по страницам, чтобы найти его."
+    },
     "loadingRecounts": "Загрузка пересчётов…",
     "noRecounts": "Нет пересчётов.",
     "recountId": "ID пересчёта",
