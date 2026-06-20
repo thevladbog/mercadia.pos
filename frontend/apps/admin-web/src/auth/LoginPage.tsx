@@ -4,6 +4,8 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router-dom';
 
+import { TextField } from '@/components/FormControls.js';
+
 import { getApiErrorMessage, isUnauthorizedError } from './api-errors.js';
 import { useAuth } from './useAuth.js';
 
@@ -52,28 +54,24 @@ export function LoginPage() {
       <h1>{t('auth.loginTitle')}</h1>
       <p className="muted">{t('auth.loginSubtitle')}</p>
       <form className="stack" onSubmit={handleSubmit}>
-        <label className="field">
-          <span>{t('auth.email')}</span>
-          <input
-            autoComplete="username"
-            name="email"
-            required
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span>{t('auth.password')}</span>
-          <input
-            autoComplete="current-password"
-            name="password"
-            required
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </label>
+        <TextField
+          required
+          autoComplete="username"
+          label={t('auth.email')}
+          name="email"
+          type="email"
+          value={email}
+          onValueChange={setEmail}
+        />
+        <TextField
+          required
+          autoComplete="current-password"
+          label={t('auth.password')}
+          name="password"
+          type="password"
+          value={password}
+          onValueChange={setPassword}
+        />
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
         <Button disabled={mutation.isPending} type="submit">
           {mutation.isPending ? t('auth.signingIn') : t('auth.signIn')}

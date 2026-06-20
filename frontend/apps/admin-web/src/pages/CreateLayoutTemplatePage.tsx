@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { LayoutGridEditor } from '@/components/branding/LayoutGridEditor.js';
 import { LayoutTemplatePreview } from '@/components/branding/LayoutTemplatePreview.js';
 import { getApiErrorMessage } from '@/auth/api-errors.js';
+import { SelectField, TextField } from '@/components/FormControls.js';
 import {
   ACCENT_PRESET_OPTIONS,
   accentPresetLabel,
@@ -118,72 +119,79 @@ export function CreateLayoutTemplatePage() {
         <h2>{t('layoutTemplates.createTitle')}</h2>
         <div className="stack">
           <form className="stack" onSubmit={handleSubmit}>
-            <label className="field">
-              <span>{t('layoutTemplates.templateId')}</span>
-              <input required value={templateId} onChange={(e) => setTemplateId(e.target.value)} />
-            </label>
-            <label className="field">
-              <span>{t('layoutTemplates.name')}</span>
-              <input required value={name} onChange={(e) => setName(e.target.value)} />
-            </label>
-            <label className="field">
-              <span>{t('layoutTemplates.kind')}</span>
-              <select value={kind} onChange={(e) => setKind(e.target.value)}>
-                {KIND_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {t(`layoutTemplates.kind.${option}`)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>{t('layoutTemplates.accentPreset')}</span>
-              <select value={accentPreset} onChange={(e) => setAccentPreset(e.target.value)}>
-                <option value="">{t('layoutTemplates.accentPresetDefault')}</option>
-                {ACCENT_PRESET_OPTIONS.map((preset) => (
-                  <option key={preset} value={preset}>
-                    {accentPresetLabel(t, preset)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>{t('layoutTemplates.accentColor')}</span>
-              <input value={accentColor} onChange={(e) => setAccentColor(e.target.value)} />
-            </label>
-            <label className="field">
-              <span>{t('layoutTemplates.colorSchemeId')}</span>
-              <select value={colorSchemeId} onChange={(e) => setColorSchemeId(e.target.value)}>
-                <option value="">{t('layoutTemplates.noColorScheme')}</option>
-                {schemes.map((scheme) => (
-                  <option key={scheme.id} value={scheme.id}>
-                    {scheme.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>{t('layoutTemplates.storeId')}</span>
-              <select value={storeId} onChange={(e) => setStoreId(e.target.value)}>
-                <option value="">{t('layoutTemplates.anyStore')}</option>
-                {stores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>{t('layoutTemplates.terminalType')}</span>
-              <input value={terminalType} onChange={(e) => setTerminalType(e.target.value)} />
-            </label>
-            <label className="field">
-              <span>{t('layoutTemplates.status')}</span>
-              <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="draft">{t('branding.status.draft')}</option>
-                <option value="published">{t('branding.status.published')}</option>
-              </select>
-            </label>
+            <TextField
+              required
+              label={t('layoutTemplates.templateId')}
+              value={templateId}
+              onValueChange={setTemplateId}
+            />
+            <TextField
+              required
+              label={t('layoutTemplates.name')}
+              value={name}
+              onValueChange={setName}
+            />
+            <SelectField label={t('layoutTemplates.kind')} value={kind} onValueChange={setKind}>
+              {KIND_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {t(`layoutTemplates.kind.${option}`)}
+                </option>
+              ))}
+            </SelectField>
+            <SelectField
+              label={t('layoutTemplates.accentPreset')}
+              value={accentPreset}
+              onValueChange={setAccentPreset}
+            >
+              <option value="">{t('layoutTemplates.accentPresetDefault')}</option>
+              {ACCENT_PRESET_OPTIONS.map((preset) => (
+                <option key={preset} value={preset}>
+                  {accentPresetLabel(t, preset)}
+                </option>
+              ))}
+            </SelectField>
+            <TextField
+              label={t('layoutTemplates.accentColor')}
+              value={accentColor}
+              onValueChange={setAccentColor}
+            />
+            <SelectField
+              label={t('layoutTemplates.colorSchemeId')}
+              value={colorSchemeId}
+              onValueChange={setColorSchemeId}
+            >
+              <option value="">{t('layoutTemplates.noColorScheme')}</option>
+              {schemes.map((scheme) => (
+                <option key={scheme.id} value={scheme.id}>
+                  {scheme.name}
+                </option>
+              ))}
+            </SelectField>
+            <SelectField
+              label={t('layoutTemplates.storeId')}
+              value={storeId}
+              onValueChange={setStoreId}
+            >
+              <option value="">{t('layoutTemplates.anyStore')}</option>
+              {stores.map((store) => (
+                <option key={store.id} value={store.id}>
+                  {store.name}
+                </option>
+              ))}
+            </SelectField>
+            <TextField
+              label={t('layoutTemplates.terminalType')}
+              value={terminalType}
+              onValueChange={setTerminalType}
+            />
+            <SelectField
+              label={t('layoutTemplates.status')}
+              value={status}
+              onValueChange={setStatus}
+            >
+              <option value="draft">{t('branding.status.draft')}</option>
+              <option value="published">{t('branding.status.published')}</option>
+            </SelectField>
             <LayoutGridEditor
               catalogReady={storeId ? catalogReady : undefined}
               grid={grid}

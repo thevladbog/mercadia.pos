@@ -3,6 +3,8 @@ import type { LayoutGridCategorySpec, LayoutGridSpec, LayoutGridTileSpec } from 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { CheckboxField, SelectField, TextField } from '@/components/FormControls.js';
+
 type LayoutGridEditorProps = {
   grid: LayoutGridSpec;
   catalogReady?: boolean;
@@ -124,28 +126,24 @@ export function LayoutGridEditor({
   return (
     <div className="stack layout-grid-editor">
       <div className="layout-grid-editor-dimensions">
-        <label className="field">
-          <span>{t('layoutTemplates.gridEditor.rows')}</span>
-          <input
-            min={MIN_DIMENSION}
-            max={MAX_DIMENSION}
-            required
-            type="number"
-            value={grid.rows}
-            onChange={(event) => handleRowsChange(event.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span>{t('layoutTemplates.gridEditor.cols')}</span>
-          <input
-            min={MIN_DIMENSION}
-            max={MAX_DIMENSION}
-            required
-            type="number"
-            value={grid.cols}
-            onChange={(event) => handleColsChange(event.target.value)}
-          />
-        </label>
+        <TextField
+          required
+          label={t('layoutTemplates.gridEditor.rows')}
+          max={MAX_DIMENSION}
+          min={MIN_DIMENSION}
+          type="number"
+          value={grid.rows}
+          onValueChange={handleRowsChange}
+        />
+        <TextField
+          required
+          label={t('layoutTemplates.gridEditor.cols')}
+          max={MAX_DIMENSION}
+          min={MIN_DIMENSION}
+          type="number"
+          value={grid.cols}
+          onValueChange={handleColsChange}
+        />
       </div>
 
       <div className="stack">
@@ -172,18 +170,16 @@ export function LayoutGridEditor({
                   {t('layoutTemplates.gridEditor.removeCategory')}
                 </Button>
               </div>
-              <label className="field">
-                <span>{t('layoutTemplates.gridEditor.categoryLabel')}</span>
-                <input
-                  value={category.label}
-                  onChange={(event) =>
-                    onChange({
-                      ...grid,
-                      categories: updateCategory(categories, index, { label: event.target.value }),
-                    })
-                  }
-                />
-              </label>
+              <TextField
+                label={t('layoutTemplates.gridEditor.categoryLabel')}
+                value={category.label}
+                onValueChange={(value) =>
+                  onChange({
+                    ...grid,
+                    categories: updateCategory(categories, index, { label: value }),
+                  })
+                }
+              />
             </div>
           ))
         )}
@@ -224,79 +220,71 @@ export function LayoutGridEditor({
                 </Button>
               </div>
               {categories.length > 0 ? (
-                <label className="field">
-                  <span>{t('layoutTemplates.gridEditor.category')}</span>
-                  <select
-                    value={tile.categoryId ?? ''}
-                    onChange={(event) =>
-                      onChange({
-                        ...grid,
-                        tiles: updateTile(grid.tiles, index, {
-                          categoryId: event.target.value || undefined,
-                        }),
-                      })
-                    }
-                  >
-                    <option value="">{t('layoutTemplates.gridEditor.uncategorized')}</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <SelectField
+                  label={t('layoutTemplates.gridEditor.category')}
+                  value={tile.categoryId ?? ''}
+                  onValueChange={(value) =>
+                    onChange({
+                      ...grid,
+                      tiles: updateTile(grid.tiles, index, {
+                        categoryId: value || undefined,
+                      }),
+                    })
+                  }
+                >
+                  <option value="">{t('layoutTemplates.gridEditor.uncategorized')}</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.label}
+                    </option>
+                  ))}
+                </SelectField>
               ) : null}
-              <label className="field">
-                <span>{t('layoutTemplates.gridEditor.label')}</span>
-                <input
-                  value={tile.label}
-                  onChange={(event) =>
-                    onChange({
-                      ...grid,
-                      tiles: updateTile(grid.tiles, index, { label: event.target.value }),
-                    })
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>{t('layoutTemplates.gridEditor.color')}</span>
-                <input
-                  placeholder="#FF6600"
-                  value={tile.color ?? ''}
-                  onChange={(event) =>
-                    onChange({
-                      ...grid,
-                      tiles: updateTile(grid.tiles, index, {
-                        color: event.target.value || undefined,
-                      }),
-                    })
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>{t('layoutTemplates.gridEditor.iconUrl')}</span>
-                <input
-                  placeholder={t('layoutTemplates.gridEditor.iconUrlPlaceholder')}
-                  value={tile.iconUrl ?? ''}
-                  onChange={(event) =>
-                    onChange({
-                      ...grid,
-                      tiles: updateTile(grid.tiles, index, {
-                        iconUrl: event.target.value || undefined,
-                      }),
-                    })
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>{t('layoutTemplates.gridEditor.productId')}</span>
-                <input
+              <TextField
+                label={t('layoutTemplates.gridEditor.label')}
+                value={tile.label}
+                onValueChange={(value) =>
+                  onChange({
+                    ...grid,
+                    tiles: updateTile(grid.tiles, index, { label: value }),
+                  })
+                }
+              />
+              <TextField
+                label={t('layoutTemplates.gridEditor.color')}
+                placeholder="#FF6600"
+                value={tile.color ?? ''}
+                onValueChange={(value) =>
+                  onChange({
+                    ...grid,
+                    tiles: updateTile(grid.tiles, index, {
+                      color: value || undefined,
+                    }),
+                  })
+                }
+              />
+              <TextField
+                label={t('layoutTemplates.gridEditor.iconUrl')}
+                placeholder={t('layoutTemplates.gridEditor.iconUrlPlaceholder')}
+                value={tile.iconUrl ?? ''}
+                onValueChange={(value) =>
+                  onChange({
+                    ...grid,
+                    tiles: updateTile(grid.tiles, index, {
+                      iconUrl: value || undefined,
+                    }),
+                  })
+                }
+              />
+              <div className="field">
+                <TextField
+                  label={t('layoutTemplates.gridEditor.productId')}
                   value={tile.productId ?? ''}
-                  onChange={(event) =>
+                  onValueChange={(value) =>
                     onChange({
                       ...grid,
                       tiles: updateTile(grid.tiles, index, {
-                        productId: event.target.value || undefined,
+                        productId: value || undefined,
                       }),
                     })
                   }
@@ -306,22 +294,20 @@ export function LayoutGridEditor({
                     {t('layoutTemplates.unknownProduct', { productId: tile.productId })}
                   </span>
                 ) : null}
-              </label>
-              <label className="field layout-grid-editor-checkbox">
-                <input
-                  checked={tile.empty ?? false}
-                  type="checkbox"
-                  onChange={(event) =>
-                    onChange({
-                      ...grid,
-                      tiles: updateTile(grid.tiles, index, {
-                        empty: event.target.checked || undefined,
-                      }),
-                    })
-                  }
-                />
-                <span>{t('layoutTemplates.gridEditor.empty')}</span>
-              </label>
+              </div>
+              <CheckboxField
+                checked={tile.empty ?? false}
+                className="layout-grid-editor-checkbox"
+                label={t('layoutTemplates.gridEditor.empty')}
+                onCheckedChange={(checked) =>
+                  onChange({
+                    ...grid,
+                    tiles: updateTile(grid.tiles, index, {
+                      empty: checked || undefined,
+                    }),
+                  })
+                }
+              />
             </div>
           ))
         )}

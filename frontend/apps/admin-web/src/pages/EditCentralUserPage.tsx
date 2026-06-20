@@ -7,13 +7,14 @@ import {
   type GetCentralUser200User,
   type UpdateCentralUserBody,
 } from '@mercadia/api-clients-central';
-import { Button } from '@mercadia/ui';
+import { Button, Field, Label } from '@mercadia/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
+import { CheckboxField, TextField } from '@/components/FormControls.js';
 import { CentralRoleFields, PageBackLink } from './users-shared.js';
 
 type EditCentralUserFormProps = {
@@ -74,40 +75,29 @@ function EditCentralUserForm({ user, userId }: EditCentralUserFormProps) {
       <h2>{t('users.editTitle')}</h2>
       <p className="muted">{user.email}</p>
       <form className="stack" onSubmit={handleSubmit}>
-        <label className="field">
-          <span>{t('users.userId')}</span>
+        <Field>
+          <Label>{t('users.userId')}</Label>
           <p className="readonly-field">{user.id}</p>
-        </label>
-        <label className="field">
-          <span>{t('users.email')}</span>
+        </Field>
+        <Field>
+          <Label>{t('users.email')}</Label>
           <p className="readonly-field">{user.email}</p>
-        </label>
-        <label className="field">
-          <span>{t('users.displayName')}</span>
-          <input
-            required
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span>{t('users.newPassword')}</span>
-          <input
-            placeholder={t('users.passwordOptional')}
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </label>
+        </Field>
+        <TextField
+          required
+          label={t('users.displayName')}
+          value={displayName}
+          onValueChange={setDisplayName}
+        />
+        <TextField
+          label={t('users.newPassword')}
+          placeholder={t('users.passwordOptional')}
+          type="password"
+          value={password}
+          onValueChange={setPassword}
+        />
         <CentralRoleFields roles={roles} onChange={setRoles} />
-        <label className="checkbox-field">
-          <input
-            checked={active}
-            type="checkbox"
-            onChange={(event) => setActive(event.target.checked)}
-          />
-          <span>{t('users.active')}</span>
-        </label>
+        <CheckboxField checked={active} label={t('users.active')} onCheckedChange={setActive} />
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
         <div className="form-actions">
           <Button disabled={mutation.isPending} type="submit">

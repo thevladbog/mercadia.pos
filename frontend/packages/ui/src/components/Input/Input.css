@@ -30,6 +30,12 @@
   min-height: 2.75rem;
 }
 
+.mercadia-checkbox {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--ui-accent);
+}
+
 .mercadia-field {
   display: grid;
   gap: var(--ui-space-xs);
