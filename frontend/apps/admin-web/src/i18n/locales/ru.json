@@ -263,7 +263,8 @@
       "title": "Детали движения",
       "currency": "Валюта",
       "approvedBy": "Утвердил",
-      "reason": "Причина"
+      "reason": "Причина",
+      "notOnPage": "Движение по ссылке не на текущей странице. Перейдите по страницам, чтобы найти его."
     },
     "recounts": {
       "title": "Пересчёты",
@@ -485,6 +486,28 @@
       "receiptId": "ID чека",
       "total": "Итого",
       "lineCount": "Позиций"
+    },
+    "returnDetail": {
+      "title": "Детали возврата",
+      "returnId": "ID возврата",
+      "kind": "Тип",
+      "receiptId": "ID чека",
+      "total": "Итого",
+      "lineCount": "Позиций",
+      "reason": "Причина"
+    },
+    "journalReference": {
+      "link": "Открыть детали для {{reference}}"
+    },
+    "operationTypes": {
+      "shift.opened": "Смена открыта",
+      "shift.closed": "Смена закрыта",
+      "cash.movement.created": "Создано движение наличных",
+      "cash.recount.created": "Создан пересчёт",
+      "cash.recount.resolved": "Пересчёт закрыт",
+      "discount.applied": "Применена скидка",
+      "return.completed": "Возврат завершён",
+      "return.settled": "Возврат проведён"
     }
   },
   "users": {
