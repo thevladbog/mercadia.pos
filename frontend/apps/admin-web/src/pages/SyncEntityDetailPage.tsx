@@ -6,25 +6,23 @@ import {
   useGetStoreReturn,
   useListStores,
 } from '@mercadia/api-clients-central';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
 
-import { i18n } from '@/i18n/index.js';
 import { getApiErrorMessage } from '@/auth/api-errors.js';
+import { ReceiptDetailModal } from '@/components/eod/ReceiptDetailModal.js';
 import { PageBackLink } from './users-shared.js';
-import { formatMinorAmount, formatTimestamp } from './reporting-utils.js';
+import {
+  fieldsFromSyncEntityRecord,
+  renderSyncEntityFieldValue,
+} from './sync-entity-detail-utils.js';
 import {
   entityTypeFromPathname,
   SYNC_ENTITY_PARAM,
   syncExplorerHref,
   type SyncEntityType,
 } from './sync-routes.js';
-
-type DetailField = {
-  label: string;
-  value: string;
-};
 
 const SYNC_ENTITY_LABEL_KEY: Record<SyncEntityType, string> = {
   payments: 'sync.tabs.payments',
@@ -33,32 +31,6 @@ const SYNC_ENTITY_LABEL_KEY: Record<SyncEntityType, string> = {
   returns: 'sync.tabs.returns',
   'operational-days': 'sync.tabs.operationalDays',
 };
-
-function formatFieldValue(key: string, value: string | number | string[] | undefined): string {
-  if (value == null || value === '') {
-    return i18n.t('common.emDash');
-  }
-  if (Array.isArray(value)) {
-    return value.length > 0 ? value.join(', ') : i18n.t('common.emDash');
-  }
-  if (typeof value === 'number' && key.toLowerCase().includes('minor')) {
-    return formatMinorAmount(value);
-  }
-  if (
-    typeof value === 'string' &&
-    (key.endsWith('At') || key === 'updatedAt' || key === 'syncedAt')
-  ) {
-    return formatTimestamp(value);
-  }
-  return String(value);
-}
-
-function fieldsFromRecord(data: Record<string, unknown>): DetailField[] {
-  return Object.entries(data).map(([key, value]) => ({
-    label: key.replace(/([A-Z])/g, ' $1').replace(/^./, (char) => char.toUpperCase()),
-    value: formatFieldValue(key, value as string | number | string[] | undefined),
-  }));
-}
 
 function useEntityDetailQuery(
   entityType: SyncEntityType | null,
@@ -117,6 +89,8 @@ export function SyncEntityDetailPage() {
   const storeId = params.storeId ?? '';
   const entityId = params[entityIdParam] ?? '';
 
+  const [detailReceiptId, setDetailReceiptId] = useState<string | null>(null);
+
   const storesQuery = useListStores();
   const stores = storesQuery.data?.status === 200 ? storesQuery.data.data.stores : [];
   const storeName = stores.find((store) => store.id === storeId)?.name;
@@ -133,7 +107,14 @@ export function SyncEntityDetailPage() {
     storeId: storeId.length > 0 ? storeId : undefined,
   });
 
-  const fields = detail ? fieldsFromRecord(detail as Record<string, unknown>) : [];
+  const fields = detail ? fieldsFromSyncEntityRecord(detail as Record<string, unknown>) : [];
+  const fieldHandlers = useMemo(
+    () => ({
+      storeId,
+      onOpenReceipt: setDetailReceiptId,
+    }),
+    [storeId],
+  );
 
   return (
     <section className="stack reporting-page">
@@ -172,9 +153,9 @@ export function SyncEntityDetailPage() {
         ) : detail ? (
           <dl className="kpi-grid">
             {fields.map((field) => (
-              <div key={field.label}>
+              <div key={field.key}>
                 <dt>{field.label}</dt>
-                <dd>{field.value}</dd>
+                <dd>{renderSyncEntityFieldValue(field.key, field.value, fieldHandlers)}</dd>
               </div>
             ))}
           </dl>
@@ -182,6 +163,10 @@ export function SyncEntityDetailPage() {
           <p className="muted">{t('sync.noDetail')}</p>
         )}
       </div>
+
+      {detailReceiptId ? (
+        <ReceiptDetailModal receiptId={detailReceiptId} onClose={() => setDetailReceiptId(null)} />
+      ) : null}
     </section>
   );
 }

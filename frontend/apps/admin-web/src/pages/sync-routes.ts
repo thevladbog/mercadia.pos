@@ -41,7 +41,11 @@ export function syncEntityHref(
   return `/central/sync/stores/${encodeURIComponent(storeId)}/${segment}/${encodeURIComponent(entityId)}`;
 }
 
-export function syncExplorerHref(options?: { tab?: SyncTab; storeId?: string }): string {
+export function syncExplorerHref(options?: {
+  tab?: SyncTab;
+  storeId?: string;
+  event?: string;
+}): string {
   const params = new URLSearchParams();
   if (options?.tab) {
     params.set('tab', options.tab);
@@ -49,8 +53,15 @@ export function syncExplorerHref(options?: { tab?: SyncTab; storeId?: string }):
   if (options?.storeId) {
     params.set('store', options.storeId);
   }
+  if (options?.event) {
+    params.set('event', options.event);
+  }
   const query = params.toString();
   return query.length > 0 ? `/central/sync?${query}` : '/central/sync';
+}
+
+export function readEventFromSearchParams(searchParams: URLSearchParams): string | null {
+  return searchParams.get('event');
 }
 
 export function parseSyncTab(value: string | null): SyncTab | null {

@@ -162,7 +162,37 @@
     "backToSync": "Back to sync explorer",
     "details": "Details",
     "noDetail": "No detail data.",
-    "loadingDetail": "Loading…"
+    "loadingDetail": "Loading…",
+    "columns": {
+      "sourceEventId": "Source event ID",
+      "eventType": "Event type",
+      "occurredAt": "Occurred",
+      "paymentId": "Payment ID",
+      "method": "Method",
+      "capturedAt": "Captured",
+      "documentId": "Document ID",
+      "fiscalizedAt": "Fiscalized",
+      "returnId": "Return ID",
+      "receiptId": "Receipt ID",
+      "total": "Total",
+      "settledAt": "Settled",
+      "dayId": "Day ID",
+      "closedBy": "Closed by"
+    },
+    "eventDetail": {
+      "title": "Sync event details",
+      "eventId": "Event ID",
+      "sourceEventId": "Source event ID",
+      "eventType": "Event type",
+      "occurredAt": "Occurred at",
+      "receivedAt": "Received at",
+      "payload": "Payload",
+      "openDetails": "Open sync event details for {{eventId}}",
+      "notOnPage": "The linked sync event is not on the current page. Navigate sync events or clear the link."
+    },
+    "entityDetail": {
+      "sourceEventHint": "(store event; no central detail view)"
+    }
   },
   "monitoring": {
     "title": "Store Monitoring",
@@ -215,6 +245,7 @@
     "currentReceiptStatus": "Current receipt status",
     "currentReceiptTotal": "Current receipt total",
     "openReceiptDetails": "Open receipt details for {{receiptId}}",
+    "openShiftDetails": "Open shift details for {{shiftId}}",
     "recentHeartbeats": "Recent heartbeats",
     "eventsTitle": "Terminal events",
     "eventsNote": "Showing terminal_heartbeat events only.",

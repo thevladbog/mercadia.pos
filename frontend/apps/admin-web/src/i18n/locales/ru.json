@@ -162,7 +162,37 @@
     "backToSync": "Назад к sync explorer",
     "details": "Детали",
     "noDetail": "Нет данных.",
-    "loadingDetail": "Загрузка…"
+    "loadingDetail": "Загрузка…",
+    "columns": {
+      "sourceEventId": "Source event ID",
+      "eventType": "Тип события",
+      "occurredAt": "Произошло",
+      "paymentId": "ID оплаты",
+      "method": "Способ",
+      "capturedAt": "Захвачено",
+      "documentId": "ID документа",
+      "fiscalizedAt": "Фiscalized",
+      "returnId": "ID возврата",
+      "receiptId": "ID чека",
+      "total": "Итого",
+      "settledAt": "Завершено",
+      "dayId": "ID дня",
+      "closedBy": "Закрыл"
+    },
+    "eventDetail": {
+      "title": "Детали sync event",
+      "eventId": "Event ID",
+      "sourceEventId": "Source event ID",
+      "eventType": "Тип события",
+      "occurredAt": "Время события",
+      "receivedAt": "Получено",
+      "payload": "Payload",
+      "openDetails": "Открыть детали sync event {{eventId}}",
+      "notOnPage": "Связанное sync event не на текущей странице. Перейдите по списку или очистите ссылку."
+    },
+    "entityDetail": {
+      "sourceEventHint": "(событие магазина; центрального detail view нет)"
+    }
   },
   "monitoring": {
     "title": "Мониторинг магазина",
@@ -215,6 +245,7 @@
     "currentReceiptStatus": "Статус текущего чека",
     "currentReceiptTotal": "Сумма текущего чека",
     "openReceiptDetails": "Открыть детали чека {{receiptId}}",
+    "openShiftDetails": "Открыть детали смены {{shiftId}}",
     "recentHeartbeats": "Последние heartbeat",
     "eventsTitle": "События терминалов",
     "eventsNote": "Показаны только события terminal_heartbeat.",

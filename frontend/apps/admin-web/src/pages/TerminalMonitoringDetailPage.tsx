@@ -1,10 +1,14 @@
 import { useListStores } from '@mercadia/api-clients-central';
 import { useGetTerminal, useListStoreMonitoringTerminals } from '@mercadia/api-clients-store-edge';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
+import { ReceiptDetailModal } from '@/components/eod/ReceiptDetailModal.js';
+import { ShiftDetailModal } from '@/components/eod/ShiftDetailModal.js';
+import { CurrentReceiptCell } from '@/components/monitoring/CurrentReceiptCell.js';
+import type { EodTab } from '@/pages/eod-blocker-utils.js';
 import { monitoringExplorerHref } from './monitoring-routes.js';
 import {
   MONITORING_REFRESH_INTERVAL_MS,
@@ -12,12 +16,16 @@ import {
   terminalStatusLabel,
 } from './monitoring-utils.js';
 import { formatMinorAmount, formatTimestamp } from './reporting-utils.js';
+import { storePageHref } from './store-routes.js';
 import { TerminalHeartbeatEventsPanel } from './TerminalHeartbeatEventsPanel.js';
 import { PageBackLink } from './users-shared.js';
 
 export function TerminalMonitoringDetailPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { storeId = '', terminalId = '' } = useParams();
+  const [detailReceiptId, setDetailReceiptId] = useState<string | null>(null);
+  const [detailShiftId, setDetailShiftId] = useState<string | null>(null);
 
   const queryOptions = useMemo(
     () => ({
@@ -71,6 +79,14 @@ export function TerminalMonitoringDetailPage() {
     void terminalQuery.refetch();
     if (storeId.length > 0) {
       void terminalsQuery.refetch();
+    }
+  }
+
+  function handleEodTab(tab: EodTab) {
+    if (storeId.length > 0) {
+      void navigate(storePageHref('/store/eod', storeId), {
+        state: { tab },
+      });
     }
   }
 
@@ -164,7 +180,22 @@ export function TerminalMonitoringDetailPage() {
             </div>
             <div>
               <dt>{t('monitoring.shift')}</dt>
-              <dd>{monitoringCard.shiftId ?? t('common.emDash')}</dd>
+              <dd>
+                {monitoringCard.shiftId ? (
+                  <button
+                    className="link-button"
+                    type="button"
+                    onClick={() => setDetailShiftId(monitoringCard.shiftId!)}
+                    aria-label={t('monitoring.openShiftDetails', {
+                      shiftId: monitoringCard.shiftId,
+                    })}
+                  >
+                    {monitoringCard.shiftId}
+                  </button>
+                ) : (
+                  t('common.emDash')
+                )}
+              </dd>
             </div>
             <div>
               <dt>{t('monitoring.drawer')}</dt>
@@ -186,22 +217,13 @@ export function TerminalMonitoringDetailPage() {
               <dt>{t('monitoring.attentionNeeded')}</dt>
               <dd>{monitoringCard.attentionNeeded ? t('common.yes') : t('common.no')}</dd>
             </div>
-            <div>
-              <dt>{t('monitoring.currentReceipt')}</dt>
-              <dd>{monitoringCard.currentReceiptId ?? t('common.emDash')}</dd>
-            </div>
-            <div>
-              <dt>{t('monitoring.currentReceiptStatus')}</dt>
-              <dd>{monitoringCard.currentReceiptStatus ?? t('common.emDash')}</dd>
-            </div>
-            <div>
-              <dt>{t('monitoring.currentReceiptTotal')}</dt>
-              <dd>
-                {monitoringCard.currentReceiptTotalMinor != null
-                  ? formatMinorAmount(monitoringCard.currentReceiptTotalMinor)
-                  : t('common.emDash')}
-              </dd>
-            </div>
+            <CurrentReceiptCell
+              receiptId={monitoringCard.currentReceiptId}
+              status={monitoringCard.currentReceiptStatus}
+              totalMinor={monitoringCard.currentReceiptTotalMinor}
+              variant="tile"
+              onOpenReceipt={setDetailReceiptId}
+            />
           </dl>
         ) : (
           <p className="muted">{t('monitoring.noLiveMonitoring')}</p>
@@ -214,6 +236,18 @@ export function TerminalMonitoringDetailPage() {
         terminalId={terminalId}
         title={t('monitoring.recentHeartbeats')}
       />
+
+      {detailReceiptId ? (
+        <ReceiptDetailModal receiptId={detailReceiptId} onClose={() => setDetailReceiptId(null)} />
+      ) : null}
+      {detailShiftId ? (
+        <ShiftDetailModal
+          canWrite={false}
+          shiftId={detailShiftId}
+          onClose={() => setDetailShiftId(null)}
+          onEodTab={handleEodTab}
+        />
+      ) : null}
     </section>
   );
 }
