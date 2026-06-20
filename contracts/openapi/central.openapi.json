@@ -2639,7 +2639,7 @@
                 }
               }
             },
-            "description": "Session is missing or invalid"
+            "description": "Sync API key or session is missing or invalid"
           },
           "403": {
             "content": {
