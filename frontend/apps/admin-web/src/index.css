@@ -173,20 +173,6 @@ input {
   gap: 0.75rem;
 }
 
-.button-link {
-  display: inline-block;
-  border-radius: var(--ui-radius-md, 0.5rem);
-  padding: 0.625rem 1rem;
-  background: var(--ui-accent);
-  color: var(--ui-accent-foreground);
-  text-decoration: none;
-}
-
-.button-link:hover {
-  text-decoration: none;
-  background: var(--ui-accent-hover);
-}
-
 .users-page {
   gap: 1.5rem;
 }

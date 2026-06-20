@@ -29,9 +29,9 @@ export function CentralUsersPage() {
             >
               {usersQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
             </Button>
-            <Link className="button-link" to="/central/users/new">
-              {t('users.createUser')}
-            </Link>
+            <Button asChild>
+              <Link to="/central/users/new">{t('users.createUser')}</Link>
+            </Button>
           </div>
         </div>
 

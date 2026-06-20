@@ -34,9 +34,9 @@ export function CentralStoresPage() {
               {storesQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
             </Button>
             {canRegister ? (
-              <Link className="button-link" to="/central/stores/new">
-                {t('stores.registerStore')}
-              </Link>
+              <Button asChild>
+                <Link to="/central/stores/new">{t('stores.registerStore')}</Link>
+              </Button>
             ) : null}
           </div>
         </div>

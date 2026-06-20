@@ -30,9 +30,9 @@ export function CentralColorSchemesPage() {
             >
               {schemesQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
             </Button>
-            <Link className="button-link" to="/central/color-schemes/new">
-              {t('colorSchemes.createScheme')}
-            </Link>
+            <Button asChild>
+              <Link to="/central/color-schemes/new">{t('colorSchemes.createScheme')}</Link>
+            </Button>
           </div>
         </div>
 
