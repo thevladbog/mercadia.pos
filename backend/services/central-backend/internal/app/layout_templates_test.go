@@ -152,12 +152,47 @@ func TestLayoutTemplatePublishRejectsInactiveProducts(t *testing.T) {
 			Rows: 2,
 			Cols: 2,
 			Tiles: []domain.LayoutGridTile{
-				{Label: "Discontinued", ProductID: "sku-inactive", Empty: true},
+				{Label: "Discontinued", ProductID: "sku-inactive"},
 			},
 		},
 		Session: adminSession,
 	})
 	if !errors.Is(err, app.ErrLayoutTemplateInvalidProducts) {
 		t.Fatalf("expected invalid products for inactive catalog item, got %v", err)
+	}
+}
+
+func TestLayoutTemplatePublishWithoutStoreWhenNoLinkedProducts(t *testing.T) {
+	store := memory.NewStore()
+	seedCentralAdmin(t, store)
+	auth := app.NewAuthService(store, store)
+	layoutTemplates := app.NewLayoutTemplatesService(store, store, store)
+	adminSession, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
+		Email:    "admin@example.com",
+		Password: "admin-pass",
+	})
+	if err != nil {
+		t.Fatalf("create admin session: %v", err)
+	}
+
+	result, err := layoutTemplates.CreateLayoutTemplate(context.Background(), app.CreateLayoutTemplateCommand{
+		TemplateID: "published-global-placeholder",
+		Name:       "Published Global Placeholder",
+		Kind:       domain.LayoutTemplateKindSale,
+		Status:     domain.LayoutTemplateStatusPublished,
+		Grid: domain.LayoutGrid{
+			Rows: 2,
+			Cols: 2,
+			Tiles: []domain.LayoutGridTile{
+				{Label: "Placeholder", Empty: true, ProductID: "stale-sku"},
+			},
+		},
+		Session: adminSession,
+	})
+	if err != nil {
+		t.Fatalf("create published template without store: %v", err)
+	}
+	if result.Template.Status != domain.LayoutTemplateStatusPublished {
+		t.Fatalf("status = %s", result.Template.Status)
 	}
 }

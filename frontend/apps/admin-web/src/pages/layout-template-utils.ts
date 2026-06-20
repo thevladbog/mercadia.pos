@@ -86,7 +86,7 @@ export function filterGridByCategory(
 export function collectLinkedProductIds(grid: LayoutGridSpec): string[] {
   const ids = new Set<string>();
   for (const tile of grid.tiles) {
-    if (tile.productId) {
+    if (tile.productId && !tile.empty) {
       ids.add(tile.productId);
     }
   }
@@ -106,15 +106,17 @@ export function validateGridForPublish(
   storeId: string,
   options: { catalogReady: boolean; knownProductIds: ReadonlySet<string> },
 ): PublishValidationResult {
+  const linkedProductIds = collectLinkedProductIds(grid);
+  if (linkedProductIds.length === 0) {
+    return { ok: true };
+  }
   if (!storeId) {
     return { ok: false, reason: 'publishRequiresStore' };
   }
   if (!options.catalogReady) {
     return { ok: false, reason: 'catalogNotReady' };
   }
-  const missing = collectLinkedProductIds(grid).filter(
-    (productId) => !options.knownProductIds.has(productId),
-  );
+  const missing = linkedProductIds.filter((productId) => !options.knownProductIds.has(productId));
   if (missing.length > 0) {
     return { ok: false, reason: 'invalidProducts', productIds: missing };
   }

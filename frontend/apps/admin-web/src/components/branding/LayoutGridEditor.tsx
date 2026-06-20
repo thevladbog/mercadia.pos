@@ -114,8 +114,8 @@ export function LayoutGridEditor({
     });
   }
 
-  function isUnknownProduct(productId: string | undefined): boolean {
-    if (!productId || !knownProductIds || !catalogReady) {
+  function isUnknownProduct(productId: string | undefined, empty?: boolean): boolean {
+    if (!productId || empty || !knownProductIds || !catalogReady) {
       return false;
     }
     return !knownProductIds.has(productId);
@@ -301,7 +301,7 @@ export function LayoutGridEditor({
                     })
                   }
                 />
-                {isUnknownProduct(tile.productId) ? (
+                {isUnknownProduct(tile.productId, tile.empty) ? (
                   <span className="error">
                     {t('layoutTemplates.unknownProduct', { productId: tile.productId })}
                   </span>

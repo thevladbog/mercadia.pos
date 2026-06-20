@@ -51,12 +51,22 @@ func (s *LayoutTemplatesService) validatePublishedGrid(
 	if status != domain.LayoutTemplateStatusPublished {
 		return nil
 	}
+	hasLinkedProducts := false
+	for _, tile := range grid.Tiles {
+		if !tile.Empty && tile.ProductID != "" {
+			hasLinkedProducts = true
+			break
+		}
+	}
+	if !hasLinkedProducts {
+		return nil
+	}
 	if storeID == "" {
 		return ErrLayoutTemplatePublishRequiresStore
 	}
 	missing := make([]string, 0)
 	for _, tile := range grid.Tiles {
-		if tile.ProductID == "" {
+		if tile.Empty || tile.ProductID == "" {
 			continue
 		}
 		product, err := s.products.FindProduct(ctx, storeID, tile.ProductID)
