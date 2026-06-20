@@ -10,7 +10,10 @@ import { queryClient } from '@/query-client.js';
 
 export function Root() {
   return (
-    <ThemeProvider defaultTheme={{ surface: 'admin', colorMode: 'light', accentPreset: 'neutral' }}>
+    <ThemeProvider
+      defaultTheme={{ surface: 'admin', colorMode: 'light', accentPreset: 'neutral' }}
+      persist
+    >
       <I18nextProvider i18n={i18n}>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>

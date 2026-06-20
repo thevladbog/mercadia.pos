@@ -4,6 +4,10 @@
     "eyebrow": "Mercadia Admin"
   },
   "nav": {
+    "sidebarLabel": "Основная навигация",
+    "centralGroup": "Central",
+    "storeGroup": "Операции магазина",
+    "adminGroup": "Администрирование",
     "dashboard": "Дашборд",
     "reporting": "Отчётность",
     "stores": "Магазины",
@@ -16,6 +20,11 @@
     "colorSchemes": "Цветовые схемы",
     "layoutTemplates": "Шаблоны раскладки",
     "logout": "Выйти"
+  },
+  "theme": {
+    "light": "Светлая",
+    "dark": "Тёмная",
+    "toggle": "Переключить тему"
   },
   "language": {
     "label": "Язык",
@@ -83,7 +92,11 @@
     "eodTitle": "Закрытие дня",
     "eodDesc": "Обзор операционного дня и готовность к закрытию",
     "usersTitle": "Пользователи",
-    "usersDesc": "Управление central-пользователями и ролями"
+    "usersDesc": "Управление central-пользователями и ролями",
+    "colorSchemesTitle": "Цветовые схемы",
+    "colorSchemesDesc": "Брендинг франшизы и accent-цвета",
+    "layoutTemplatesTitle": "Шаблоны раскладки",
+    "layoutTemplatesDesc": "Сетки кнопок POS/SCO и preview accent"
   },
   "reporting": {
     "title": "Центральная отчётность",
