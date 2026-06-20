@@ -74,7 +74,7 @@ export function filterGridByCategory(
   grid: LayoutGridSpec,
   categoryId: string | null,
 ): LayoutGridSpec {
-  if (!categoryId) {
+  if (categoryId === null) {
     return grid;
   }
   return {

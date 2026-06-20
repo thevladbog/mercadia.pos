@@ -24,7 +24,7 @@ function resolveTemplateId(): string {
 }
 
 function filterGridByCategory(grid: LayoutGridSpec, categoryId: string | null): LayoutGridSpec {
-  if (!categoryId) {
+  if (categoryId === null) {
     return grid;
   }
   return {
@@ -58,10 +58,12 @@ function TerminalShell() {
     ? {
         rows: template.grid.rows ?? 4,
         cols: template.grid.cols ?? 4,
-        categories: (template.grid.categories ?? []).map((category) => ({
-          id: category.id ?? '',
-          label: category.label ?? '',
-        })),
+        categories: (template.grid.categories ?? [])
+          .filter((category) => category.id)
+          .map((category) => ({
+            id: category.id!,
+            label: category.label ?? '',
+          })),
         tiles: (template.grid.tiles ?? []).map((tile) => ({
           label: tile.label ?? '',
           color: tile.color,
