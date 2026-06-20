@@ -13,10 +13,12 @@ import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { useAuth } from '@/auth/useAuth.js';
 import { canWriteStoreOperations } from '@/auth/permissions.js';
 import { CashActionsPanel } from '@/components/cash/CashActionsPanel.js';
+import { SafeKpiPanel } from '@/components/cash/SafeKpiPanel.js';
 import { ResolveRecountModal } from '@/components/cash/ResolveRecountModal.js';
 import { PaginationControls } from '@/components/PaginationControls.js';
 import { StorePicker } from '@/components/StorePicker.js';
 import { formatMinorAmount, formatTimestamp, PAGE_SIZE } from './reporting-utils.js';
+import { computeSafeBalanceRollups, countOpenRecountDiscrepancies } from './safe-kpi-utils.js';
 import {
   readRecountFromSearchParams,
   readStoreFromSearchParams,
@@ -67,10 +69,26 @@ export function StoreSafePage() {
     { limit: PAGE_SIZE, offset: recountsOffset },
     pollOptions,
   );
+  const recountRollupQuery = useListCashRecounts(
+    activeStoreId,
+    { limit: 100, offset: 0 },
+    pollOptions,
+  );
 
   const balances = balancesQuery.data?.status === 200 ? balancesQuery.data.data.balances : null;
   const movementsPage = movementsQuery.data?.status === 200 ? movementsQuery.data.data : null;
   const recountsPage = recountsQuery.data?.status === 200 ? recountsQuery.data.data : null;
+  const recountRollupPage =
+    recountRollupQuery.data?.status === 200 ? recountRollupQuery.data.data : null;
+
+  const balanceRollups = useMemo(
+    () => (balances ? computeSafeBalanceRollups(balances) : null),
+    [balances],
+  );
+  const openRecountCount = recountRollupPage
+    ? countOpenRecountDiscrepancies(recountRollupPage.items)
+    : null;
+  const openRecountPartial = (recountRollupPage?.totalCount ?? 0) > 100;
 
   const movementsTotal = movementsPage?.totalCount ?? 0;
   const recountsTotal = recountsPage?.totalCount ?? 0;
@@ -105,7 +123,10 @@ export function StoreSafePage() {
   const isLoading =
     storesQuery.isFetching ||
     (activeStoreId.length > 0 &&
-      (balancesQuery.isFetching || movementsQuery.isFetching || recountsQuery.isFetching));
+      (balancesQuery.isFetching ||
+        movementsQuery.isFetching ||
+        recountsQuery.isFetching ||
+        recountRollupQuery.isFetching));
 
   const errorMessage =
     storesQuery.error != null
@@ -116,7 +137,9 @@ export function StoreSafePage() {
           ? getApiErrorMessage(movementsQuery.error)
           : recountsQuery.error != null
             ? getApiErrorMessage(recountsQuery.error)
-            : null;
+            : recountRollupQuery.error != null
+              ? getApiErrorMessage(recountRollupQuery.error)
+              : null;
 
   function refetchAll() {
     void storesQuery.refetch();
@@ -124,6 +147,7 @@ export function StoreSafePage() {
       void balancesQuery.refetch();
       void movementsQuery.refetch();
       void recountsQuery.refetch();
+      void recountRollupQuery.refetch();
     }
   }
 
@@ -164,6 +188,15 @@ export function StoreSafePage() {
         </div>
       ) : (
         <>
+          <SafeKpiPanel
+            isLoading={balancesQuery.isLoading && !balances}
+            movementsTotal={movementsPage?.totalCount ?? null}
+            openRecountCount={openRecountCount}
+            openRecountPartial={openRecountPartial}
+            recountsTotal={recountsPage?.totalCount ?? null}
+            rollups={balanceRollups}
+          />
+
           {balances && balances.length > 0 ? (
             <CashActionsPanel balances={balances} canWrite={canWrite} storeId={activeStoreId} />
           ) : canWrite ? (

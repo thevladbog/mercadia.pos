@@ -242,6 +242,18 @@
     "counted": "Посчитано",
     "variance": "Расхождение",
     "resolution": "Резолюция",
+    "kpi": {
+      "title": "Обзор наличных",
+      "safeTotal": "Итого в сейфах",
+      "drawerTotal": "Итого в ящиках",
+      "bankTotal": "Итого в банке",
+      "nonZeroDrawers": "Ящики с остатком",
+      "containers": "Контейнеры",
+      "movementsTotal": "Движения наличных",
+      "recountsTotal": "Пересчёты наличных",
+      "openRecountDiscrepancies": "Открытые расхождения пересчёта",
+      "openRecountPartial": "Счётчик открытых расхождений основан только на первых 100 пересчётах."
+    },
     "actions": {
       "title": "Операции с наличными",
       "column": "Действия",
