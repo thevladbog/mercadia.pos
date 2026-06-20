@@ -33,6 +33,9 @@ Before implementing or changing behavior, read:
 - Payment and fiscalization are separate state machines.
 - Permission and separation-of-duties checks must be enforced server-side.
 - Admin-web UI strings must use i18n (`docs/development/admin-web-i18n.md`); never hardcode user-facing labels in TSX.
+- Shared interactive UI and theming live in `@mercadia/ui` (`frontend/packages/ui`);
+  apps should use package components and `--ui-*` tokens instead of adding new global
+  button/control styles.
 
 ## Commands
 

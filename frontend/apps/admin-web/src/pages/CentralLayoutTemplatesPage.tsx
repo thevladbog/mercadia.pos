@@ -31,9 +31,9 @@ export function CentralLayoutTemplatesPage() {
             >
               {templatesQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
             </Button>
-            <Link className="button-link" to="/central/layout-templates/new">
-              {t('layoutTemplates.createTemplate')}
-            </Link>
+            <Button asChild>
+              <Link to="/central/layout-templates/new">{t('layoutTemplates.createTemplate')}</Link>
+            </Button>
           </div>
         </div>
 
