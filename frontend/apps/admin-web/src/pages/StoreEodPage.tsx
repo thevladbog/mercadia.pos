@@ -21,9 +21,12 @@ import { BlockerActionCell, BlockerReferenceCell } from '@/components/eod/Blocke
 import { EodActionsPanel } from '@/components/eod/EodActionsPanel.js';
 import { EodOpenPanel } from '@/components/eod/EodOpenPanel.js';
 import { JournalReferenceCell } from '@/components/eod/JournalReferenceCell.js';
+import { OperationalDayReceiptsPanel } from '@/components/eod/OperationalDayReceiptsPanel.js';
+import { OperationalDayShiftsPanel } from '@/components/eod/OperationalDayShiftsPanel.js';
 import { ReceiptDetailModal } from '@/components/eod/ReceiptDetailModal.js';
 import { ReturnDetailModal } from '@/components/eod/ReturnDetailModal.js';
 import { ShiftDetailModal } from '@/components/eod/ShiftDetailModal.js';
+import { StoreReturnsPanel } from '@/components/eod/StoreReturnsPanel.js';
 import { PaginationControls } from '@/components/PaginationControls.js';
 import { StorePicker } from '@/components/StorePicker.js';
 import { formatBlockerMessage, formatBlockerSeverity } from './eod-mutation-utils.js';
@@ -32,7 +35,7 @@ import { formatMinorAmount, formatTimestamp, PAGE_SIZE } from './reporting-utils
 import { readStoreFromSearchParams } from './store-routes.js';
 import { STORE_POLL_INTERVAL_MS } from './store-polling.js';
 
-type EodTab = 'overview' | 'open-shifts' | 'journal';
+type EodTab = 'overview' | 'receipts' | 'shifts' | 'returns' | 'open-shifts' | 'journal';
 
 function formatElapsed(openedAt: string): string {
   const elapsedMs = Date.now() - new Date(openedAt).getTime();
@@ -227,6 +230,27 @@ export function StoreEodPage() {
               type="button"
             >
               {t('eod.tabs.overview')}
+            </Button>
+            <Button
+              variant={activeTab === 'receipts' ? 'primary' : 'secondary'}
+              onClick={() => setActiveTab('receipts')}
+              type="button"
+            >
+              {t('eod.tabs.receipts')}
+            </Button>
+            <Button
+              variant={activeTab === 'shifts' ? 'primary' : 'secondary'}
+              onClick={() => setActiveTab('shifts')}
+              type="button"
+            >
+              {t('eod.tabs.shifts')}
+            </Button>
+            <Button
+              variant={activeTab === 'returns' ? 'primary' : 'secondary'}
+              onClick={() => setActiveTab('returns')}
+              type="button"
+            >
+              {t('eod.tabs.returns')}
             </Button>
             <Button
               variant={activeTab === 'open-shifts' ? 'primary' : 'secondary'}
@@ -499,6 +523,32 @@ export function StoreEodPage() {
             </>
           ) : null}
 
+          {activeTab === 'receipts' ? (
+            <OperationalDayReceiptsPanel
+              key={operationalDayId}
+              operationalDayId={operationalDayId}
+              onOpenReceipt={handleOpenReceipt}
+            />
+          ) : null}
+
+          {activeTab === 'shifts' ? (
+            <OperationalDayShiftsPanel
+              key={operationalDayId}
+              operationalDayId={operationalDayId}
+              onOpenShift={handleOpenShift}
+            />
+          ) : null}
+
+          {activeTab === 'returns' ? (
+            <StoreReturnsPanel
+              key={`${activeStoreId}-${operationalDayId}`}
+              operationalDayClosedAt={operationalDay.closedAt}
+              operationalDayOpenedAt={operationalDay.openedAt}
+              storeId={activeStoreId}
+              onOpenReturn={handleOpenReturn}
+            />
+          ) : null}
+
           {activeTab === 'open-shifts' ? (
             <div className="panel">
               <h3>{t('eod.tabs.openShifts')}</h3>
@@ -632,6 +682,10 @@ export function StoreEodPage() {
           shiftId={detailShiftId}
           onClose={() => setDetailShiftId(null)}
           onEodTab={handleEodTab}
+          onOpenReceipt={(receiptId) => {
+            setDetailShiftId(null);
+            setDetailReceiptId(receiptId);
+          }}
         />
       ) : null}
 

@@ -16,7 +16,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '^/v1/stores/[^/]+/(monitoring|terminals|cash-|bank-|business-|operation-journal|operational-days|shifts)':
+      '^/v1/stores/[^/]+/(monitoring|terminals|cash-|bank-|business-|operation-journal|operational-days|shifts|returns)':
         {
           target: 'http://127.0.0.1:8081',
           changeOrigin: true,
@@ -30,6 +30,10 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/v1/receipts': {
+        target: 'http://127.0.0.1:8081',
+        changeOrigin: true,
+      },
+      '/v1/returns': {
         target: 'http://127.0.0.1:8081',
         changeOrigin: true,
       },

@@ -34,69 +34,97 @@ export function ReturnDetailModal({ returnId, onClose, onOpenReceipt }: ReturnDe
       ) : errorMessage ? (
         <p className="error">{errorMessage}</p>
       ) : returnData ? (
-        <dl className="kpi-grid">
+        <div className="stack">
+          <dl className="kpi-grid">
+            <div>
+              <dt>{t('eod.returnDetail.returnId')}</dt>
+              <dd>{returnData.id}</dd>
+            </div>
+            <div>
+              <dt>{t('common.store')}</dt>
+              <dd>{returnData.storeId}</dd>
+            </div>
+            <div>
+              <dt>{t('eod.returnDetail.kind')}</dt>
+              <dd>{returnData.kind}</dd>
+            </div>
+            <div>
+              <dt>{t('monitoring.status')}</dt>
+              <dd>{returnData.status}</dd>
+            </div>
+            <div>
+              <dt>{t('eod.returnDetail.receiptId')}</dt>
+              <dd>
+                {returnData.receiptId && returnData.receiptId.length > 0 ? (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => onOpenReceipt(returnData.receiptId!)}
+                    type="button"
+                  >
+                    {returnData.receiptId}
+                  </Button>
+                ) : (
+                  emDash
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>{t('eod.returnDetail.total')}</dt>
+              <dd>{formatMinorAmount(returnData.totalMinor)}</dd>
+            </div>
+            <div>
+              <dt>{t('eod.returnDetail.reason')}</dt>
+              <dd>{returnData.reason}</dd>
+            </div>
+            <div>
+              <dt>{t('safe.actor')}</dt>
+              <dd>{returnData.actorId}</dd>
+            </div>
+            <div>
+              <dt>{t('safe.movementDetail.approvedBy')}</dt>
+              <dd>
+                {returnData.approvedById && returnData.approvedById.length > 0
+                  ? returnData.approvedById
+                  : emDash}
+              </dd>
+            </div>
+            <div>
+              <dt>{t('eod.created')}</dt>
+              <dd>{formatTimestamp(returnData.createdAt)}</dd>
+            </div>
+          </dl>
+
           <div>
-            <dt>{t('eod.returnDetail.returnId')}</dt>
-            <dd>{returnData.id}</dd>
+            <h4>{t('eod.returnDetail.linesSection')}</h4>
+            {returnData.lines.length > 0 ? (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{t('eod.lines.product')}</th>
+                      <th>{t('eod.lines.quantity')}</th>
+                      <th>{t('eod.lines.unitPrice')}</th>
+                      <th>{t('eod.lines.total')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {returnData.lines.map((line, index) => (
+                      <tr key={line.lineId ?? `${line.productId ?? line.name}-${index}`}>
+                        <td>{line.name}</td>
+                        <td>{line.quantity}</td>
+                        <td>{formatMinorAmount(line.unitPriceMinor)}</td>
+                        <td>{formatMinorAmount(line.totalMinor)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="muted">{t('eod.lines.empty')}</p>
+            )}
           </div>
-          <div>
-            <dt>{t('common.store')}</dt>
-            <dd>{returnData.storeId}</dd>
-          </div>
-          <div>
-            <dt>{t('eod.returnDetail.kind')}</dt>
-            <dd>{returnData.kind}</dd>
-          </div>
-          <div>
-            <dt>{t('monitoring.status')}</dt>
-            <dd>{returnData.status}</dd>
-          </div>
-          <div>
-            <dt>{t('eod.returnDetail.receiptId')}</dt>
-            <dd>
-              {returnData.receiptId && returnData.receiptId.length > 0 ? (
-                <Button
-                  variant="link"
-                  size="sm"
-                  onClick={() => onOpenReceipt(returnData.receiptId!)}
-                  type="button"
-                >
-                  {returnData.receiptId}
-                </Button>
-              ) : (
-                emDash
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt>{t('eod.returnDetail.total')}</dt>
-            <dd>{formatMinorAmount(returnData.totalMinor)}</dd>
-          </div>
-          <div>
-            <dt>{t('eod.returnDetail.lineCount')}</dt>
-            <dd>{returnData.lines.length}</dd>
-          </div>
-          <div>
-            <dt>{t('eod.returnDetail.reason')}</dt>
-            <dd>{returnData.reason}</dd>
-          </div>
-          <div>
-            <dt>{t('safe.actor')}</dt>
-            <dd>{returnData.actorId}</dd>
-          </div>
-          <div>
-            <dt>{t('safe.movementDetail.approvedBy')}</dt>
-            <dd>
-              {returnData.approvedById && returnData.approvedById.length > 0
-                ? returnData.approvedById
-                : emDash}
-            </dd>
-          </div>
-          <div>
-            <dt>{t('eod.created')}</dt>
-            <dd>{formatTimestamp(returnData.createdAt)}</dd>
-          </div>
-        </dl>
+        </div>
       ) : (
         <p className="muted">{t('common.noData')}</p>
       )}

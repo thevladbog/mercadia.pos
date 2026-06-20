@@ -450,6 +450,9 @@
     "blockerDisclaimer": "Список блокеров отражает правила закрытия store-edge.",
     "tabs": {
       "overview": "Обзор",
+      "receipts": "Чеки",
+      "shifts": "Смены",
+      "returns": "Возвраты",
       "openShifts": "Открытые смены",
       "journal": "Журнал"
     },
@@ -572,13 +575,17 @@
     "shiftDetail": {
       "title": "Детали смены",
       "drawerId": "Ящик",
-      "closingCash": "Закрывающие наличные"
+      "closingCash": "Закрывающие наличные",
+      "receiptsSection": "Чеки смены",
+      "noReceipts": "Нет чеков для этой смены."
     },
     "receiptDetail": {
       "title": "Детали чека",
       "receiptId": "ID чека",
       "total": "Итого",
-      "lineCount": "Позиций"
+      "lineCount": "Позиций",
+      "linesSection": "Позиции",
+      "paymentsSection": "Оплаты"
     },
     "returnDetail": {
       "title": "Детали возврата",
@@ -587,7 +594,34 @@
       "receiptId": "ID чека",
       "total": "Итого",
       "lineCount": "Позиций",
-      "reason": "Причина"
+      "reason": "Причина",
+      "linesSection": "Позиции возврата"
+    },
+    "receipts": {
+      "loading": "Загрузка чеков…",
+      "empty": "Нет чеков за этот операционный день."
+    },
+    "shifts": {
+      "loading": "Загрузка смен…",
+      "empty": "Нет смен за этот операционный день."
+    },
+    "returns": {
+      "loading": "Загрузка возвратов…",
+      "empty": "Нет возвратов за этот операционный день.",
+      "emptyOnPage": "На этой странице нет возвратов за текущий операционный день.",
+      "dayHint": "Показаны возвраты, зафиксированные в текущем операционном дне."
+    },
+    "lines": {
+      "product": "Товар",
+      "quantity": "Кол-во",
+      "unitPrice": "Цена",
+      "total": "Итого",
+      "empty": "Нет позиций."
+    },
+    "payments": {
+      "capturedAt": "Проведено",
+      "refunded": "Возвращено",
+      "empty": "Оплаты не зафиксированы."
     },
     "journalReference": {
       "link": "Открыть детали для {{reference}}"
