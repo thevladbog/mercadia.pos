@@ -1,4 +1,5 @@
 import type { ListOperationJournal200ItemsItem } from '@mercadia/api-clients-store-edge';
+import { Button } from '@mercadia/ui';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
@@ -54,13 +55,14 @@ export function JournalReferenceCell({
   }
 
   return (
-    <button
+    <Button
       aria-label={t('eod.journalReference.link', { reference: entry.referenceId })}
-      className="link-button"
+      variant="link"
+      size="sm"
       type="button"
       onClick={runAction}
     >
       {entry.referenceId}
-    </button>
+    </Button>
   );
 }

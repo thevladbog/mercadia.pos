@@ -15,7 +15,7 @@ func TestColorSchemesAndLayoutTemplatesCRUD(t *testing.T) {
 
 	auth := app.NewAuthService(store, store)
 	colorSchemes := app.NewColorSchemesService(store)
-	layoutTemplates := app.NewLayoutTemplatesService(store, store)
+	layoutTemplates := app.NewLayoutTemplatesService(store, store, store)
 
 	adminSession, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
 		Email:    "admin@example.com",
@@ -108,7 +108,7 @@ func TestLayoutTemplateCustomAccentOverridesPreset(t *testing.T) {
 	store := memory.NewStore()
 	seedCentralAdmin(t, store)
 	auth := app.NewAuthService(store, store)
-	layoutTemplates := app.NewLayoutTemplatesService(store, store)
+	layoutTemplates := app.NewLayoutTemplatesService(store, store, store)
 	adminSession, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
 		Email:    "admin@example.com",
 		Password: "admin-pass",

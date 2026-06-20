@@ -1,4 +1,5 @@
 import type { GetOperationalDaySummary200BlockersItem } from '@mercadia/api-clients-store-edge';
+import { Button } from '@mercadia/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -41,9 +42,9 @@ export function EodActionsPanel({
       <div className="panel">
         <h3>{t('eod.actions.title')}</h3>
         {hint ? <p className="muted">{hint}</p> : null}
-        <button disabled={!canAttemptClose} onClick={() => setCloseModalOpen(true)} type="button">
+        <Button disabled={!canAttemptClose} onClick={() => setCloseModalOpen(true)} type="button">
           {t('eod.actions.closeDay')}
-        </button>
+        </Button>
       </div>
 
       {closeModalOpen ? (

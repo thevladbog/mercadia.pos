@@ -5,9 +5,11 @@
  * Central API for global administration, cross-store reporting, integrations, and Store Edge synchronization.
  * OpenAPI spec version: 0.1.0
  */
+import type { UpdateLayoutTemplateBodyGridCategoriesItem } from './updateLayoutTemplateBodyGridCategoriesItem.ts';
 import type { UpdateLayoutTemplateBodyGridTilesItem } from './updateLayoutTemplateBodyGridTilesItem.ts';
 
 export type UpdateLayoutTemplateBodyGrid = {
+  categories?: UpdateLayoutTemplateBodyGridCategoriesItem[];
   cols?: number;
   rows?: number;
   tiles?: UpdateLayoutTemplateBodyGridTilesItem[];

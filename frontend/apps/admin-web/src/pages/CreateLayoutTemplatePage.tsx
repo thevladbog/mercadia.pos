@@ -2,12 +2,13 @@ import {
   getListLayoutTemplatesQueryKey,
   useCreateLayoutTemplate,
   useListColorSchemes,
+  useListStoreCatalogProducts,
   useListStores,
   type CreateLayoutTemplateBody,
 } from '@mercadia/api-clients-central';
 import { Button } from '@mercadia/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
@@ -19,7 +20,7 @@ import {
   accentPresetLabel,
   BrandingBackLink,
 } from '@/pages/branding-shared.js';
-import { defaultGrid, gridToApi } from '@/pages/layout-template-utils.js';
+import { defaultGrid, gridToApi, validateGridForPublish } from '@/pages/layout-template-utils.js';
 
 const KIND_OPTIONS = ['sale', 'return', 'sco'] as const;
 
@@ -44,6 +45,15 @@ export function CreateLayoutTemplatePage() {
   const [grid, setGrid] = useState(() => defaultGrid());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const productsQuery = useListStoreCatalogProducts(storeId, {
+    query: { enabled: storeId.length > 0 },
+  });
+  const catalogReady = storeId.length === 0 || productsQuery.data?.status === 200;
+  const knownProductIds = useMemo(() => {
+    const products = productsQuery.data?.status === 200 ? productsQuery.data.data.products : [];
+    return new Set(products.map((product) => product.id));
+  }, [productsQuery.data]);
+
   const mutation = useCreateLayoutTemplate({
     mutation: {
       onSuccess: async (response) => {
@@ -63,6 +73,24 @@ export function CreateLayoutTemplatePage() {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage(null);
+
+    if (status === 'published') {
+      const validation = validateGridForPublish(grid, storeId, { catalogReady, knownProductIds });
+      if (!validation.ok) {
+        if (validation.reason === 'publishRequiresStore') {
+          setErrorMessage(t('layoutTemplates.publishRequiresStore'));
+        } else if (validation.reason === 'catalogNotReady') {
+          setErrorMessage(t('layoutTemplates.catalogNotReady'));
+        } else {
+          setErrorMessage(
+            t('layoutTemplates.invalidProducts', {
+              productIds: validation.productIds?.join(', ') ?? '',
+            }),
+          );
+        }
+        return;
+      }
+    }
 
     const payload: CreateLayoutTemplateBody = {
       templateId: templateId.trim(),
@@ -156,7 +184,12 @@ export function CreateLayoutTemplatePage() {
                 <option value="published">{t('branding.status.published')}</option>
               </select>
             </label>
-            <LayoutGridEditor grid={grid} onChange={setGrid} />
+            <LayoutGridEditor
+              catalogReady={storeId ? catalogReady : undefined}
+              grid={grid}
+              knownProductIds={storeId ? knownProductIds : undefined}
+              onChange={setGrid}
+            />
             {errorMessage ? <p className="error">{errorMessage}</p> : null}
             <div className="form-actions">
               <Button disabled={mutation.isPending} type="submit">

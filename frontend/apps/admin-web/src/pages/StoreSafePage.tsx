@@ -6,6 +6,7 @@ import {
   type ListCashMovements200ItemsItem,
   type ListCashRecounts200ItemsItem,
 } from '@mercadia/api-clients-store-edge';
+import { Button } from '@mercadia/ui';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -247,9 +248,9 @@ export function StoreSafePage() {
             <h2>{t('safe.title')}</h2>
             <p className="muted">{t('safe.subtitle')}</p>
           </div>
-          <button className="secondary" disabled={isLoading} onClick={refetchAll} type="button">
+          <Button variant="secondary" disabled={isLoading} onClick={refetchAll} type="button">
             {isLoading ? t('common.refreshing') : t('common.refresh')}
-          </button>
+          </Button>
         </div>
 
         <StorePicker
@@ -359,13 +360,14 @@ export function StoreSafePage() {
                         {filteredMovements.map((movement) => (
                           <tr key={movement.id}>
                             <td>
-                              <button
-                                className="link-button"
+                              <Button
+                                variant="link"
+                                size="sm"
                                 onClick={() => setDetailMovement(movement)}
                                 type="button"
                               >
                                 {movement.id}
-                              </button>
+                              </Button>
                             </td>
                             <td>{movement.type}</td>
                             <td>{formatMinorAmount(movement.amountMinor)}</td>
@@ -435,13 +437,14 @@ export function StoreSafePage() {
                         {filteredRecounts.map((recount) => (
                           <tr key={recount.id}>
                             <td>
-                              <button
-                                className="link-button"
+                              <Button
+                                variant="link"
+                                size="sm"
                                 onClick={() => setDetailRecount(recount)}
                                 type="button"
                               >
                                 {recount.id}
-                              </button>
+                              </Button>
                             </td>
                             <td>{recount.status}</td>
                             <td>{formatMinorAmount(recount.expectedMinor)}</td>
@@ -452,13 +455,14 @@ export function StoreSafePage() {
                             {canWrite ? (
                               <td>
                                 {recount.resolutionStatus === 'open' ? (
-                                  <button
-                                    className="secondary"
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
                                     onClick={() => setResolveRecount(recount)}
                                     type="button"
                                   >
                                     {t('safe.actions.resolveRecount')}
-                                  </button>
+                                  </Button>
                                 ) : (
                                   t('common.emDash')
                                 )}

@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"mercadia.dev/pos/services/central-backend/internal/domain"
@@ -21,17 +23,68 @@ type LayoutTemplateListFilter struct {
 type LayoutTemplatesService struct {
 	templates LayoutTemplateRepository
 	schemes   ColorSchemeRepository
+	products  CatalogProductRepository
 	now       func() time.Time
 }
 
-func NewLayoutTemplatesService(templates LayoutTemplateRepository, schemes ColorSchemeRepository) *LayoutTemplatesService {
+func NewLayoutTemplatesService(
+	templates LayoutTemplateRepository,
+	schemes ColorSchemeRepository,
+	products CatalogProductRepository,
+) *LayoutTemplatesService {
 	return &LayoutTemplatesService{
 		templates: templates,
 		schemes:   schemes,
+		products:  products,
 		now: func() time.Time {
 			return time.Now().UTC()
 		},
 	}
+}
+
+func (s *LayoutTemplatesService) validatePublishedGrid(
+	ctx context.Context,
+	storeID string,
+	status domain.LayoutTemplateStatus,
+	grid domain.LayoutGrid,
+) error {
+	if status != domain.LayoutTemplateStatusPublished {
+		return nil
+	}
+	hasLinkedProducts := false
+	for _, tile := range grid.Tiles {
+		if !tile.Empty && tile.ProductID != "" {
+			hasLinkedProducts = true
+			break
+		}
+	}
+	if !hasLinkedProducts {
+		return nil
+	}
+	if storeID == "" {
+		return ErrLayoutTemplatePublishRequiresStore
+	}
+	missing := make([]string, 0)
+	for _, tile := range grid.Tiles {
+		if tile.Empty || tile.ProductID == "" {
+			continue
+		}
+		product, err := s.products.FindProduct(ctx, storeID, tile.ProductID)
+		if errors.Is(err, ErrCatalogProductNotFound) {
+			missing = append(missing, tile.ProductID)
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if !product.Active {
+			missing = append(missing, tile.ProductID)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("%w: %v", ErrLayoutTemplateInvalidProducts, missing)
+	}
+	return nil
 }
 
 type LayoutTemplateResult struct {
@@ -139,6 +192,9 @@ func (s *LayoutTemplatesService) CreateLayoutTemplate(ctx context.Context, comma
 	if err != nil {
 		return LayoutTemplateResult{}, ErrInvalidLayoutTemplateCmd
 	}
+	if err := s.validatePublishedGrid(ctx, template.StoreID, template.Status, template.Grid); err != nil {
+		return LayoutTemplateResult{}, err
+	}
 	if err := s.templates.SaveLayoutTemplate(ctx, template); err != nil {
 		return LayoutTemplateResult{}, err
 	}
@@ -188,6 +244,9 @@ func (s *LayoutTemplatesService) UpdateLayoutTemplate(ctx context.Context, comma
 	validated, err := domain.NewLayoutTemplate(template)
 	if err != nil {
 		return LayoutTemplateResult{}, ErrInvalidLayoutTemplateCmd
+	}
+	if err := s.validatePublishedGrid(ctx, validated.StoreID, validated.Status, validated.Grid); err != nil {
+		return LayoutTemplateResult{}, err
 	}
 	validated.CreatedAt = template.CreatedAt
 	validated.Version = template.Version

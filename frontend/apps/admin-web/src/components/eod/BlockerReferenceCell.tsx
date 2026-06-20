@@ -1,4 +1,5 @@
 import type { GetOperationalDaySummary200BlockersItem } from '@mercadia/api-clients-store-edge';
+import { Button } from '@mercadia/ui';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
@@ -56,8 +57,9 @@ export function BlockerReferenceCell({
   const label = hintKey ? t(hintKey) : (blocker.referenceId ?? t('common.emDash'));
 
   return (
-    <button
-      className="link-button"
+    <Button
+      variant="link"
+      size="sm"
       type="button"
       onClick={runAction}
       aria-label={t('eod.blockerActions.referenceLink', {
@@ -65,7 +67,7 @@ export function BlockerReferenceCell({
       })}
     >
       {blocker.referenceId ?? label}
-    </button>
+    </Button>
   );
 }
 
@@ -113,8 +115,8 @@ export function BlockerActionCell({
   }
 
   return (
-    <button className="secondary" type="button" onClick={runAction}>
+    <Button variant="secondary" size="sm" type="button" onClick={runAction}>
       {t(hintKey)}
-    </button>
+    </Button>
   );
 }

@@ -146,7 +146,8 @@ pnpm --filter pos-terminal dev
 - Prefer `@mercadia/ui` components over native `<button>` with global CSS.
 - Legacy native buttons remain styled via token-based compat rules in `index.css` until pages migrate.
 - Cash/EoD form modals use `FormDialog` directly from `@mercadia/ui`; read-only drill-down modals use `DetailDialog`. Legacy `CashModal` / `DetailModal` wrappers and `.modal-backdrop` CSS removed.
-- Layout template create/edit forms use `LayoutGridEditor` instead of raw JSON textarea.
+- Layout template create/edit forms use `LayoutGridEditor` (categories, icon URLs, product validation on publish).
+- Admin pages use `@mercadia/ui` `Button`; legacy native button compat rules removed from `index.css`.
 
 ## Verification
 

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { Button } from '@mercadia/ui';
+
 import { OpenOperationalDayModal } from '@/components/eod/OpenOperationalDayModal.js';
 
 type EodOpenPanelProps = {
@@ -20,9 +22,9 @@ export function EodOpenPanel({ storeId, canWrite }: EodOpenPanelProps) {
     <>
       <div className="panel">
         <h3>{t('eod.actions.openDayTitle')}</h3>
-        <button onClick={() => setOpenModalOpen(true)} type="button">
+        <Button onClick={() => setOpenModalOpen(true)} type="button">
           {t('eod.actions.openDay')}
-        </button>
+        </Button>
       </div>
 
       {openModalOpen ? (

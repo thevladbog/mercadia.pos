@@ -2,7 +2,7 @@ import { useGetReturn } from '@mercadia/api-clients-store-edge';
 import { useTranslation } from 'react-i18next';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
-import { DetailDialog } from '@mercadia/ui';
+import { DetailDialog, Button } from '@mercadia/ui';
 import { formatMinorAmount, formatTimestamp } from '@/pages/reporting-utils.js';
 
 type ReturnDetailModalProps = {
@@ -55,13 +55,14 @@ export function ReturnDetailModal({ returnId, onClose, onOpenReceipt }: ReturnDe
             <dt>{t('eod.returnDetail.receiptId')}</dt>
             <dd>
               {returnData.receiptId && returnData.receiptId.length > 0 ? (
-                <button
-                  className="link-button"
+                <Button
+                  variant="link"
+                  size="sm"
                   onClick={() => onOpenReceipt(returnData.receiptId!)}
                   type="button"
                 >
                   {returnData.receiptId}
-                </button>
+                </Button>
               ) : (
                 emDash
               )}

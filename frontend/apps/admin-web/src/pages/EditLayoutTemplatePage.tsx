@@ -3,6 +3,7 @@ import {
   getListLayoutTemplatesQueryKey,
   useGetLayoutTemplate,
   useListColorSchemes,
+  useListStoreCatalogProducts,
   useListStores,
   useUpdateLayoutTemplate,
   type GetLayoutTemplate200Template,
@@ -10,7 +11,7 @@ import {
 } from '@mercadia/api-clients-central';
 import { Button } from '@mercadia/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -22,7 +23,7 @@ import {
   accentPresetLabel,
   BrandingBackLink,
 } from '@/pages/branding-shared.js';
-import { gridFromApi, gridToApi } from '@/pages/layout-template-utils.js';
+import { gridFromApi, gridToApi, validateGridForPublish } from '@/pages/layout-template-utils.js';
 
 const KIND_OPTIONS = ['sale', 'return', 'sco'] as const;
 
@@ -51,6 +52,15 @@ function EditLayoutTemplateForm({ template, templateId }: EditLayoutTemplateForm
   const [grid, setGrid] = useState(() => gridFromApi(template.grid));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const productsQuery = useListStoreCatalogProducts(storeId, {
+    query: { enabled: storeId.length > 0 },
+  });
+  const catalogReady = storeId.length === 0 || productsQuery.data?.status === 200;
+  const knownProductIds = useMemo(() => {
+    const products = productsQuery.data?.status === 200 ? productsQuery.data.data.products : [];
+    return new Set(products.map((product) => product.id));
+  }, [productsQuery.data]);
+
   const mutation = useUpdateLayoutTemplate({
     mutation: {
       onSuccess: async (response) => {
@@ -71,6 +81,24 @@ function EditLayoutTemplateForm({ template, templateId }: EditLayoutTemplateForm
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage(null);
+
+    if (status === 'published') {
+      const validation = validateGridForPublish(grid, storeId, { catalogReady, knownProductIds });
+      if (!validation.ok) {
+        if (validation.reason === 'publishRequiresStore') {
+          setErrorMessage(t('layoutTemplates.publishRequiresStore'));
+        } else if (validation.reason === 'catalogNotReady') {
+          setErrorMessage(t('layoutTemplates.catalogNotReady'));
+        } else {
+          setErrorMessage(
+            t('layoutTemplates.invalidProducts', {
+              productIds: validation.productIds?.join(', ') ?? '',
+            }),
+          );
+        }
+        return;
+      }
+    }
 
     const payload: UpdateLayoutTemplateBody = {
       name,
@@ -153,7 +181,12 @@ function EditLayoutTemplateForm({ template, templateId }: EditLayoutTemplateForm
             <option value="published">{t('branding.status.published')}</option>
           </select>
         </label>
-        <LayoutGridEditor grid={grid} onChange={setGrid} />
+        <LayoutGridEditor
+          catalogReady={storeId ? catalogReady : undefined}
+          grid={grid}
+          knownProductIds={storeId ? knownProductIds : undefined}
+          onChange={setGrid}
+        />
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
         <div className="form-actions">
           <Button disabled={mutation.isPending} type="submit">

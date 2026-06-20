@@ -1,4 +1,5 @@
 import { useGetStoreReportingSummary, useListStores } from '@mercadia/api-clients-central';
+import { Button } from '@mercadia/ui';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router-dom';
@@ -72,14 +73,14 @@ export function StoreReportingPage() {
               UTC
             </p>
           </div>
-          <button
-            className="secondary"
+          <Button
+            variant="secondary"
             disabled={isLoading || storeId.length === 0}
             onClick={() => void summaryQuery.refetch()}
             type="button"
           >
             {isLoading ? t('common.refreshing') : t('common.refresh')}
-          </button>
+          </Button>
         </div>
 
         <form
@@ -107,9 +108,9 @@ export function StoreReportingPage() {
               onChange={(event) => setUntilInput(event.target.value)}
             />
           </label>
-          <button disabled={isLoading || storeId.length === 0} type="submit">
+          <Button disabled={isLoading || storeId.length === 0} type="submit">
             {t('common.apply')}
-          </button>
+          </Button>
         </form>
       </div>
 

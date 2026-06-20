@@ -6,6 +6,9 @@ import {
   Button,
   LayoutGrid,
   Numpad,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   ThemeProvider,
   type AccentPreset,
   type LayoutGridSpec,
@@ -13,9 +16,21 @@ import {
 
 import { queryClient } from '@/query-client.js';
 
+const ALL_CATEGORIES = '__all__';
+
 function resolveTemplateId(): string {
   const params = new URLSearchParams(window.location.search);
   return params.get('templateId') ?? import.meta.env.VITE_LAYOUT_TEMPLATE_ID ?? '';
+}
+
+function filterGridByCategory(grid: LayoutGridSpec, categoryId: string | null): LayoutGridSpec {
+  if (categoryId === null) {
+    return grid;
+  }
+  return {
+    ...grid,
+    tiles: grid.tiles.filter((tile) => tile.categoryId === categoryId),
+  };
 }
 
 function TerminalShell() {
@@ -25,6 +40,7 @@ function TerminalShell() {
   });
   const template = templateQuery.data?.status === 200 ? templateQuery.data.data.template : null;
   const [numpadValue, setNumpadValue] = useState('');
+  const [activeCategoryId, setActiveCategoryId] = useState(ALL_CATEGORIES);
 
   useEffect(() => {
     if (!template) {
@@ -42,14 +58,37 @@ function TerminalShell() {
     ? {
         rows: template.grid.rows ?? 4,
         cols: template.grid.cols ?? 4,
+        categories: (template.grid.categories ?? [])
+          .filter((category) => category.id)
+          .map((category) => ({
+            id: category.id!,
+            label: category.label ?? '',
+          })),
         tiles: (template.grid.tiles ?? []).map((tile) => ({
           label: tile.label ?? '',
           color: tile.color,
           productId: tile.productId,
           empty: tile.empty,
+          categoryId: tile.categoryId,
+          iconUrl: tile.iconUrl,
         })),
       }
     : { rows: 4, cols: 4, tiles: [{ label: 'Demo item' }, { label: 'Return item' }] };
+
+  const categories = grid.categories ?? [];
+  const resolvedCategoryId = useMemo(() => {
+    if (activeCategoryId === ALL_CATEGORIES) {
+      return ALL_CATEGORIES;
+    }
+    return categories.some((category) => category.id === activeCategoryId)
+      ? activeCategoryId
+      : ALL_CATEGORIES;
+  }, [activeCategoryId, categories]);
+  const displayGrid = useMemo(
+    () =>
+      filterGridByCategory(grid, resolvedCategoryId === ALL_CATEGORIES ? null : resolvedCategoryId),
+    [grid, resolvedCategoryId],
+  );
 
   return (
     <main className="pos-terminal-shell">
@@ -73,7 +112,19 @@ function TerminalShell() {
         <div className="pos-terminal-grid">
           <section className="panel">
             <Button type="button">Start sale</Button>
-            <LayoutGrid grid={grid} onTileClick={() => undefined} />
+            {categories.length > 0 ? (
+              <Tabs value={resolvedCategoryId} onValueChange={setActiveCategoryId}>
+                <TabsList aria-label="Categories">
+                  <TabsTrigger value={ALL_CATEGORIES}>All</TabsTrigger>
+                  {categories.map((category) => (
+                    <TabsTrigger key={category.id} value={category.id}>
+                      {category.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            ) : null}
+            <LayoutGrid grid={displayGrid} onTileClick={() => undefined} />
           </section>
           <section className="panel">
             <Numpad enterLabel="Enter" value={numpadValue} onChange={setNumpadValue} />

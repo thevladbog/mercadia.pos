@@ -9,10 +9,12 @@ import (
 )
 
 var (
-	ErrColorSchemeNotFound       = errors.New("color scheme not found")
-	ErrInvalidColorSchemeCommand = errors.New("invalid color scheme command")
-	ErrLayoutTemplateNotFound    = errors.New("layout template not found")
-	ErrInvalidLayoutTemplateCmd  = errors.New("invalid layout template command")
+	ErrColorSchemeNotFound                = errors.New("color scheme not found")
+	ErrInvalidColorSchemeCommand          = errors.New("invalid color scheme command")
+	ErrLayoutTemplateNotFound             = errors.New("layout template not found")
+	ErrInvalidLayoutTemplateCmd           = errors.New("invalid layout template command")
+	ErrLayoutTemplatePublishRequiresStore = errors.New("layout template publish requires store scope")
+	ErrLayoutTemplateInvalidProducts      = errors.New("layout template references unknown products")
 )
 
 type ColorSchemeRepository interface {

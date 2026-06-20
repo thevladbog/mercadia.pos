@@ -1,4 +1,5 @@
 import { useGetCentralStatus } from '@mercadia/api-clients-central';
+import { Button } from '@mercadia/ui';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -93,14 +94,14 @@ export function CentralDashboardPage() {
             <h2>{t('dashboard.title')}</h2>
             <p className="muted">{t('dashboard.subtitle')}</p>
           </div>
-          <button
-            className="secondary"
+          <Button
+            variant="secondary"
             disabled={isLoading}
             onClick={() => void statusQuery.refetch()}
             type="button"
           >
             {isLoading ? t('common.refreshing') : t('common.refresh')}
-          </button>
+          </Button>
         </div>
       </div>
 

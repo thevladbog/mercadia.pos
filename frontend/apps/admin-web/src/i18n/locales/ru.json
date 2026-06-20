@@ -692,6 +692,10 @@
     "status": "Статус",
     "gridJson": "JSON сетки",
     "invalidGrid": "Некорректный JSON сетки.",
+    "publishRequiresStore": "Выберите магазин перед публикацией шаблона с привязанными товарами.",
+    "catalogNotReady": "Дождитесь загрузки каталога магазина перед публикацией.",
+    "invalidProducts": "Неизвестные ID товаров: {{productIds}}",
+    "unknownProduct": "Товар {{productId}} отсутствует в каталоге выбранного магазина.",
     "accent": "Акцент",
     "updated": "Обновлено",
     "previewTitle": "Превью шаблона",
@@ -708,7 +712,19 @@
       "label": "Подпись",
       "color": "Цвет",
       "empty": "Пустая ячейка",
-      "productId": "ID товара"
+      "productId": "ID товара",
+      "categories": "Категории",
+      "addCategory": "Добавить категорию",
+      "removeCategory": "Удалить категорию",
+      "categoryNumber": "Категория {{number}}",
+      "categoryLabel": "Название категории",
+      "newCategory": "Новая категория",
+      "noCategories": "Категорий пока нет.",
+      "allCategories": "Все",
+      "category": "Категория",
+      "uncategorized": "Без категории",
+      "iconUrl": "URL иконки",
+      "iconUrlPlaceholder": "https://"
     }
   }
 }

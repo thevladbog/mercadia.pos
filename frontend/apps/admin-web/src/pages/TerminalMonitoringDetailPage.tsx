@@ -1,4 +1,5 @@
 import { useListStores } from '@mercadia/api-clients-central';
+import { Button } from '@mercadia/ui';
 import { useGetTerminal, useListStoreMonitoringTerminals } from '@mercadia/api-clients-store-edge';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -103,14 +104,14 @@ export function TerminalMonitoringDetailPage() {
               {title || t('reporting.unknownStore')}
             </p>
           </div>
-          <button
-            className="secondary"
+          <Button
+            variant="secondary"
             disabled={isLoading || terminalId.length === 0}
             onClick={refetchAll}
             type="button"
           >
             {isLoading ? t('common.refreshing') : t('common.refresh')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -182,8 +183,9 @@ export function TerminalMonitoringDetailPage() {
               <dt>{t('monitoring.shift')}</dt>
               <dd>
                 {monitoringCard.shiftId ? (
-                  <button
-                    className="link-button"
+                  <Button
+                    variant="link"
+                    size="sm"
                     type="button"
                     onClick={() => setDetailShiftId(monitoringCard.shiftId!)}
                     aria-label={t('monitoring.openShiftDetails', {
@@ -191,7 +193,7 @@ export function TerminalMonitoringDetailPage() {
                     })}
                   >
                     {monitoringCard.shiftId}
-                  </button>
+                  </Button>
                 ) : (
                   t('common.emDash')
                 )}

@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
+import { Button } from '@mercadia/ui';
+
 import { i18n } from '@/i18n/index.js';
 import { formatMinorAmount, formatTimestamp } from './reporting-utils.js';
 import { syncEntityHref } from './sync-routes.js';
@@ -42,14 +44,15 @@ export function renderSyncEntityFieldValue(
 ): ReactNode {
   if (key === 'receiptId' && typeof value === 'string' && value.length > 0) {
     return (
-      <button
-        className="link-button"
+      <Button
+        variant="link"
+        size="sm"
         type="button"
         onClick={() => handlers.onOpenReceipt(value)}
         aria-label={i18n.t('monitoring.openReceiptDetails', { receiptId: value })}
       >
         {value}
-      </button>
+      </Button>
     );
   }
 

@@ -1,4 +1,5 @@
 import { useListStores } from '@mercadia/api-clients-central';
+import { Button } from '@mercadia/ui';
 import {
   useGetStoreMonitoringSummary,
   useListStoreMonitoringTerminals,
@@ -115,9 +116,9 @@ export function StoreMonitoringPage() {
             <h2>{t('monitoring.title')}</h2>
             <p className="muted">{t('monitoring.subtitle')}</p>
           </div>
-          <button className="secondary" disabled={isLoading} onClick={refetchAll} type="button">
+          <Button variant="secondary" disabled={isLoading} onClick={refetchAll} type="button">
             {isLoading ? t('common.refreshing') : t('common.refresh')}
-          </button>
+          </Button>
         </div>
 
         <StorePicker
@@ -195,20 +196,20 @@ export function StoreMonitoringPage() {
                 </p>
               </div>
               <div className="view-toggle">
-                <button
-                  className={terminalView === 'list' ? undefined : 'secondary'}
+                <Button
+                  variant={terminalView === 'list' ? 'primary' : 'secondary'}
                   onClick={() => setTerminalView('list')}
                   type="button"
                 >
                   {t('monitoring.view.list')}
-                </button>
-                <button
-                  className={terminalView === 'tiles' ? undefined : 'secondary'}
+                </Button>
+                <Button
+                  variant={terminalView === 'tiles' ? 'primary' : 'secondary'}
                   onClick={() => setTerminalView('tiles')}
                   type="button"
                 >
                   {t('monitoring.view.tiles')}
-                </button>
+                </Button>
               </div>
             </div>
 
