@@ -8,6 +8,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
+import { ReceiptDetailModal } from '@/components/eod/ReceiptDetailModal.js';
+import { CurrentReceiptCell } from '@/components/monitoring/CurrentReceiptCell.js';
 import { StorePicker } from '@/components/StorePicker.js';
 import { terminalMonitoringHref } from './monitoring-routes.js';
 import {
@@ -28,6 +30,7 @@ function matchesTerminalSearch(
     kind: string;
     status: string;
     cashierId?: string;
+    currentReceiptId?: string;
     attentionNeeded: boolean;
   },
   query: string,
@@ -40,6 +43,7 @@ function matchesTerminalSearch(
     terminal.kind,
     terminal.status,
     terminal.cashierId ?? '',
+    terminal.currentReceiptId ?? '',
     terminal.attentionNeeded ? 'attention' : '',
   ]
     .join(' ')
@@ -58,6 +62,7 @@ export function StoreMonitoringPage() {
   const activeStoreId = selectedStoreId ?? stores[0]?.id ?? '';
   const [terminalView, setTerminalView] = useState<TerminalView>('list');
   const [searchQuery, setSearchQuery] = useState('');
+  const [detailReceiptId, setDetailReceiptId] = useState<string | null>(null);
 
   const queryOptions = useMemo(
     () => ({
@@ -221,7 +226,11 @@ export function StoreMonitoringPage() {
               <p className="muted">{t('monitoring.loadingTerminals')}</p>
             ) : filteredTerminals && filteredTerminals.length > 0 ? (
               terminalView === 'tiles' ? (
-                <TerminalCardGrid storeId={activeStoreId} terminals={filteredTerminals} />
+                <TerminalCardGrid
+                  storeId={activeStoreId}
+                  terminals={filteredTerminals}
+                  onOpenReceipt={setDetailReceiptId}
+                />
               ) : (
                 <div className="table-wrap">
                   <table>
@@ -235,6 +244,9 @@ export function StoreMonitoringPage() {
                         <th>{t('monitoring.revenue')}</th>
                         <th>{t('monitoring.drawer')}</th>
                         <th>{t('monitoring.attention')}</th>
+                        <th>{t('monitoring.currentReceipt')}</th>
+                        <th>{t('monitoring.currentReceiptStatus')}</th>
+                        <th>{t('monitoring.currentReceiptTotal')}</th>
                         <th>{t('monitoring.lastSeen')}</th>
                       </tr>
                     </thead>
@@ -257,6 +269,25 @@ export function StoreMonitoringPage() {
                           <td>{formatMinorAmount(terminal.revenueMinor)}</td>
                           <td>{formatMinorAmount(terminal.drawerBalanceMinor)}</td>
                           <td>{terminal.attentionNeeded ? t('common.yes') : t('common.no')}</td>
+                          <td>
+                            <CurrentReceiptCell
+                              receiptId={terminal.currentReceiptId}
+                              variant="id"
+                              onOpenReceipt={setDetailReceiptId}
+                            />
+                          </td>
+                          <td>
+                            <CurrentReceiptCell
+                              status={terminal.currentReceiptStatus}
+                              variant="status"
+                            />
+                          </td>
+                          <td>
+                            <CurrentReceiptCell
+                              totalMinor={terminal.currentReceiptTotalMinor}
+                              variant="total"
+                            />
+                          </td>
                           <td>{formatTimestamp(terminal.lastSeenAt)}</td>
                         </tr>
                       ))}
@@ -272,6 +303,10 @@ export function StoreMonitoringPage() {
           <TerminalHeartbeatEventsPanel storeId={activeStoreId} />
         </>
       )}
+
+      {detailReceiptId ? (
+        <ReceiptDetailModal receiptId={detailReceiptId} onClose={() => setDetailReceiptId(null)} />
+      ) : null}
     </section>
   );
 }

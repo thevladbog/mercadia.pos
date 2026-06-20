@@ -174,7 +174,7 @@
       "tiles": "Tiles"
     },
     "searchPlaceholder": "Search terminals…",
-    "searchHint": "Filter by terminal ID, cashier, kind, or status",
+    "searchHint": "Filter by terminal ID, cashier, kind, status, or current receipt ID",
     "terminalDetailTitle": "Terminal",
     "backToMonitoring": "Back to monitoring",
     "terminalState": "Terminal state",
@@ -191,6 +191,7 @@
     "currentReceipt": "Current receipt",
     "currentReceiptStatus": "Current receipt status",
     "currentReceiptTotal": "Current receipt total",
+    "openReceiptDetails": "Open receipt details for {{receiptId}}",
     "recentHeartbeats": "Recent heartbeats",
     "eventsTitle": "Terminal events",
     "eventsNote": "Showing terminal_heartbeat events only.",

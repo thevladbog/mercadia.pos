@@ -2,6 +2,7 @@ import type { ListStoreMonitoringTerminals200ItemsItem } from '@mercadia/api-cli
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
+import { CurrentReceiptCell } from '@/components/monitoring/CurrentReceiptCell.js';
 import { terminalMonitoringHref } from './monitoring-routes.js';
 import { terminalStatusClass, terminalStatusLabel } from './monitoring-utils.js';
 import { formatMinorAmount, formatTimestamp } from './reporting-utils.js';
@@ -9,9 +10,10 @@ import { formatMinorAmount, formatTimestamp } from './reporting-utils.js';
 type TerminalCardGridProps = {
   storeId: string;
   terminals: ListStoreMonitoringTerminals200ItemsItem[];
+  onOpenReceipt?: (receiptId: string) => void;
 };
 
-export function TerminalCardGrid({ storeId, terminals }: TerminalCardGridProps) {
+export function TerminalCardGrid({ storeId, terminals, onOpenReceipt }: TerminalCardGridProps) {
   const { t } = useTranslation();
 
   return (
@@ -47,6 +49,13 @@ export function TerminalCardGrid({ storeId, terminals }: TerminalCardGridProps) 
               <dt>{t('monitoring.attention')}</dt>
               <dd>{terminal.attentionNeeded ? t('common.yes') : t('common.no')}</dd>
             </div>
+            <CurrentReceiptCell
+              receiptId={terminal.currentReceiptId}
+              status={terminal.currentReceiptStatus}
+              totalMinor={terminal.currentReceiptTotalMinor}
+              variant="tile"
+              onOpenReceipt={onOpenReceipt}
+            />
             <div>
               <dt>{t('monitoring.lastSeen')}</dt>
               <dd>{formatTimestamp(terminal.lastSeenAt)}</dd>

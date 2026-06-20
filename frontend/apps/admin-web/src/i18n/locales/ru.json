@@ -174,7 +174,7 @@
       "tiles": "Плитки"
     },
     "searchPlaceholder": "Поиск терминалов…",
-    "searchHint": "Фильтр по ID терминала, кассиру, типу или статусу",
+    "searchHint": "Фильтр по ID терминала, кассиру, типу, статусу или ID текущего чека",
     "terminalDetailTitle": "Терминал",
     "backToMonitoring": "Назад к мониторингу",
     "terminalState": "Состояние терминала",
@@ -191,6 +191,7 @@
     "currentReceipt": "Текущий чек",
     "currentReceiptStatus": "Статус текущего чека",
     "currentReceiptTotal": "Сумма текущего чека",
+    "openReceiptDetails": "Открыть детали чека {{receiptId}}",
     "recentHeartbeats": "Последние heartbeat",
     "eventsTitle": "События терминалов",
     "eventsNote": "Показаны только события terminal_heartbeat.",
