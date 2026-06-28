@@ -37,7 +37,13 @@ export async function customFetch<T extends FetchEnvelope<unknown>>(
   url: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const { getSessionToken } = await import('./session.js');
+  const token = getSessionToken();
   const headers = new Headers(options.headers);
+
+  if (token) {
+    headers.set('X-Session-Token', token);
+  }
 
   if (options.body !== undefined && options.body !== null && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');

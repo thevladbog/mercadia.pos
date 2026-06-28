@@ -1,9 +1,19 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
+import { isSeniorCashier } from '@/auth/permissions.js';
+import { useAuth } from '@/auth/useAuth.js';
+
+function RoleAwareRedirect() {
+  const { roles } = useAuth();
+  const target = isSeniorCashier(roles) ? '/senior-cashier/dashboard' : '/central/dashboard';
+  return <Navigate replace to={target} />;
+}
+
 import { AuthProvider } from '@/auth/AuthProvider.js';
 import { LoginPage } from '@/auth/LoginPage.js';
 import { ProtectedRoute } from '@/auth/ProtectedRoute.js';
 import { RequireCentralAdmin } from '@/auth/RequireCentralAdmin.js';
+import { RequireSeniorCashier } from '@/auth/RequireSeniorCashier.js';
 import { UnauthorizedBridge } from '@/auth/UnauthorizedBridge.js';
 import { AppLayout } from '@/layout/AppLayout.js';
 import { CentralCatalogPage } from '@/pages/CentralCatalogPage.js';
@@ -27,6 +37,15 @@ import { StoreSafePage } from '@/pages/StoreSafePage.js';
 import { StoreEodPage } from '@/pages/StoreEodPage.js';
 import { TerminalMonitoringDetailPage } from '@/pages/TerminalMonitoringDetailPage.js';
 import { StoreReportingPage } from '@/pages/StoreReportingPage.js';
+import { SeniorCashierDashboardPage } from '@/pages/SeniorCashierDashboardPage.js';
+import { IssueChangeFundPage } from '@/pages/IssueChangeFundPage.js';
+import { ReceiveCashPage } from '@/pages/ReceiveCashPage.js';
+import { SafeRecountPage } from '@/pages/SafeRecountPage.js';
+import { BankCollectionPage } from '@/pages/BankCollectionPage.js';
+import { BusinessExpensePage } from '@/pages/BusinessExpensePage.js';
+import { FinalCollectionPage } from '@/pages/FinalCollectionPage.js';
+import { OperationJournalPage } from '@/pages/OperationJournalPage.js';
+import { ShiftHandoverPage } from '@/pages/ShiftHandoverPage.js';
 
 export function App() {
   return (
@@ -39,6 +58,17 @@ export function App() {
             <Route element={<CentralDashboardPage />} path="/central/dashboard" />
             <Route element={<CentralReportingPage />} path="/central/reporting" />
             <Route element={<StoreReportingPage />} path="/central/reporting/stores/:storeId" />
+            <Route element={<RequireSeniorCashier />}>
+              <Route element={<SeniorCashierDashboardPage />} path="/senior-cashier/dashboard" />
+              <Route element={<IssueChangeFundPage />} path="/senior-cashier/change-fund" />
+              <Route element={<ReceiveCashPage />} path="/senior-cashier/receive-cash" />
+              <Route element={<SafeRecountPage />} path="/senior-cashier/safe-recount" />
+              <Route element={<BankCollectionPage />} path="/senior-cashier/bank-collection" />
+              <Route element={<BusinessExpensePage />} path="/senior-cashier/expense" />
+              <Route element={<FinalCollectionPage />} path="/senior-cashier/collection" />
+              <Route element={<OperationJournalPage />} path="/senior-cashier/journal" />
+              <Route element={<ShiftHandoverPage />} path="/senior-cashier/handover" />
+            </Route>
             <Route element={<CentralStoresPage />} path="/central/stores" />
             <Route element={<CentralSyncExplorerPage />} path="/central/sync" />
             <Route element={<CentralCatalogPage />} path="/central/catalog" />
@@ -86,8 +116,10 @@ export function App() {
             </Route>
           </Route>
         </Route>
-        <Route element={<Navigate replace to="/central/dashboard" />} path="/" />
-        <Route element={<Navigate replace to="/central/dashboard" />} path="*" />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<RoleAwareRedirect />} path="/" />
+        </Route>
+        <Route element={<RoleAwareRedirect />} path="*" />
       </Routes>
     </AuthProvider>
   );

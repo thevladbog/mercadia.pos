@@ -4,6 +4,7 @@ export const CENTRAL_ROLE_ADMIN =
   'central_admin' satisfies ListCentralUsers200UsersItem['roles'][number];
 export const CENTRAL_ROLE_VIEWER =
   'central_viewer' satisfies ListCentralUsers200UsersItem['roles'][number];
+export const SENIOR_ROLE = 'senior_cashier';
 
 export const CENTRAL_ROLE_OPTIONS = [CENTRAL_ROLE_VIEWER, CENTRAL_ROLE_ADMIN] as const;
 
@@ -12,5 +13,9 @@ export function canManageCentralUsers(roles: string[]): boolean {
 }
 
 export function canWriteStoreOperations(roles: string[]): boolean {
-  return roles.includes(CENTRAL_ROLE_ADMIN);
+  return roles.includes(CENTRAL_ROLE_ADMIN) || roles.includes(SENIOR_ROLE);
+}
+
+export function isSeniorCashier(roles: string[]): boolean {
+  return roles.includes(SENIOR_ROLE);
 }

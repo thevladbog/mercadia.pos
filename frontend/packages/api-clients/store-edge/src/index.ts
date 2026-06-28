@@ -1,4 +1,5 @@
 export { ApiError, customFetch, getApiBaseUrl, setApiBaseUrl } from './mutator.js';
+export { clearSessionToken, getSessionToken, setSessionToken } from './session.js';
 
 export * from './generated/cash-office/cash-office.js';
 export * from './generated/checkout/checkout.js';
