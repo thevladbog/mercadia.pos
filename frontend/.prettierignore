@@ -2,5 +2,3 @@ node_modules
 dist
 pnpm-lock.yaml
 **/src/generated/**
-**/tsconfig.tsbuildinfo
-*.env.example
