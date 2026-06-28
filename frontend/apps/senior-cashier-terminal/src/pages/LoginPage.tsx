@@ -3,10 +3,28 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, Field, Label } from '@mercadia/ui';
 
-import { useAuth, readIButton } from '@/auth/AuthProvider.js';
+import { useAuth } from '@/auth/AuthProvider.js';
+import { readIButton } from '@/auth/ibutton.js';
 import { useIdleTimer } from '@/lib/use-idle-timer.js';
 
 const MAX_ATTEMPTS = 5;
+const ATTEMPTS_KEY = 'mercadia.sr-terminal.login-attempts';
+
+function loadAttempts(): number {
+  try {
+    return parseInt(sessionStorage.getItem(ATTEMPTS_KEY) ?? '0', 10) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveAttempts(n: number): void {
+  try {
+    sessionStorage.setItem(ATTEMPTS_KEY, String(n));
+  } catch {
+    /* noop */
+  }
+}
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -15,10 +33,11 @@ export function LoginPage() {
 
   const [personnelId, setPersonnelId] = useState('');
   const [pin, setPin] = useState('');
-  const [ibuttonStatus, setIbuttonStatus] = useState<'idle' | 'waiting' | 'detected' | 'error'>('idle');
-  const [ibuttonRomId, setIbuttonRomId] = useState('');
+  const [ibuttonStatus, setIbuttonStatus] = useState<'idle' | 'waiting' | 'detected' | 'error'>(
+    'idle',
+  );
   const [error, setError] = useState('');
-  const [attempts, setAttempts] = useState(0);
+  const [attempts, setAttempts] = useState(loadAttempts);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useIdleTimer();
@@ -27,8 +46,7 @@ export function LoginPage() {
     setIbuttonStatus('waiting');
     setError('');
     try {
-      const romId = await readIButton();
-      setIbuttonRomId(romId);
+      await readIButton();
       setIbuttonStatus('detected');
     } catch {
       setIbuttonStatus('error');
@@ -36,36 +54,51 @@ export function LoginPage() {
     }
   }, [t]);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSubmitting) return;
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (isSubmitting) return;
 
-    if (attempts >= MAX_ATTEMPTS) {
-      setError(t('auth.blocked'));
-      return;
-    }
+      if (attempts >= MAX_ATTEMPTS) {
+        setError(t('auth.blocked'));
+        return;
+      }
 
-    if (!personnelId || !pin) {
-      setError(t('auth.invalidCredentials'));
-      return;
-    }
+      if (!personnelId || !pin) {
+        setError(t('auth.invalidCredentials'));
+        return;
+      }
 
-    setIsSubmitting(true);
-    setError('');
+      setIsSubmitting(true);
+      setError('');
 
-    try {
-      await login(personnelId, pin, ibuttonRomId);
-      navigate('/dashboard', { replace: true });
-    } catch {
-      setAttempts((prev) => prev + 1);
-      setError(t('auth.invalidCredentials'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [personnelId, pin, ibuttonRomId, login, navigate, t, attempts, isSubmitting]);
+      try {
+        const sess = await login(personnelId, pin);
+        const target =
+          sess.roles.includes('senior_cashier') || sess.roles.includes('admin')
+            ? '/dashboard'
+            : '/monitoring';
+        navigate(target, { replace: true });
+      } catch (err) {
+        if (err instanceof Error && err.message === 'Invalid credentials') {
+          const next = attempts + 1;
+          setAttempts(next);
+          saveAttempts(next);
+        }
+        setError(t('auth.invalidCredentials'));
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [personnelId, pin, login, navigate, t, attempts, isSubmitting],
+  );
 
   if (session) {
-    navigate('/dashboard', { replace: true });
+    const target =
+      session.roles.includes('senior_cashier') || session.roles.includes('admin')
+        ? '/dashboard'
+        : '/monitoring';
+    navigate(target, { replace: true });
     return null;
   }
 
@@ -117,7 +150,7 @@ export function LoginPage() {
               onClick={handleIButton}
               disabled={isSubmitting || ibuttonStatus === 'waiting'}
             >
-              {ibuttonStatus === 'detected' ? '✓' : t('ibutton.present')}
+              {ibuttonStatus === 'detected' ? '\u2713' : t('ibutton.present')}
             </Button>
           </div>
 

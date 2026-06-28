@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, Field, Label } from '@mercadia/ui';
 
-import { useAuth, readIButton } from '@/auth/AuthProvider.js';
+import { useAuth } from '@/auth/AuthProvider.js';
+import { readIButton } from '@/auth/ibutton.js';
 import { TerminalHeader } from '@/components/TerminalHeader.js';
 
 export function ShiftHandoverPage() {
@@ -13,7 +14,9 @@ export function ShiftHandoverPage() {
 
   const [incomingId, setIncomingId] = useState('');
   const [incomingPin, setIncomingPin] = useState('');
-  const [ibuttonStatus, setIbuttonStatus] = useState<'idle' | 'waiting' | 'detected' | 'error'>('idle');
+  const [ibuttonStatus, setIbuttonStatus] = useState<'idle' | 'waiting' | 'detected' | 'error'>(
+    'idle',
+  );
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -74,7 +77,14 @@ export function ShiftHandoverPage() {
 
           <div className="sr-panel">
             <h3 className="sr-panel-title">{t('handover.incomingCashier')}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.75rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                marginTop: '0.75rem',
+              }}
+            >
               <Field>
                 <Label>{t('handover.incomingPersonnelId')}</Label>
                 <Input

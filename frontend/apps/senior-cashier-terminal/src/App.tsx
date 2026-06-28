@@ -13,6 +13,10 @@ import { MonitoringPage } from '@/pages/MonitoringPage.js';
 import { OperationJournalPage } from '@/pages/OperationJournalPage.js';
 import { ShiftHandoverPage } from '@/pages/ShiftHandoverPage.js';
 
+function isSeniorOrAdmin(roles: string[]): boolean {
+  return roles.includes('senior_cashier') || roles.includes('admin');
+}
+
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
   if (!session) {
@@ -26,10 +30,18 @@ function RequireSeniorCashier({ children }: { children: React.ReactNode }) {
   if (!session) {
     return <Navigate to="/login" replace />;
   }
-  if (!session.roles.includes('senior_cashier') && !session.roles.includes('admin')) {
-    return <Navigate to="/login" replace />;
+  if (!isSeniorOrAdmin(session.roles)) {
+    return <Navigate to="/monitoring" replace />;
   }
   return <>{children}</>;
+}
+
+function HomeRedirect() {
+  const { session } = useAuth();
+  if (!session) {
+    return <Navigate to="/login" replace />;
+  }
+  return <Navigate to={isSeniorOrAdmin(session.roles) ? '/dashboard' : '/monitoring'} replace />;
 }
 
 export function App() {
@@ -37,7 +49,16 @@ export function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+      <Route
+        path="/login"
+        element={
+          session ? (
+            <Navigate to={isSeniorOrAdmin(session.roles) ? '/dashboard' : '/monitoring'} replace />
+          ) : (
+            <LoginPage />
+          )
+        }
+      />
 
       <Route
         path="/dashboard"
@@ -124,7 +145,7 @@ export function App() {
         }
       />
 
-      <Route path="*" element={<Navigate to={session ? '/dashboard' : '/login'} replace />} />
+      <Route path="*" element={<HomeRedirect />} />
     </Routes>
   );
 }

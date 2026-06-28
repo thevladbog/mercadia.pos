@@ -20,7 +20,10 @@ export function getDenominations(): readonly { value: number; label: string }[] 
   return RUBLE_DENOMINATIONS;
 }
 
-export function computeDenominationTotal(values: DenominationValues, otherAmountMinor: number = 0): number {
+export function computeDenominationTotal(
+  values: DenominationValues,
+  otherAmountMinor: number = 0,
+): number {
   let total = otherAmountMinor;
   for (const [denomStr, countStr] of Object.entries(values)) {
     const denom = Number(denomStr);
@@ -31,14 +34,16 @@ export function computeDenominationTotal(values: DenominationValues, otherAmount
 }
 
 export function parseRublesToMinor(rubles: string): number {
-  const cleaned = rubles.replace(/\s/g, '').replace(',', '.');
-  const num = parseFloat(cleaned);
-  if (Number.isNaN(num)) return 0;
-  return Math.round(num * 100);
+  const cleaned = rubles.replace(/\s/g, '').replace(',', '.').trim();
+  if (!/^\d+(?:\.\d{1,2})?$/.test(cleaned)) return 0;
+  return Math.round(Number(cleaned) * 100);
 }
 
 export function formatMinor(amount: number): string {
-  return (amount / 100).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (amount / 100).toLocaleString('ru-RU', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export function actorsMustDiffer(actorId: string, approvedById: string): boolean {
@@ -47,4 +52,11 @@ export function actorsMustDiffer(actorId: string, approvedById: string): boolean
 
 export function createIdempotencyHeaders(): Record<string, string> {
   return { 'Idempotency-Key': crypto.randomUUID() };
+}
+
+export function selectSuccessData<T>(
+  resp: { status: number; data: unknown } | undefined | null,
+): T | undefined {
+  if (!resp || resp.status !== 200) return undefined;
+  return resp.data as T;
 }

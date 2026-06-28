@@ -26,7 +26,7 @@
     "ru": "Русский",
     "en": "English"
   },
-    "common": {
+  "common": {
     "loading": "Loading…",
     "submitting": "Submitting…",
     "cancel": "Cancel",
@@ -76,6 +76,8 @@
     "drawer": "Drawer",
     "revenue": "Revenue",
     "autoLockIn": "Auto-lock in",
+    "hours": "h",
+    "minutes": "m",
     "actions": "Actions",
     "changeFund": "Issue Change Fund",
     "receiveCash": "Receive Cash",
@@ -132,9 +134,9 @@
   "monitoring": {
     "title": "Terminal Monitoring",
     "filterAll": "All",
-    "filterActive": "Active",
-    "filterAttention": "Needs Attention",
-    "filterBlocked": "Blocked",
+    "filterActive": "Ready",
+    "filterAttention": "Busy",
+    "filterBlocked": "Error",
     "filterOffline": "Offline",
     "terminal": "Terminal",
     "kind": "Kind",
@@ -153,7 +155,7 @@
     "operation": "Operation",
     "actor": "Actor",
     "amount": "Amount",
-    "status": "Status"
+    "summary": "Summary"
   },
   "handover": {
     "title": "Shift Handover",

@@ -5,8 +5,9 @@ import { Button, Input, Field, Label } from '@mercadia/ui';
 import { useListOpenStoreShifts, closeShift } from '@mercadia/api-clients-store-edge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
-import { actorsMustDiffer, computeDenominationTotal } from '@/lib/cash-utils.js';
+import { actorsMustDiffer, computeDenominationTotal, selectSuccessData } from '@/lib/cash-utils.js';
 import { DenominationInput } from '@/components/DenominationInput.js';
 import { CashierSelectModal } from '@/components/CashierSelectModal.js';
 import { MismatchDialog } from '@/components/MismatchDialog.js';
@@ -16,11 +17,24 @@ export function FinalCollectionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { logout } = useAuth();
   const storeId = useMemo(() => getStoreId(), []);
 
   const { data: shiftsResp } = useListOpenStoreShifts(storeId);
+  const shiftsData = useMemo(
+    () =>
+      selectSuccessData<{
+        shifts: { id: string; cashierId: string; drawerId: string; closingCashMinor?: number }[];
+      }>(shiftsResp),
+    [shiftsResp],
+  );
 
-  const [selectedShift, setSelectedShift] = useState<any | null>(null);
+  const [selectedShift, setSelectedShift] = useState<{
+    id: string;
+    cashierId?: string;
+    drawerId?: string;
+    closingCashMinor?: number;
+  } | null>(null);
   const [denomValues, setDenomValues] = useState<Record<number, string>>({});
   const [otherCoins, setOtherCoins] = useState(0);
   const [closingCashInput, setClosingCashInput] = useState('');
@@ -30,8 +44,14 @@ export function FinalCollectionPage() {
   const [error, setError] = useState('');
   const [showMismatch, setShowMismatch] = useState(false);
 
-  const countedMinor = useMemo(() => computeDenominationTotal(denomValues, otherCoins), [denomValues, otherCoins]);
-  const closingCashMinor = useMemo(() => Math.round(parseFloat(closingCashInput || '0') * 100), [closingCashInput]);
+  const countedMinor = useMemo(
+    () => computeDenominationTotal(denomValues, otherCoins),
+    [denomValues, otherCoins],
+  );
+  const closingCashMinor = useMemo(
+    () => Math.round(parseFloat(closingCashInput || '0') * 100),
+    [closingCashInput],
+  );
   const expectedMinor = selectedShift?.closingCashMinor ?? 0;
 
   const mutation = useMutation({
@@ -48,7 +68,7 @@ export function FinalCollectionPage() {
       queryClient.invalidateQueries({ queryKey: ['/v1/stores', storeId, 'cash-balances'] });
       navigate('/dashboard', { replace: true });
     },
-    onError: (err: any) => setError(err?.message ?? t('common.unexpectedError')),
+    onError: (err: Error) => setError(err?.message ?? t('common.unexpectedError')),
   });
 
   const handleSubmit = useCallback(
@@ -86,12 +106,18 @@ export function FinalCollectionPage() {
 
   return (
     <div className="sr-terminal-shell">
-      <TerminalHeader title={t('cash.finalCollectionTitle')} onLogout={() => navigate('/login')} />
+      <TerminalHeader
+        title={t('cash.finalCollectionTitle')}
+        onLogout={() => {
+          logout();
+          navigate('/login', { replace: true });
+        }}
+      />
 
       <main className="sr-terminal-main">
         <form onSubmit={handleSubmit} className="sr-form">
           <CashierSelectModal
-            shifts={(shiftsResp?.data as any)?.shifts ?? []}
+            shifts={shiftsData?.shifts ?? []}
             onSelect={setSelectedShift}
             triggerLabel={selectedShift ? selectedShift.cashierId : undefined}
           />
@@ -116,18 +142,28 @@ export function FinalCollectionPage() {
           </Field>
 
           <Field>
-            <Label>Safe ID</Label>
-            <Input value={safeId} onChange={(e) => setSafeId(e.target.value)} placeholder="safe-1" />
+            <Label>{t('cash.sourceSafe')}</Label>
+            <Input
+              value={safeId}
+              onChange={(e) => setSafeId(e.target.value)}
+              placeholder="safe-1"
+            />
           </Field>
+
+          <p className="muted">{t('cash.confirmTwoPerson')}</p>
 
           <Field>
             <Label>{t('cash.actorId')}</Label>
-            <Input value={actorId} onChange={(e) => setActorId(e.target.value)} />
+            <Input value={actorId} onChange={(e) => setActorId(e.target.value)} required />
           </Field>
 
           <Field>
             <Label>{t('cash.approvedById')}</Label>
-            <Input value={approvedById} onChange={(e) => setApprovedById(e.target.value)} />
+            <Input
+              value={approvedById}
+              onChange={(e) => setApprovedById(e.target.value)}
+              required
+            />
           </Field>
 
           {error && <p className="sr-field-error">{error}</p>}

@@ -1,60 +1,76 @@
 @font-face {
-  font-family: "Geist";
+  font-family: Geist;
   font-weight: 400;
   font-style: normal;
-  src: url("https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-sans/Geist-Regular.woff2") format("woff2");
+  src: url('https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-sans/Geist-Regular.woff2')
+    format('woff2');
   font-display: swap;
 }
 @font-face {
-  font-family: "Geist";
+  font-family: Geist;
   font-weight: 500;
-  src: url("https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-sans/Geist-Medium.woff2") format("woff2");
+  src: url('https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-sans/Geist-Medium.woff2')
+    format('woff2');
   font-display: swap;
 }
 @font-face {
-  font-family: "Geist";
+  font-family: Geist;
   font-weight: 600;
-  src: url("https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-sans/Geist-SemiBold.woff2") format("woff2");
+  src: url('https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-sans/Geist-SemiBold.woff2')
+    format('woff2');
   font-display: swap;
 }
 @font-face {
-  font-family: "Geist";
+  font-family: Geist;
   font-weight: 700;
-  src: url("https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-sans/Geist-Bold.woff2") format("woff2");
+  src: url('https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-sans/Geist-Bold.woff2')
+    format('woff2');
   font-display: swap;
 }
 @font-face {
-  font-family: "Geist";
+  font-family: Geist;
   font-weight: 800;
-  src: url("https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-sans/Geist-Black.woff2") format("woff2");
+  src: url('https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-sans/Geist-Black.woff2')
+    format('woff2');
   font-display: swap;
 }
 @font-face {
-  font-family: "Geist Mono";
+  font-family: 'Geist Mono';
   font-weight: 400;
-  src: url("https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-mono/GeistMono-Regular.woff2") format("woff2");
+  src: url('https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-mono/GeistMono-Regular.woff2')
+    format('woff2');
   font-display: swap;
 }
 @font-face {
-  font-family: "Geist Mono";
+  font-family: 'Geist Mono';
   font-weight: 700;
-  src: url("https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-mono/GeistMono-Bold.woff2") format("woff2");
+  src: url('https://cdn.jsdelivr.net/gh/vercel/geist-font@1.3.0/fonts/geist-mono/GeistMono-Bold.woff2')
+    format('woff2');
   font-display: swap;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-family:
+    Geist,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    system-ui,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: "ss01", "cv11";
+  font-feature-settings: 'ss01', 'cv11';
   line-height: 1.4;
 }
 
-body, #root {
+body,
+#root {
   min-height: 100vh;
 }
 

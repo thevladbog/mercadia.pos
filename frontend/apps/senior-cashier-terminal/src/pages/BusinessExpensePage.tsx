@@ -5,6 +5,7 @@ import { Button, Input, Field, Label } from '@mercadia/ui';
 import { createBusinessExpense } from '@mercadia/api-clients-store-edge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
 import { actorsMustDiffer, computeDenominationTotal } from '@/lib/cash-utils.js';
 import { DenominationInput } from '@/components/DenominationInput.js';
@@ -14,6 +15,7 @@ export function BusinessExpensePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { logout } = useAuth();
   const storeId = useMemo(() => getStoreId(), []);
 
   const [recipient, setRecipient] = useState('');
@@ -24,15 +26,18 @@ export function BusinessExpensePage() {
   const [approvedById, setApprovedById] = useState('');
   const [error, setError] = useState('');
 
-  const countedMinor = useMemo(() => computeDenominationTotal(denomValues, otherCoins), [denomValues, otherCoins]);
+  const countedMinor = useMemo(
+    () => computeDenominationTotal(denomValues, otherCoins),
+    [denomValues, otherCoins],
+  );
 
   const mutation = useMutation({
     mutationFn: async () => {
       return createBusinessExpense(storeId, {
         safeId: 'safe-1',
-        payeeId: recipient || 'unknown',
-        amountMinor: countedMinor || 1,
-        reason: reason || 'business_expense',
+        payeeId: recipient,
+        amountMinor: countedMinor,
+        reason,
         actorId,
         approvedById,
       });
@@ -41,7 +46,7 @@ export function BusinessExpensePage() {
       queryClient.invalidateQueries({ queryKey: ['/v1/stores', storeId, 'cash-balances'] });
       navigate('/dashboard', { replace: true });
     },
-    onError: (err: any) => setError(err?.message ?? t('common.unexpectedError')),
+    onError: (err: Error) => setError(err?.message ?? t('common.unexpectedError')),
   });
 
   const handleSubmit = useCallback(
@@ -49,6 +54,18 @@ export function BusinessExpensePage() {
       e.preventDefault();
       setError('');
 
+      if (!recipient) {
+        setError(t('cash.expenseRecipient') + ' — обязательно');
+        return;
+      }
+      if (!reason) {
+        setError(t('cash.expenseReason') + ' — обязательно');
+        return;
+      }
+      if (!countedMinor || countedMinor <= 0) {
+        setError(t('cash.countedAmount') + ' — должно быть больше 0');
+        return;
+      }
       if (!actorId || !approvedById) {
         setError(t('cash.actorSelfApproval'));
         return;
@@ -60,18 +77,24 @@ export function BusinessExpensePage() {
 
       mutation.mutate();
     },
-    [actorId, approvedById, mutation, t],
+    [recipient, reason, countedMinor, actorId, approvedById, mutation, t],
   );
 
   return (
     <div className="sr-terminal-shell">
-      <TerminalHeader title={t('cash.expenseTitle')} onLogout={() => navigate('/login')} />
+      <TerminalHeader
+        title={t('cash.expenseTitle')}
+        onLogout={() => {
+          logout();
+          navigate('/login', { replace: true });
+        }}
+      />
 
       <main className="sr-terminal-main">
         <form onSubmit={handleSubmit} className="sr-form">
           <Field>
             <Label>{t('cash.expenseRecipient')}</Label>
-            <Input value={recipient} onChange={(e) => setRecipient(e.target.value)} />
+            <Input value={recipient} onChange={(e) => setRecipient(e.target.value)} required />
           </Field>
 
           <Field>
@@ -80,6 +103,7 @@ export function BusinessExpensePage() {
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder={t('cash.expenseReasonPlaceholder')}
+              required
             />
           </Field>
 
@@ -90,14 +114,20 @@ export function BusinessExpensePage() {
             onOtherAmountChange={setOtherCoins}
           />
 
+          <p className="muted">{t('cash.confirmTwoPerson')}</p>
+
           <Field>
             <Label>{t('cash.actorId')}</Label>
-            <Input value={actorId} onChange={(e) => setActorId(e.target.value)} />
+            <Input value={actorId} onChange={(e) => setActorId(e.target.value)} required />
           </Field>
 
           <Field>
             <Label>{t('cash.approvedById')}</Label>
-            <Input value={approvedById} onChange={(e) => setApprovedById(e.target.value)} />
+            <Input
+              value={approvedById}
+              onChange={(e) => setApprovedById(e.target.value)}
+              required
+            />
           </Field>
 
           {error && <p className="sr-field-error">{error}</p>}

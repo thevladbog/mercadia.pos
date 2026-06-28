@@ -11,7 +11,12 @@ interface DenominationInputProps {
   onOtherAmountChange?: (value: number) => void;
 }
 
-export function DenominationInput({ values, onChange, otherAmountMinor = 0, onOtherAmountChange }: DenominationInputProps) {
+export function DenominationInput({
+  values,
+  onChange,
+  otherAmountMinor = 0,
+  onOtherAmountChange,
+}: DenominationInputProps) {
   const { t } = useTranslation();
   const denominations = useMemo(() => getDenominations(), []);
 
@@ -37,6 +42,7 @@ export function DenominationInput({ values, onChange, otherAmountMinor = 0, onOt
             <Input
               type="number"
               min={0}
+              step={1}
               value={values[denom.value] ?? ''}
               onChange={(e) => handleChange(denom.value, e.target.value)}
               placeholder="0"
@@ -52,8 +58,11 @@ export function DenominationInput({ values, onChange, otherAmountMinor = 0, onOt
           <Input
             type="number"
             min={0}
+            step={1}
             value={otherAmountMinor > 0 ? (otherAmountMinor / 100).toString() : ''}
-            onChange={(e) => onOtherAmountChange(Math.round(parseFloat(e.target.value || '0') * 100))}
+            onChange={(e) =>
+              onOtherAmountChange(Math.round(parseFloat(e.target.value || '0') * 100))
+            }
             placeholder="0"
             style={{ width: 100 }}
           />

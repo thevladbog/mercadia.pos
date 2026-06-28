@@ -14,6 +14,7 @@ export function ThemeToggle() {
       size="sm"
       onClick={() => setTheme({ ...theme, colorMode: isDark ? 'light' : 'dark' })}
       title={t('theme.toggle')}
+      aria-label={t('theme.toggle')}
     >
       {isDark ? '☀️' : '🌙'}
     </Button>

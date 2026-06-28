@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Button } from '@mercadia/ui';
 import { changeAppLocale } from '@/i18n/config.js';
 

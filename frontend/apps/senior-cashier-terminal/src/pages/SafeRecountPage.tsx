@@ -2,11 +2,21 @@ import { useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, Field, Label } from '@mercadia/ui';
-import { useListCashBalances, createCashRecount, resolveCashRecount } from '@mercadia/api-clients-store-edge';
+import {
+  useListCashBalances,
+  createCashRecount,
+  resolveCashRecount,
+} from '@mercadia/api-clients-store-edge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
-import { actorsMustDiffer, computeDenominationTotal, formatMinor } from '@/lib/cash-utils.js';
+import {
+  actorsMustDiffer,
+  computeDenominationTotal,
+  formatMinor,
+  selectSuccessData,
+} from '@/lib/cash-utils.js';
 import { DenominationInput } from '@/components/DenominationInput.js';
 import { MismatchDialog } from '@/components/MismatchDialog.js';
 import { TerminalHeader } from '@/components/TerminalHeader.js';
@@ -15,15 +25,22 @@ export function SafeRecountPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { logout } = useAuth();
   const storeId = useMemo(() => getStoreId(), []);
 
   const { data: balancesResp } = useListCashBalances(storeId);
+  const balancesData = useMemo(
+    () =>
+      selectSuccessData<{
+        balances: { containerType: string; balanceMinor: number; containerId: string }[];
+      }>(balancesResp),
+    [balancesResp],
+  );
 
   const safeBalance = useMemo(() => {
-    const balances = (balancesResp?.data as any)?.balances ?? [];
-    const safe = balances.find((b: any) => b.containerType === 'safe');
+    const safe = balancesData?.balances.find((b) => b.containerType === 'safe');
     return safe?.balanceMinor ?? 0;
-  }, [balancesResp]);
+  }, [balancesData]);
 
   const [denomValues, setDenomValues] = useState<Record<number, string>>({});
   const [otherCoins, setOtherCoins] = useState(0);
@@ -34,7 +51,10 @@ export function SafeRecountPage() {
   const [error, setError] = useState('');
   const [showMismatch, setShowMismatch] = useState(false);
 
-  const countedMinor = useMemo(() => computeDenominationTotal(denomValues, otherCoins), [denomValues, otherCoins]);
+  const countedMinor = useMemo(
+    () => computeDenominationTotal(denomValues, otherCoins),
+    [denomValues, otherCoins],
+  );
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -47,9 +67,8 @@ export function SafeRecountPage() {
       });
       return res;
     },
-    onSuccess: (res: any) => {
-      const id = res?.data?.recount?.id ?? res?.data?.id;
-      setRecountId(id);
+    onSuccess: () => {
+      setRecountId('pending');
 
       queryClient.invalidateQueries({ queryKey: ['/v1/stores', storeId, 'cash-recounts'] });
       queryClient.invalidateQueries({ queryKey: ['/v1/stores', storeId, 'cash-balances'] });
@@ -60,7 +79,7 @@ export function SafeRecountPage() {
         navigate('/dashboard', { replace: true });
       }
     },
-    onError: (err: any) => setError(err?.message ?? t('common.unexpectedError')),
+    onError: (err: Error) => setError(err?.message ?? t('common.unexpectedError')),
   });
 
   const resolveMutation = useMutation({
@@ -75,7 +94,7 @@ export function SafeRecountPage() {
     onSuccess: () => {
       navigate('/dashboard', { replace: true });
     },
-    onError: (err: any) => setError(err?.message ?? t('common.unexpectedError')),
+    onError: (err: Error) => setError(err?.message ?? t('common.unexpectedError')),
   });
 
   const handleSubmit = useCallback(
@@ -104,7 +123,13 @@ export function SafeRecountPage() {
 
   return (
     <div className="sr-terminal-shell">
-      <TerminalHeader title={t('cash.safeRecountTitle')} onLogout={() => navigate('/login')} />
+      <TerminalHeader
+        title={t('cash.safeRecountTitle')}
+        onLogout={() => {
+          logout();
+          navigate('/login', { replace: true });
+        }}
+      />
 
       <main className="sr-terminal-main">
         <form onSubmit={handleSubmit} className="sr-form">
@@ -113,7 +138,7 @@ export function SafeRecountPage() {
           </p>
 
           <Field>
-            <Label>Safe ID</Label>
+            <Label>{t('cash.sourceSafe')}</Label>
             <Input value={safeId} onChange={(e) => setSafeId(e.target.value)} />
           </Field>
 
@@ -126,12 +151,16 @@ export function SafeRecountPage() {
 
           <Field>
             <Label>{t('cash.actorId')}</Label>
-            <Input value={actorId} onChange={(e) => setActorId(e.target.value)} />
+            <Input value={actorId} onChange={(e) => setActorId(e.target.value)} required />
           </Field>
 
           <Field>
             <Label>{t('cash.approvedById')}</Label>
-            <Input value={approvedById} onChange={(e) => setApprovedById(e.target.value)} />
+            <Input
+              value={approvedById}
+              onChange={(e) => setApprovedById(e.target.value)}
+              required
+            />
           </Field>
 
           {error && <p className="sr-field-error">{error}</p>}

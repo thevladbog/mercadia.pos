@@ -26,7 +26,7 @@
     "ru": "Русский",
     "en": "English"
   },
-    "common": {
+  "common": {
     "loading": "Загрузка…",
     "submitting": "Отправка…",
     "cancel": "Отмена",
@@ -76,6 +76,8 @@
     "drawer": "Касса",
     "revenue": "Выручка",
     "autoLockIn": "Автоблокировка через",
+    "hours": "ч",
+    "minutes": "м",
     "actions": "Операции",
     "changeFund": "Выдать размен",
     "receiveCash": "Принять деньги",
@@ -132,9 +134,9 @@
   "monitoring": {
     "title": "Мониторинг терминалов",
     "filterAll": "Все",
-    "filterActive": "Активные",
-    "filterAttention": "Требуют внимания",
-    "filterBlocked": "Заблокированы",
+    "filterActive": "Готовы",
+    "filterAttention": "Заняты",
+    "filterBlocked": "Ошибка",
     "filterOffline": "Офлайн",
     "terminal": "Терминал",
     "kind": "Тип",
@@ -153,7 +155,7 @@
     "operation": "Операция",
     "actor": "Сотрудник",
     "amount": "Сумма",
-    "status": "Статус"
+    "summary": "Описание"
   },
   "handover": {
     "title": "Передача смены",

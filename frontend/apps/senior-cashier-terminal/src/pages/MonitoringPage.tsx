@@ -6,17 +6,25 @@ import { useListStoreTerminals } from '@mercadia/api-clients-store-edge';
 
 import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
+import { selectSuccessData } from '@/lib/cash-utils.js';
 import { TerminalHeader } from '@/components/TerminalHeader.js';
 
-const FILTERS = ['all', 'active', 'attention', 'blocked', 'offline'] as const;
+const FILTERS = ['all', 'ready', 'busy', 'error', 'offline'] as const;
 type Filter = (typeof FILTERS)[number];
 
 const FILTER_I18N_KEYS: Record<Filter, string> = {
   all: 'monitoring.filterAll',
-  active: 'monitoring.filterActive',
-  attention: 'monitoring.filterAttention',
-  blocked: 'monitoring.filterBlocked',
+  ready: 'monitoring.filterActive',
+  busy: 'monitoring.filterAttention',
+  error: 'monitoring.filterBlocked',
   offline: 'monitoring.filterOffline',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  ready: 'var(--ui-success)',
+  busy: 'var(--ui-warning)',
+  error: 'var(--ui-danger)',
+  offline: 'var(--ui-text-muted)',
 };
 
 export function MonitoringPage() {
@@ -26,23 +34,19 @@ export function MonitoringPage() {
   const storeId = useMemo(() => getStoreId(), []);
   const [filter, setFilter] = useState<Filter>('all');
 
-  const { data: terminalsResp } = useListStoreTerminals(storeId);
+  const { data: terminalsResp, isFetching } = useListStoreTerminals(storeId);
+
+  const terminalsData = selectSuccessData<{
+    items: { id: string; kind: string; status: string; lastSeenAt: string }[];
+  }>(terminalsResp);
 
   const filtered = useMemo(() => {
-    const items = (terminalsResp?.data as any)?.items ?? [];
+    const items = terminalsData?.items ?? [];
     if (filter === 'all') return items;
-    return items.filter((item: any) => item.status === filter);
-  }, [terminalsResp, filter]);
+    return items.filter((item) => item.status === filter);
+  }, [terminalsData, filter]);
 
-  const statusColor = (status: string) => {
-    switch (status) {
-      case 'ready': return 'var(--ui-success)';
-      case 'busy': return 'var(--ui-warning)';
-      case 'error': return 'var(--ui-danger)';
-      case 'offline': return 'var(--ui-text-muted)';
-      default: return 'var(--ui-text)';
-    }
-  };
+  const statusColor = (status: string) => STATUS_COLORS[status] ?? 'var(--ui-text)';
 
   return (
     <div className="sr-terminal-shell">
@@ -63,11 +67,15 @@ export function MonitoringPage() {
         </div>
 
         <div className="sr-panel">
-          {filtered.length === 0 ? (
+          {isFetching ? (
+            <p className="muted">{t('common.loading')}</p>
+          ) : !terminalsResp ? (
+            <p className="muted">{t('common.loading')}</p>
+          ) : filtered.length === 0 ? (
             <p className="muted">{t('monitoring.noTerminals')}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {filtered.map((terminal: any) => (
+              {filtered.map((terminal) => (
                 <div
                   key={terminal.id}
                   style={{
@@ -99,7 +107,9 @@ export function MonitoringPage() {
                   <div style={{ textAlign: 'right', fontSize: '0.85rem' }}>
                     <div>{terminal.status}</div>
                     {terminal.lastSeenAt && (
-                      <div className="muted">{new Date(terminal.lastSeenAt).toLocaleTimeString()}</div>
+                      <div className="muted">
+                        {new Date(terminal.lastSeenAt).toLocaleTimeString()}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -108,7 +118,11 @@ export function MonitoringPage() {
           )}
         </div>
 
-        <Button variant="ghost" onClick={() => navigate('/dashboard')} style={{ marginTop: '1rem' }}>
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/dashboard')}
+          style={{ marginTop: '1rem' }}
+        >
           {t('common.back')}
         </Button>
       </main>

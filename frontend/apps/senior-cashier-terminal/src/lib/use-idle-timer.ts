@@ -4,14 +4,17 @@ const DEFAULT_IDLE_TIMEOUT_MS = 12 * 60 * 60 * 1000;
 
 export function useIdleTimer(timeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS) {
   const [remaining, setRemaining] = useState(timeoutMs);
-  const lastActivity = useRef(Date.now());
+  const lastActivity = useRef<number>(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const reset = useCallback(() => {
     lastActivity.current = Date.now();
-  }, []);
+    setRemaining(timeoutMs);
+  }, [timeoutMs]);
 
   useEffect(() => {
+    lastActivity.current = Date.now();
+
     const events = ['mousedown', 'keydown', 'touchstart', 'mousemove', 'scroll'] as const;
     for (const event of events) {
       window.addEventListener(event, reset, { passive: true });

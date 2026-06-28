@@ -1,13 +1,10 @@
 import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 
 import type { SessionResult } from './types.js';
-import { readIButton } from './ibutton.js';
-
-export { readIButton };
 
 interface AuthContextValue {
   session: SessionResult | null;
-  login: (actorId: string, pin: string, ibuttonRomId: string) => Promise<SessionResult>;
+  login: (actorId: string, pin: string) => Promise<SessionResult>;
   logout: () => void;
 }
 
@@ -41,7 +38,7 @@ function clearSession(): void {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionResult | null>(loadSession);
 
-  const login = useCallback(async (actorId: string, pin: string, _ibuttonRomId: string): Promise<SessionResult> => {
+  const login = useCallback(async (actorId: string, pin: string): Promise<SessionResult> => {
     const url = import.meta.env.VITE_STORE_EDGE_URL
       ? `${import.meta.env.VITE_STORE_EDGE_URL}/v1/auth/sessions`
       : '/v1/auth/sessions';
@@ -59,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Authentication failed');
     }
 
-    const data = await res.json() as { session: SessionResult };
+    const data = (await res.json()) as { session: SessionResult };
     saveSession(data.session);
     setSession(data.session);
     return data.session;
@@ -72,11 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({ session, login, logout }), [session, login, logout]);
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

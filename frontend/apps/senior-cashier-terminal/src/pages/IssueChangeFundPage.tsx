@@ -2,11 +2,21 @@ import { useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, Field, Label } from '@mercadia/ui';
-import { useListCashBalances, useListOpenStoreShifts, createCashMovement } from '@mercadia/api-clients-store-edge';
+import {
+  useListCashBalances,
+  useListOpenStoreShifts,
+  createCashMovement,
+} from '@mercadia/api-clients-store-edge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
-import { actorsMustDiffer, formatMinor } from '@/lib/cash-utils.js';
+import {
+  actorsMustDiffer,
+  computeDenominationTotal,
+  formatMinor,
+  selectSuccessData,
+} from '@/lib/cash-utils.js';
 import { DenominationInput } from '@/components/DenominationInput.js';
 import { CashierSelectModal } from '@/components/CashierSelectModal.js';
 import { TerminalHeader } from '@/components/TerminalHeader.js';
@@ -15,35 +25,53 @@ export function IssueChangeFundPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { logout } = useAuth();
   const storeId = useMemo(() => getStoreId(), []);
 
   const { data: balancesResp } = useListCashBalances(storeId);
   const { data: shiftsResp } = useListOpenStoreShifts(storeId);
 
-  const [selectedShift, setSelectedShift] = useState<any | null>(null);
+  const balancesData = selectSuccessData<{
+    balances: { containerType: string; balanceMinor: number; containerId: string }[];
+  }>(balancesResp);
+  const shiftsData = selectSuccessData<{
+    shifts: { id: string; cashierId: string; drawerId: string; currentBalanceMinor?: number }[];
+  }>(shiftsResp);
+
+  const [selectedShift, setSelectedShift] = useState<{
+    id: string;
+    cashierId?: string;
+    drawerId?: string;
+    currentBalanceMinor?: number;
+  } | null>(null);
   const [denomValues, setDenomValues] = useState<Record<number, string>>({});
+  const [otherCoins, setOtherCoins] = useState(0);
   const [actorId, setActorId] = useState('');
   const [approvedById, setApprovedById] = useState('');
   const [error, setError] = useState('');
 
+  const countedMinor = useMemo(
+    () => computeDenominationTotal(denomValues, otherCoins),
+    [denomValues, otherCoins],
+  );
+
   const safeBalance = useMemo(() => {
-    const balances = (balancesResp?.data as any)?.balances ?? [];
-    const safe = balances.find((b: any) => b.containerType === 'safe');
+    const safe = balancesData?.balances.find((b) => b.containerType === 'safe');
     return safe?.balanceMinor ?? 0;
-  }, [balancesResp]);
+  }, [balancesData]);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const fromContainers = (balancesResp?.data as any)?.balances?.filter((b: any) => b.containerType === 'safe') ?? [];
-      const toContainers = (balancesResp?.data as any)?.balances?.filter((b: any) => b.containerType === 'drawer') ?? [];
+      const safeContainer = balancesData?.balances.find((b) => b.containerType === 'safe');
+      const drawerContainer = balancesData?.balances.find((b) => b.containerType === 'drawer');
 
       return createCashMovement(storeId, {
         type: 'change_fund',
         fromContainerType: 'safe',
-        fromContainerId: fromContainers[0]?.containerId ?? 'safe-1',
+        fromContainerId: safeContainer?.containerId ?? 'safe-1',
         toContainerType: 'drawer',
-        toContainerId: selectedShift?.drawerId ?? toContainers[0]?.containerId ?? 'drawer-1',
-        amountMinor: 1,
+        toContainerId: selectedShift?.drawerId ?? drawerContainer?.containerId ?? 'drawer-1',
+        amountMinor: countedMinor || 1,
         actorId,
         approvedById,
         reason: 'change_fund',
@@ -53,7 +81,7 @@ export function IssueChangeFundPage() {
       queryClient.invalidateQueries({ queryKey: ['/v1/stores', storeId, 'cash-balances'] });
       navigate('/dashboard', { replace: true });
     },
-    onError: (err: any) => setError(err?.message ?? t('common.unexpectedError')),
+    onError: (err: Error) => setError(err?.message ?? t('common.unexpectedError')),
   });
 
   const handleSubmit = useCallback(
@@ -63,6 +91,14 @@ export function IssueChangeFundPage() {
 
       if (!selectedShift) {
         setError(t('cash.selectCashier'));
+        return;
+      }
+      if (!selectedShift.drawerId) {
+        setError(t('cash.selectShift'));
+        return;
+      }
+      if (!countedMinor || countedMinor <= 0) {
+        setError(t('cash.countedAmount') + ' — должно быть больше 0');
         return;
       }
       if (!actorId || !approvedById) {
@@ -76,34 +112,56 @@ export function IssueChangeFundPage() {
 
       mutation.mutate();
     },
-    [selectedShift, actorId, approvedById, mutation, t],
+    [selectedShift, countedMinor, actorId, approvedById, mutation, t],
   );
 
   return (
     <div className="sr-terminal-shell">
-      <TerminalHeader title={t('cash.changeFundTitle')} onLogout={() => navigate('/login')} />
+      <TerminalHeader
+        title={t('cash.changeFundTitle')}
+        onLogout={() => {
+          logout();
+          navigate('/login', { replace: true });
+        }}
+      />
 
       <main className="sr-terminal-main">
         <form onSubmit={handleSubmit} className="sr-form">
-          <p className="muted">{t('cash.sourceSafe')} → {t('cash.destinationDrawer')}</p>
-          <p className="muted">{t('dashboard.safeBalance')}: {formatMinor(safeBalance)} ₽</p>
+          <p className="muted">
+            {t('cash.sourceSafe')} → {t('cash.destinationDrawer')}
+          </p>
+          <p className="muted">
+            {t('dashboard.safeBalance')}:{' '}
+            {balancesData ? formatMinor(safeBalance) : t('common.loading')} ₽
+          </p>
 
           <CashierSelectModal
-            shifts={(shiftsResp?.data as any)?.shifts ?? []}
+            shifts={shiftsData?.shifts ?? []}
             onSelect={setSelectedShift}
             triggerLabel={selectedShift ? selectedShift.cashierId : undefined}
           />
 
-          <DenominationInput values={denomValues} onChange={setDenomValues} />
+          <DenominationInput
+            values={denomValues}
+            onChange={setDenomValues}
+            otherAmountMinor={otherCoins}
+            onOtherAmountChange={setOtherCoins}
+          />
+
+          <p className="muted">{t('cash.confirmTwoPerson')}</p>
 
           <Field>
             <Label>{t('cash.actorId')}</Label>
-            <Input value={actorId} onChange={(e) => setActorId(e.target.value)} />
+            <Input value={actorId} onChange={(e) => setActorId(e.target.value)} required />
           </Field>
 
           <Field>
             <Label>{t('cash.approvedById')}</Label>
-            <Input value={approvedById} onChange={(e) => setApprovedById(e.target.value)} />
+            <Input
+              value={approvedById}
+              onChange={(e) => setApprovedById(e.target.value)}
+              required
+            />
           </Field>
 
           {error && <p className="sr-field-error">{error}</p>}

@@ -5,10 +5,16 @@ import en from './locales/en.json' with { type: 'json' };
 import ru from './locales/ru.json' with { type: 'json' };
 
 const LOCALE_KEY = 'mercadia.sr-terminal.locale';
+const SUPPORTED_LOCALES = ['ru', 'en'] as const;
+type AppLocale = (typeof SUPPORTED_LOCALES)[number];
 
-function getInitialLocale(): string {
+function normalizeLocale(locale: string | null): AppLocale {
+  return SUPPORTED_LOCALES.includes(locale as AppLocale) ? (locale as AppLocale) : 'ru';
+}
+
+function getInitialLocale(): AppLocale {
   try {
-    return localStorage.getItem(LOCALE_KEY) ?? 'ru';
+    return normalizeLocale(localStorage.getItem(LOCALE_KEY));
   } catch {
     return 'ru';
   }
@@ -28,7 +34,7 @@ i18n.use(initReactI18next).init({
   },
 });
 
-export function changeAppLocale(locale: string): void {
+export function changeAppLocale(locale: AppLocale): void {
   i18n.changeLanguage(locale);
   try {
     localStorage.setItem(LOCALE_KEY, locale);

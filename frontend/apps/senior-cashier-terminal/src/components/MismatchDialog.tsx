@@ -11,24 +11,39 @@ interface MismatchDialogProps {
   onResolve?: () => void;
 }
 
-export function MismatchDialog({ expectedMinor, countedMinor, open, onClose, onResolve }: MismatchDialogProps) {
+export function MismatchDialog({
+  expectedMinor,
+  countedMinor,
+  open,
+  onClose,
+  onResolve,
+}: MismatchDialogProps) {
   const { t } = useTranslation();
   const diff = countedMinor - expectedMinor;
   const isMatch = diff === 0;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
       <DialogContent>
         <DialogTitle>{isMatch ? t('cash.mismatchCorrect') : t('cash.mismatchResolve')}</DialogTitle>
         <DialogBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <div className="sr-field-row">
               <span className="sr-field-label">{t('cash.mismatchExpected')}</span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 700 }}>{formatMinor(expectedMinor)} ₽</span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+                {formatMinor(expectedMinor)} ₽
+              </span>
             </div>
             <div className="sr-field-row">
               <span className="sr-field-label">{t('cash.mismatchCounted')}</span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 700 }}>{formatMinor(countedMinor)} ₽</span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+                {formatMinor(countedMinor)} ₽
+              </span>
             </div>
             <div className="sr-field-row">
               <span className="sr-field-label">{t('cash.mismatchDiff')}</span>

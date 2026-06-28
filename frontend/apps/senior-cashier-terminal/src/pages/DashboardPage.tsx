@@ -2,12 +2,16 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@mercadia/ui';
-import { useListCashBalances, useListOpenStoreShifts, useListStoreTerminals } from '@mercadia/api-clients-store-edge';
+import {
+  useListCashBalances,
+  useListOpenStoreShifts,
+  useListStoreTerminals,
+} from '@mercadia/api-clients-store-edge';
 
 import { useAuth } from '@/auth/AuthProvider.js';
 import { useIdleTimer } from '@/lib/use-idle-timer.js';
 import { getStoreId } from '@/api-client-config.js';
-import { formatMinor } from '@/lib/cash-utils.js';
+import { formatMinor, selectSuccessData } from '@/lib/cash-utils.js';
 import { TerminalHeader } from '@/components/TerminalHeader.js';
 
 export function DashboardPage() {
@@ -23,26 +27,40 @@ export function DashboardPage() {
   const { data: terminalsResp } = useListStoreTerminals(storeId);
 
   const safeBalance = useMemo(() => {
-    const balances = (balancesResp?.data as any)?.balances ?? [];
-    const safe = balances.find((b: any) => b.containerType === 'safe');
+    const balances =
+      selectSuccessData<{ balances: { containerType: string; balanceMinor: number }[] }>(
+        balancesResp,
+      )?.balances ?? [];
+    const safe = balances.find((b) => b.containerType === 'safe');
     return safe?.balanceMinor ?? 0;
   }, [balancesResp]);
 
   const drawerTotal = useMemo(() => {
-    const balances = (balancesResp?.data as any)?.balances ?? [];
+    const balances =
+      selectSuccessData<{ balances: { containerType: string; balanceMinor: number }[] }>(
+        balancesResp,
+      )?.balances ?? [];
     return balances
-      .filter((b: any) => b.containerType === 'drawer')
-      .reduce((sum: number, b: any) => sum + (b.balanceMinor ?? 0), 0);
+      .filter((b) => b.containerType === 'drawer')
+      .reduce((sum, b) => sum + (b.balanceMinor ?? 0), 0);
   }, [balancesResp]);
 
-  const activeShifts = (shiftsResp?.data as any)?.shifts?.length ?? 0;
-  const activeTerminals = (terminalsResp?.data as any)?.items?.length ?? 0;
+  const balancesData = selectSuccessData<{
+    balances: { containerType: string; balanceMinor: number; containerId: string }[];
+  }>(balancesResp);
+  const shiftsData = selectSuccessData<{
+    shifts: { id: string; cashierId: string; drawerId: string; closingCashMinor: number }[];
+  }>(shiftsResp);
+  const terminalsData = selectSuccessData<{ items: { id: string }[] }>(terminalsResp);
+
+  const activeShifts = shiftsData?.shifts?.length ?? 0;
+  const activeTerminals = terminalsData?.items?.length ?? 0;
 
   const formatRemaining = (ms: number) => {
     const totalSec = Math.floor(ms / 1000);
     const h = Math.floor(totalSec / 3600);
     const m = Math.floor((totalSec % 3600) / 60);
-    return `${h}ч ${m}м`;
+    return `${h}${t('dashboard.hours')} ${m}${t('dashboard.minutes')}`;
   };
 
   const actions = [
@@ -64,11 +82,11 @@ export function DashboardPage() {
         <div className="sr-kpi-grid">
           <div className="sr-kpi-card">
             <span className="sr-kpi-label">{t('dashboard.safeBalance')}</span>
-            <span className="sr-kpi-value">{formatMinor(safeBalance)} ₽</span>
+            {balancesData && <span className="sr-kpi-value">{formatMinor(safeBalance)} ₽</span>}
           </div>
           <div className="sr-kpi-card">
             <span className="sr-kpi-label">{t('dashboard.drawerTotal')}</span>
-            <span className="sr-kpi-value">{formatMinor(drawerTotal)} ₽</span>
+            {balancesData && <span className="sr-kpi-value">{formatMinor(drawerTotal)} ₽</span>}
           </div>
           <div className="sr-kpi-card">
             <span className="sr-kpi-label">{t('dashboard.activeShifts')}</span>
@@ -100,38 +118,32 @@ export function DashboardPage() {
               {t('dashboard.autoLockIn')}: {formatRemaining(remaining)}
             </span>
           </div>
-          {activeShifts === 0 ? (
-            <p className="muted">{t('dashboard.noShifts')}</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {((shiftsResp?.data as any)?.shifts ?? []).map((shift: any) => (
-                <div
-                  key={shift.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    padding: '0.5rem 0',
-                    borderBottom: '1px solid var(--ui-border)',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 500 }}>{shift.cashierId}</div>
-                    <div className="muted" style={{ fontSize: '0.85rem' }}>
-                      {t('dashboard.drawer')}: {shift.drawerId}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 600 }}>
-                      {formatMinor(shift.closingCashMinor)} ₽
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--ui-text-muted)' }}>
-                      {t('dashboard.revenue')}
-                    </div>
-                  </div>
+          {!shiftsResp && <p className="muted">{t('common.loading')}</p>}
+          {shiftsResp && activeShifts === 0 && <p className="muted">{t('dashboard.noShifts')}</p>}
+          {shiftsData?.shifts?.map((shift) => (
+            <div
+              key={shift.id}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '0.5rem 0',
+                borderBottom: '1px solid var(--ui-border)',
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 500 }}>{shift.cashierId}</div>
+                <div className="muted" style={{ fontSize: '0.85rem' }}>
+                  {t('dashboard.drawer')}: {shift.drawerId}
                 </div>
-              ))}
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontWeight: 600 }}>{formatMinor(shift.closingCashMinor)} ₽</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--ui-text-muted)' }}>
+                  {t('dashboard.revenue')}
+                </div>
+              </div>
             </div>
-          )}
+          ))}
         </div>
       </main>
     </div>

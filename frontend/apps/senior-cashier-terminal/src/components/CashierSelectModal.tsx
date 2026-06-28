@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Dialog, DialogBody, DialogClose, DialogContent, DialogTitle, DialogTrigger } from '@mercadia/ui';
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from '@mercadia/ui';
 
 import { formatMinor } from '@/lib/cash-utils.js';
 
@@ -40,21 +48,18 @@ export function CashierSelectModal({ shifts, onSelect, triggerLabel }: CashierSe
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {shifts.map((shift) => (
-                <div
+                <Button
                   key={shift.id}
+                  variant="secondary"
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '0.75rem',
-                    border: '1px solid var(--ui-border)',
-                    borderRadius: 'var(--ui-radius-md)',
-                    cursor: 'pointer',
+                    height: 'auto',
+                    textAlign: 'left',
                   }}
                   onClick={() => handleSelect(shift)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSelect(shift); }}
-                  tabIndex={0}
-                  role="button"
                 >
                   <div>
                     <div style={{ fontWeight: 500 }}>{shift.cashierId ?? shift.actorId}</div>
@@ -63,14 +68,18 @@ export function CashierSelectModal({ shifts, onSelect, triggerLabel }: CashierSe
                     </div>
                   </div>
                   <div style={{ fontWeight: 600 }}>
-                    {shift.currentBalanceMinor != null ? `${formatMinor(shift.currentBalanceMinor)} ₽` : '—'}
+                    {shift.currentBalanceMinor != null
+                      ? `${formatMinor(shift.currentBalanceMinor)} ₽`
+                      : '—'}
                   </div>
-                </div>
+                </Button>
               ))}
             </div>
           )}
           <DialogClose asChild>
-            <Button variant="ghost" style={{ marginTop: '0.75rem' }}>{t('common.cancel')}</Button>
+            <Button variant="ghost" style={{ marginTop: '0.75rem' }}>
+              {t('common.cancel')}
+            </Button>
           </DialogClose>
         </DialogBody>
       </DialogContent>

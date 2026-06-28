@@ -7,7 +7,7 @@ async function findIButtonDevice(): Promise<HardwareAgentDevice | null> {
   if (!res.ok) {
     return null;
   }
-  const data = await res.json() as { devices: HardwareAgentDevice[] };
+  const data = (await res.json()) as { devices: HardwareAgentDevice[] };
   return data.devices.find((d) => d.kind === 'ibutton' && d.status === 'ready') ?? null;
 }
 
@@ -28,7 +28,7 @@ export async function readIButton(signal?: AbortSignal): Promise<string> {
     throw new Error('Failed to send iButton command');
   }
 
-  const commandData = await commandRes.json() as HardwareAgentCommandResponse;
+  const commandData = (await commandRes.json()) as HardwareAgentCommandResponse;
 
   if (commandData.status === 'failed') {
     throw new Error(commandData.error ?? 'iButton read failed');
