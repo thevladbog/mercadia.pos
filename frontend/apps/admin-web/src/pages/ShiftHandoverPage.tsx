@@ -4,7 +4,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { Button, Input } from '@mercadia/ui';
-import { closeShift, useListOpenStoreShifts, useListCashBalances } from '@mercadia/api-clients-store-edge';
+import {
+  closeShift,
+  useListOpenStoreShifts,
+  useListCashBalances,
+} from '@mercadia/api-clients-store-edge';
 import type { ListOpenStoreShifts200ShiftsItem } from '@mercadia/api-clients-store-edge';
 import { useListStores } from '@mercadia/api-clients-central';
 

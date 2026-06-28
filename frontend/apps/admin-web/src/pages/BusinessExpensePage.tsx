@@ -136,11 +136,7 @@ export function BusinessExpensePage() {
           </label>
           <label>
             {t('seniorCashier.payee')}
-            <Input
-              type="text"
-              value={payeeId}
-              onChange={(e) => setPayeeId(e.target.value)}
-            />
+            <Input type="text" value={payeeId} onChange={(e) => setPayeeId(e.target.value)} />
           </label>
           <fieldset>
             <legend>{t('seniorCashier.enterDenominations')}</legend>
