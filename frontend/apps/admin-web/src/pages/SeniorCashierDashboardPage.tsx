@@ -20,6 +20,7 @@ export function SeniorCashierDashboardPage() {
 
   const storesQuery = useListStores();
   const stores = storesQuery.data?.status === 200 ? storesQuery.data.data.stores : [];
+  const storeLoadFailed = storesQuery.isError;
   const activeStoreId = selectedStoreId ?? stores[0]?.id ?? '';
 
   const balancesQuery = useListCashBalances(activeStoreId, {
@@ -40,7 +41,11 @@ export function SeniorCashierDashboardPage() {
     return (
       <div className="panel">
         <h1>{t('seniorCashier.dashboard')}</h1>
-        <p className="muted">{t('common.noStores')}</p>
+        {storeLoadFailed ? (
+          <p className="muted">{t('common.unexpectedError')}</p>
+        ) : (
+          <p className="muted">{t('common.noStores')}</p>
+        )}
       </div>
     );
   }

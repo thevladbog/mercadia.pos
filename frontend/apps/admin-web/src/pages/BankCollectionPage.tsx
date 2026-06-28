@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { useMemo } from 'react';
 import { Button, Input } from '@mercadia/ui';
-import { createBankCollection } from '@mercadia/api-clients-store-edge';
+import { createBankCollection, useListCashBalances } from '@mercadia/api-clients-store-edge';
 import { useListStores } from '@mercadia/api-clients-central';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
@@ -36,6 +37,16 @@ export function BankCollectionPage() {
   const storesQuery = useListStores();
   const stores = storesQuery.data?.status === 200 ? storesQuery.data.data.stores : [];
   const activeStoreId = selectedStoreId ?? stores[0]?.id ?? '';
+
+  const balancesQuery = useListCashBalances(activeStoreId, {
+    query: { enabled: activeStoreId.length > 0 },
+  });
+  const balances = balancesQuery.data?.status === 200 ? balancesQuery.data.data.balances : null;
+
+  const safeContainers = useMemo(() => {
+    if (!balances) return [];
+    return balances.filter((b) => b.containerType === 'safe');
+  }, [balances]);
 
   const [safeId, setSafeId] = useState('');
   const [bankContainerId, setBankContainerId] = useState('');
@@ -107,7 +118,14 @@ export function BankCollectionPage() {
         <form className="stack" onSubmit={handleSubmit}>
           <label>
             {t('seniorCashier.safeIdLabel')}
-            <Input type="text" value={safeId} onChange={(e) => setSafeId(e.target.value)} />
+            <select value={safeId} onChange={(e) => setSafeId(e.target.value)}>
+              <option value="">—</option>
+              {safeContainers.map((c) => (
+                <option key={c.containerId} value={c.containerId}>
+                  {c.containerId} — {(c.balanceMinor / 100).toFixed(2)} ₽
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             {t('seniorCashier.bankContainerIdLabel')}

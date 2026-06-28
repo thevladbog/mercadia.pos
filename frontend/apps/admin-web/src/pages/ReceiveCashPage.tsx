@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { Button } from '@mercadia/ui';
+import { Button, Input } from '@mercadia/ui';
 import {
   createCashMovement,
   useListCashBalances,
@@ -108,6 +108,10 @@ export function ReceiveCashPage() {
       setErrorMessage(t('seniorCashier.selectSourceDrawerDestSafe'));
       return;
     }
+    if (mismatch) {
+      setErrorMessage(t('seniorCashier.mismatchDetected'));
+      return;
+    }
     if (!actorId.trim() || !approvedById.trim()) {
       setErrorMessage(t('seniorCashier.actorAndApproverRequired'));
       return;
@@ -129,8 +133,8 @@ export function ReceiveCashPage() {
   }
 
   const countedMinor = computeDenominationTotal(denominations);
-  const expected = parseInt(expectedMinor || '0', 10);
-  const mismatch = expected > 0 && countedMinor !== expected;
+  const expectedInt = parseInt(expectedMinor || '0', 10);
+  const mismatch = expectedInt > 0 && countedMinor !== expectedInt;
 
   return (
     <div className="panel">
@@ -158,7 +162,7 @@ export function ReceiveCashPage() {
           <label>
             {t('seniorCashier.expectedAmount')}
             {t('seniorCashier.kopecksSuffix')}
-            <input
+            <Input
               type="number"
               value={expectedMinor}
               onChange={(e) => setExpectedMinor(e.target.value)}
@@ -171,9 +175,9 @@ export function ReceiveCashPage() {
           {mismatch ? (
             <div className="alert alert-warning">
               {t('seniorCashier.mismatchDetail', {
-                expected: (expected / 100).toFixed(2),
+                expected: (expectedInt / 100).toFixed(2),
                 counted: (countedMinor / 100).toFixed(2),
-                diff: ((expected - countedMinor) / 100).toFixed(2),
+                diff: ((expectedInt - countedMinor) / 100).toFixed(2),
               })}
             </div>
           ) : null}
@@ -191,12 +195,12 @@ export function ReceiveCashPage() {
           <label>
             {t('seniorCashier.confirmBySenior')}
             {t('seniorCashier.idSuffix')}
-            <input type="text" value={actorId} onChange={(e) => setActorId(e.target.value)} />
+            <Input type="text" value={actorId} onChange={(e) => setActorId(e.target.value)} />
           </label>
           <label>
             {t('seniorCashier.confirmBySecondPerson')}
             {t('seniorCashier.idSuffix')}
-            <input
+            <Input
               type="text"
               value={approvedById}
               onChange={(e) => setApprovedById(e.target.value)}

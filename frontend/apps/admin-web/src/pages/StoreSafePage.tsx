@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { useAuth } from '@/auth/useAuth.js';
-import { canWriteStoreOperations } from '@/auth/permissions.js';
+import { canWriteCashOperations } from '@/auth/permissions.js';
 import { CashActionsPanel } from '@/components/cash/CashActionsPanel.js';
 import { CashMovementDetailModal } from '@/components/cash/CashMovementDetailModal.js';
 import { CashRecountDetailModal } from '@/components/cash/CashRecountDetailModal.js';
@@ -41,7 +41,7 @@ export function StoreSafePage() {
   const initialStoreId = readStoreFromSearchParams(searchParams);
   const recountDeepLinkId = readRecountFromSearchParams(searchParams);
   const movementDeepLinkId = readMovementFromSearchParams(searchParams);
-  const canWrite = canWriteStoreOperations(roles);
+  const canWrite = canWriteCashOperations(roles);
 
   const storesQuery = useListStores();
   const stores = storesQuery.data?.status === 200 ? storesQuery.data.data.stores : [];

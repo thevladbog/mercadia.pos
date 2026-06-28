@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { Button } from '@mercadia/ui';
-import { createCashMovement, useListCashBalances } from '@mercadia/api-clients-store-edge';
+import { Button, Input } from '@mercadia/ui';
+import { createBusinessExpense, useListCashBalances } from '@mercadia/api-clients-store-edge';
 import { useListStores } from '@mercadia/api-clients-central';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
@@ -25,7 +25,8 @@ export function BusinessExpensePage() {
   const [selectedStoreId, setSelectedStoreId_raw] = useState<string | null>(initialStoreId);
   const setSelectedStoreId = (id: string | null) => {
     setSelectedStoreId_raw(id);
-    setFromContainerId('');
+    setSafeId('');
+    setPayeeId('');
     setDenominations({});
     setActorId('');
     setApprovedById('');
@@ -46,7 +47,8 @@ export function BusinessExpensePage() {
     return balances.filter((b) => b.containerType === 'safe');
   }, [balances]);
 
-  const [fromContainerId, setFromContainerId] = useState('');
+  const [safeId, setSafeId] = useState('');
+  const [payeeId, setPayeeId] = useState('');
   const [denominations, setDenominations] = useState<Record<number, string>>({});
   const [expenseReason, setExpenseReason] = useState('');
   const [actorId, setActorId] = useState('');
@@ -58,19 +60,17 @@ export function BusinessExpensePage() {
       const totalMinor = computeDenominationTotal(denominations);
       if (totalMinor <= 0) throw new Error(t('seniorCashier.amountRequired'));
       if (!expenseReason.trim()) throw new Error(t('seniorCashier.expenseReasonRequired'));
-      if (!fromContainerId) throw new Error(t('seniorCashier.selectSafe'));
-      return createCashMovement(
+      if (!safeId) throw new Error(t('seniorCashier.selectSafe'));
+      if (!payeeId.trim()) throw new Error(t('seniorCashier.incomingCashierRequired'));
+      return createBusinessExpense(
         activeStoreId,
         {
-          type: 'expense',
           amountMinor: totalMinor,
-          fromContainerId,
-          fromContainerType: 'safe',
-          toContainerId: fromContainerId,
-          toContainerType: 'safe',
+          safeId,
+          payeeId: payeeId.trim(),
+          reason: expenseReason.trim(),
           actorId: actorId.trim(),
           approvedById: approvedById.trim(),
-          reason: expenseReason.trim(),
         },
         { headers: createIdempotencyHeaders() },
       );
@@ -117,7 +117,7 @@ export function BusinessExpensePage() {
         <form className="stack" onSubmit={handleSubmit}>
           <label>
             {t('seniorCashier.sourceSafe')}
-            <select value={fromContainerId} onChange={(e) => setFromContainerId(e.target.value)}>
+            <select value={safeId} onChange={(e) => setSafeId(e.target.value)}>
               <option value="">—</option>
               {safeContainers.map((c) => (
                 <option key={c.containerId} value={c.containerId}>
@@ -128,10 +128,18 @@ export function BusinessExpensePage() {
           </label>
           <label>
             {t('seniorCashier.reason')}
-            <input
+            <Input
               type="text"
               value={expenseReason}
               onChange={(e) => setExpenseReason(e.target.value)}
+            />
+          </label>
+          <label>
+            {t('seniorCashier.payee')}
+            <Input
+              type="text"
+              value={payeeId}
+              onChange={(e) => setPayeeId(e.target.value)}
             />
           </label>
           <fieldset>
@@ -140,11 +148,13 @@ export function BusinessExpensePage() {
           </fieldset>
           <label>
             {t('seniorCashier.confirmBySenior')}
-            <input type="text" value={actorId} onChange={(e) => setActorId(e.target.value)} />
+            {t('seniorCashier.idSuffix')}
+            <Input type="text" value={actorId} onChange={(e) => setActorId(e.target.value)} />
           </label>
           <label>
             {t('seniorCashier.confirmBySecondPerson')}
-            <input
+            {t('seniorCashier.idSuffix')}
+            <Input
               type="text"
               value={approvedById}
               onChange={(e) => setApprovedById(e.target.value)}

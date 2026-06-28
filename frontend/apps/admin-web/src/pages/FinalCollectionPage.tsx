@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { Button, Input } from '@mercadia/ui';
-import { closeShift, useListOpenStoreShifts } from '@mercadia/api-clients-store-edge';
+import { closeShift, useListOpenStoreShifts, useListCashBalances } from '@mercadia/api-clients-store-edge';
 import type { ListOpenStoreShifts200ShiftsItem } from '@mercadia/api-clients-store-edge';
 import { useListStores } from '@mercadia/api-clients-central';
 
@@ -30,6 +30,7 @@ export function FinalCollectionPage() {
     setSelectedStoreId_raw(id);
     setSelectedShift(null);
     setDenominations({});
+    setSafeId('');
     setActorId('');
     setApprovedById('');
     setErrorMessage(null);
@@ -43,14 +44,24 @@ export function FinalCollectionPage() {
     query: { enabled: activeStoreId.length > 0 },
   });
   const shifts = shiftsQuery.data?.status === 200 ? shiftsQuery.data.data.shifts : null;
+  const balancesQuery = useListCashBalances(activeStoreId, {
+    query: { enabled: activeStoreId.length > 0 },
+  });
+  const balances = balancesQuery.data?.status === 200 ? balancesQuery.data.data.balances : null;
 
   const drawerShifts = useMemo(() => {
     if (!shifts) return [];
     return shifts;
   }, [shifts]);
 
+  const safeContainers = useMemo(() => {
+    if (!balances) return [];
+    return balances.filter((b) => b.containerType === 'safe');
+  }, [balances]);
+
   const [selectedShift, setSelectedShift] = useState<ListOpenStoreShifts200ShiftsItem | null>(null);
   const [denominations, setDenominations] = useState<Record<number, string>>({});
+  const [safeId, setSafeId] = useState('');
   const [actorId, setActorId] = useState('');
   const [approvedById, setApprovedById] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -69,6 +80,7 @@ export function FinalCollectionPage() {
         selectedShift.id,
         {
           closingCashMinor: countedMinor,
+          safeId: safeId || undefined,
           actorId: actorId.trim(),
           approvedById: approvedById.trim(),
         },
@@ -91,6 +103,10 @@ export function FinalCollectionPage() {
     setErrorMessage(null);
     if (!selectedShift) {
       setErrorMessage(t('seniorCashier.selectShift'));
+      return;
+    }
+    if (countedMinor > 0 && !safeId) {
+      setErrorMessage(t('seniorCashier.selectSafe'));
       return;
     }
     if (!actorId.trim() || !approvedById.trim()) {
@@ -124,6 +140,17 @@ export function FinalCollectionPage() {
       <section className="card">
         <form className="stack" onSubmit={handleSubmit}>
           <CashierSelectModal shifts={drawerShifts} onSelect={(shift) => setSelectedShift(shift)} />
+          <label>
+            {t('seniorCashier.safeIdLabel')}
+            <select value={safeId} onChange={(e) => setSafeId(e.target.value)}>
+              <option value="">—</option>
+              {safeContainers.map((c) => (
+                <option key={c.containerId} value={c.containerId}>
+                  {c.containerId}
+                </option>
+              ))}
+            </select>
+          </label>
           {selectedShift ? (
             <p>
               {t('seniorCashier.expectedAmount')}: {(expectedMinor / 100).toFixed(2)}

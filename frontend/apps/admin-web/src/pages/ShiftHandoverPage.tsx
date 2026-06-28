@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { Button, Input } from '@mercadia/ui';
-import { closeShift, useListOpenStoreShifts } from '@mercadia/api-clients-store-edge';
+import { closeShift, useListOpenStoreShifts, useListCashBalances } from '@mercadia/api-clients-store-edge';
 import type { ListOpenStoreShifts200ShiftsItem } from '@mercadia/api-clients-store-edge';
 import { useListStores } from '@mercadia/api-clients-central';
 
@@ -30,6 +30,7 @@ export function ShiftHandoverPage() {
     setSelectedStoreId_raw(id);
     setSelectedShift(null);
     setIncomingCashierId('');
+    setSafeId('');
     setActorId('');
     setApprovedById('');
     setDenominations({});
@@ -44,14 +45,24 @@ export function ShiftHandoverPage() {
     query: { enabled: activeStoreId.length > 0 },
   });
   const shifts = shiftsQuery.data?.status === 200 ? shiftsQuery.data.data.shifts : null;
+  const balancesQuery = useListCashBalances(activeStoreId, {
+    query: { enabled: activeStoreId.length > 0 },
+  });
+  const balances = balancesQuery.data?.status === 200 ? balancesQuery.data.data.balances : null;
 
   const openShifts = useMemo(() => {
     if (!shifts) return [];
     return shifts;
   }, [shifts]);
 
+  const safeContainers = useMemo(() => {
+    if (!balances) return [];
+    return balances.filter((b) => b.containerType === 'safe');
+  }, [balances]);
+
   const [selectedShift, setSelectedShift] = useState<ListOpenStoreShifts200ShiftsItem | null>(null);
   const [incomingCashierId, setIncomingCashierId] = useState('');
+  const [safeId, setSafeId] = useState('');
   const [actorId, setActorId] = useState('');
   const [approvedById, setApprovedById] = useState('');
   const [denominations, setDenominations] = useState<Record<number, string>>({});
@@ -70,6 +81,7 @@ export function ShiftHandoverPage() {
         selectedShift.id,
         {
           closingCashMinor: countedMinor,
+          safeId: safeId || undefined,
           actorId: actorId.trim(),
           approvedById: approvedById.trim(),
         },
@@ -92,6 +104,11 @@ export function ShiftHandoverPage() {
     setErrorMessage(null);
     if (!selectedShift) {
       setErrorMessage(t('seniorCashier.selectShift'));
+      return;
+    }
+    if (!incomingCashierId.trim()) throw new Error(t('seniorCashier.incomingCashierRequired'));
+    if (countedMinor > 0 && !safeId) {
+      setErrorMessage(t('seniorCashier.selectSafe'));
       return;
     }
     if (!actorId.trim() || !approvedById.trim()) {
@@ -129,6 +146,17 @@ export function ShiftHandoverPage() {
             onSelect={(shift) => setSelectedShift(shift)}
             triggerLabel={t('seniorCashier.selectOutgoingCashier')}
           />
+          <label>
+            {t('seniorCashier.safeIdLabel')}
+            <select value={safeId} onChange={(e) => setSafeId(e.target.value)}>
+              <option value="">—</option>
+              {safeContainers.map((c) => (
+                <option key={c.containerId} value={c.containerId}>
+                  {c.containerId}
+                </option>
+              ))}
+            </select>
+          </label>
           {selectedShift ? (
             <p>
               {t('seniorCashier.expectedAmount')}: {(expectedMinor / 100).toFixed(2)} ₽
