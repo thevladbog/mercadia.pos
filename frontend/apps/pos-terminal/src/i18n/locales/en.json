@@ -60,7 +60,10 @@
       "openReceiptBeforeScanning": "Open a receipt before scanning.",
       "openReceiptBeforePayment": "Open a receipt before payment.",
       "positiveReceiptTotalRequired": "Receipt total must be greater than zero.",
-      "openReceiptBeforeFiscalization": "Open a receipt before fiscalization."
+      "openReceiptBeforeFiscalization": "Open a receipt before fiscalization.",
+      "paidReceiptRequired": "Capture payment before fiscalization.",
+      "paymentAlreadySubmitted": "Payment was already submitted for this receipt.",
+      "fiscalAlreadySubmitted": "Fiscalization was already submitted for this receipt."
     }
   }
 }

@@ -60,7 +60,10 @@
       "openReceiptBeforeScanning": "Откройте чек перед сканированием.",
       "openReceiptBeforePayment": "Откройте чек перед оплатой.",
       "positiveReceiptTotalRequired": "Сумма чека должна быть больше нуля.",
-      "openReceiptBeforeFiscalization": "Откройте чек перед фискализацией."
+      "openReceiptBeforeFiscalization": "Откройте чек перед фискализацией.",
+      "paidReceiptRequired": "Примите оплату перед фискализацией.",
+      "paymentAlreadySubmitted": "Оплата по этому чеку уже отправлена.",
+      "fiscalAlreadySubmitted": "Фискализация по этому чеку уже отправлена."
     }
   }
 }

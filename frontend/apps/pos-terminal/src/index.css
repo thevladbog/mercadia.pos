@@ -23,22 +23,7 @@ body {
 }
 
 .language-select {
-  display: grid;
-  gap: 0.35rem;
   min-width: 10rem;
-  color: var(--ui-text-muted);
-  font-size: 0.875rem;
-  font-weight: 700;
-}
-
-.language-select select {
-  min-height: 2.5rem;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-surface);
-  color: var(--ui-text);
-  padding: 0 0.75rem;
-  font: inherit;
 }
 
 .terminal-meta {
@@ -85,24 +70,8 @@ body {
   align-items: end;
 }
 
-.checkout-form-row label {
-  display: grid;
-  gap: 0.35rem;
+.checkout-field {
   min-width: 14rem;
-  color: var(--ui-text-muted);
-  font-size: 0.875rem;
-  font-weight: 700;
-}
-
-.checkout-form-row input,
-.checkout-form-row select {
-  min-height: 2.5rem;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-bg);
-  color: var(--ui-text);
-  padding: 0 0.75rem;
-  font: inherit;
 }
 
 .status-line,

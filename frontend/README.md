@@ -213,6 +213,7 @@ Default demo env vars:
 - `VITE_POS_OPENED_BY_ID=admin-1`
 - `VITE_POS_FISCAL_DEVICE_ID=fiscal-1`
 - `VITE_POS_DEMO_BARCODE=4600000000000`
+- `VITE_POS_STORE_TIME_ZONE` — optional IANA store time zone for operational day date selection
 - `VITE_STORE_EDGE_URL` — optional Store Edge base URL when bypassing the Vite proxy
 - `VITE_STORE_EDGE_SESSION_TOKEN` — optional Store Edge session token
 - `VITE_LAYOUT_TEMPLATE_ID` and `VITE_CENTRAL_SESSION_TOKEN` — optional central layout template access

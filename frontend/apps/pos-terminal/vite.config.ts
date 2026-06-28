@@ -20,7 +20,7 @@ export default defineConfig({
         target: 'http://127.0.0.1:8081',
         changeOrigin: true,
       },
-      '^/v1/stores/[^/]+/(bank-|business-|cash-|catalog|monitoring|operation-journal|operational-days|returns|shifts|terminals)':
+      '^/v1/stores/[^/]+/(bank-[^/]*|business-[^/]*|cash-[^/]*|catalog|monitoring|operation-journal|operational-days|returns|shifts|terminals)(/.*)?$':
         {
           target: 'http://127.0.0.1:8081',
           changeOrigin: true,

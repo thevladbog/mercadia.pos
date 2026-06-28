@@ -3,7 +3,12 @@ import {
   ApiError,
   createReceiptFiscalDocument,
   createReceiptPayment,
+  type CreateReceiptFiscalDocument202Document,
+  type CreateReceiptFiscalDocumentBody,
+  type CreateReceiptPayment202Payment,
+  type CreateReceiptPaymentBody,
   getCurrentOperationalDay,
+  type GetReceipt200,
   getReceipt,
   openOperationalDay,
   openReceipt,
@@ -13,8 +18,12 @@ import {
 import {
   applyTheme,
   Button,
+  Field,
+  Input,
+  Label,
   LayoutGrid,
   Numpad,
+  Select,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -30,34 +39,18 @@ import { changeAppLocale, i18n, type AppLocale } from '@/i18n/config.js';
 import { queryClient } from '@/query-client.js';
 
 const ALL_CATEGORIES = '__all__';
+const RECEIPT_STATUS_PAID = 'paid' satisfies GetReceipt200['status'];
+const PAYMENT_METHOD_CARD_MOCK = 'card_mock' satisfies CreateReceiptPaymentBody['method'];
+const PAYMENT_METHOD_CASH = 'cash' satisfies CreateReceiptPaymentBody['method'];
 
-type ReceiptLine = {
-  id: string;
-  name: string;
-  productId: string;
-  quantity: number;
-  totalMinor: number;
-  unitPriceMinor: number;
+type PaymentAttempt = CreateReceiptPaymentBody & {
+  idempotencyKey: string;
+  receiptId: string;
 };
 
-type ReceiptView = {
-  id: string;
-  lines: ReceiptLine[];
-  status: string;
-  totalMinor: number;
-};
-
-type PaymentView = {
-  amountMinor: number;
-  id: string;
-  method: string;
-  status: string;
-};
-
-type FiscalDocumentView = {
-  fiscalSign: string;
-  id: string;
-  status: string;
+type FiscalAttempt = CreateReceiptFiscalDocumentBody & {
+  idempotencyKey: string;
+  receiptId: string;
 };
 
 type StatusMessage = {
@@ -77,10 +70,18 @@ const terminalConfig = {
   openedById: envValue('VITE_POS_OPENED_BY_ID', 'admin-1'),
   fiscalDeviceId: envValue('VITE_POS_FISCAL_DEVICE_ID', 'fiscal-1'),
   demoBarcode: envValue('VITE_POS_DEMO_BARCODE', '4600000000000'),
+  storeTimeZone: envValue(
+    'VITE_POS_STORE_TIME_ZONE',
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+  ),
 };
 
-function createIdempotencyHeaders(action: string): HeadersInit {
-  return { 'Idempotency-Key': `pos-terminal:${action}:${crypto.randomUUID()}` };
+function createIdempotencyKey(action: string): string {
+  return `pos-terminal:${action}:${crypto.randomUUID()}`;
+}
+
+function createIdempotencyHeaders(idempotencyKey: string): HeadersInit {
+  return { 'Idempotency-Key': idempotencyKey };
 }
 
 function formatMinorAmount(amountMinor: number, language: string): string {
@@ -90,8 +91,32 @@ function formatMinorAmount(amountMinor: number, language: string): string {
   );
 }
 
-function todayBusinessDate(): string {
-  return new Date().toISOString().slice(0, 10);
+function localCalendarDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function todayBusinessDate(timeZone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date());
+    const getPart = (type: string) => parts.find((part) => part.type === type)?.value;
+    const year = getPart('year');
+    const month = getPart('month');
+    const day = getPart('day');
+    if (year && month && day) {
+      return `${year}-${month}-${day}`;
+    }
+  } catch {
+    // Fall back to the terminal-local calendar if a configured IANA zone is invalid.
+  }
+  return localCalendarDate(new Date());
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -129,10 +154,14 @@ function TerminalShell() {
   const [numpadValue, setNumpadValue] = useState('');
   const [activeCategoryId, setActiveCategoryId] = useState(ALL_CATEGORIES);
   const [barcode, setBarcode] = useState(terminalConfig.demoBarcode);
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [receipt, setReceipt] = useState<ReceiptView | null>(null);
-  const [payment, setPayment] = useState<PaymentView | null>(null);
-  const [fiscalDocument, setFiscalDocument] = useState<FiscalDocumentView | null>(null);
+  const [paymentMethod, setPaymentMethod] =
+    useState<CreateReceiptPaymentBody['method']>(PAYMENT_METHOD_CASH);
+  const [receipt, setReceipt] = useState<GetReceipt200 | null>(null);
+  const [payment, setPayment] = useState<CreateReceiptPayment202Payment | null>(null);
+  const [paymentAttempt, setPaymentAttempt] = useState<PaymentAttempt | null>(null);
+  const [fiscalDocument, setFiscalDocument] =
+    useState<CreateReceiptFiscalDocument202Document | null>(null);
+  const [fiscalAttempt, setFiscalAttempt] = useState<FiscalAttempt | null>(null);
   const [terminalReady, setTerminalReady] = useState(false);
   const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<StatusMessage>({
@@ -232,11 +261,11 @@ function TerminalShell() {
       if (!operationalDayId) {
         const openedDay = await openOperationalDay(
           {
-            businessDate: todayBusinessDate(),
+            businessDate: todayBusinessDate(terminalConfig.storeTimeZone),
             openedById: terminalConfig.openedById,
             storeId: terminalConfig.storeId,
           },
-          { headers: createIdempotencyHeaders('open-day') },
+          { headers: createIdempotencyHeaders(createIdempotencyKey('open-day')) },
         );
         if (openedDay.status === 202) {
           operationalDayId = openedDay.data.operationalDay.id;
@@ -252,7 +281,7 @@ function TerminalShell() {
             storeId: terminalConfig.storeId,
             terminalId: terminalConfig.terminalId,
           },
-          { headers: createIdempotencyHeaders('open-shift') },
+          { headers: createIdempotencyHeaders(createIdempotencyKey('open-shift')) },
         );
       } catch (error) {
         if (!(error instanceof ApiError) || error.status !== 409) {
@@ -279,12 +308,14 @@ function TerminalShell() {
           storeId: terminalConfig.storeId,
           terminalId: terminalConfig.terminalId,
         },
-        { headers: createIdempotencyHeaders('open-receipt') },
+        { headers: createIdempotencyHeaders(createIdempotencyKey('open-receipt')) },
       );
       if (response.status === 202) {
         setReceipt(response.data.receipt);
         setPayment(null);
+        setPaymentAttempt(null);
         setFiscalDocument(null);
+        setFiscalAttempt(null);
         setStatusMessage({
           key: 'pos.status.receiptOpened',
           values: { receiptId: response.data.receipt.id },
@@ -298,11 +329,15 @@ function TerminalShell() {
       setErrorMessage(t('pos.errors.openReceiptBeforeScanning'));
       return;
     }
+    if (payment || paymentAttempt) {
+      setErrorMessage(t('pos.errors.paymentAlreadySubmitted'));
+      return;
+    }
     await runCommand('pos.actions.scanProduct', async () => {
       const response = await scanReceiptLine(
         receipt.id,
         { barcode, quantity: 1 },
-        { headers: createIdempotencyHeaders('scan-product') },
+        { headers: createIdempotencyHeaders(createIdempotencyKey('scan-product')) },
       );
       if (response.status === 202) {
         setReceipt(response.data.receipt);
@@ -320,24 +355,41 @@ function TerminalShell() {
       setErrorMessage(t('pos.errors.positiveReceiptTotalRequired'));
       return;
     }
+    if (payment) {
+      setErrorMessage(t('pos.errors.paymentAlreadySubmitted'));
+      return;
+    }
+    const attempt: PaymentAttempt =
+      paymentAttempt?.receiptId === receipt.id
+        ? paymentAttempt
+        : {
+            amountMinor: receipt.totalMinor,
+            idempotencyKey: createIdempotencyKey('capture-payment'),
+            method: paymentMethod,
+            providerReference:
+              paymentMethod === PAYMENT_METHOD_CARD_MOCK ? `POS-${Date.now()}` : undefined,
+            receiptId: receipt.id,
+          };
+    setPaymentAttempt(attempt);
     await runCommand('pos.actions.capturePayment', async () => {
       const response = await createReceiptPayment(
-        receipt.id,
+        attempt.receiptId,
         {
-          amountMinor: receipt.totalMinor,
-          method: paymentMethod,
-          providerReference: paymentMethod === 'card_mock' ? `POS-${Date.now()}` : undefined,
+          amountMinor: attempt.amountMinor,
+          method: attempt.method,
+          providerReference: attempt.providerReference,
         },
-        { headers: createIdempotencyHeaders('capture-payment') },
+        { headers: createIdempotencyHeaders(attempt.idempotencyKey) },
       );
       if (response.status === 202) {
         setPayment(response.data.payment);
-        await refreshReceipt(receipt.id);
+        setPaymentAttempt(null);
+        await refreshReceipt(attempt.receiptId);
         setStatusMessage({
           key: 'pos.status.paymentCaptured',
           values: {
             method:
-              paymentMethod === 'card_mock'
+              attempt.method === PAYMENT_METHOD_CARD_MOCK
                 ? t('pos.paymentMethods.cardMock')
                 : t('pos.paymentMethods.cash'),
           },
@@ -351,15 +403,33 @@ function TerminalShell() {
       setErrorMessage(t('pos.errors.openReceiptBeforeFiscalization'));
       return;
     }
+    if (receipt.status !== RECEIPT_STATUS_PAID) {
+      setErrorMessage(t('pos.errors.paidReceiptRequired'));
+      return;
+    }
+    if (fiscalDocument) {
+      setErrorMessage(t('pos.errors.fiscalAlreadySubmitted'));
+      return;
+    }
+    const attempt: FiscalAttempt =
+      fiscalAttempt?.receiptId === receipt.id
+        ? fiscalAttempt
+        : {
+            deviceId: terminalConfig.fiscalDeviceId,
+            idempotencyKey: createIdempotencyKey('fiscalize-receipt'),
+            receiptId: receipt.id,
+          };
+    setFiscalAttempt(attempt);
     await runCommand('pos.actions.fiscalize', async () => {
       const response = await createReceiptFiscalDocument(
-        receipt.id,
-        { deviceId: terminalConfig.fiscalDeviceId },
-        { headers: createIdempotencyHeaders('fiscalize-receipt') },
+        attempt.receiptId,
+        { deviceId: attempt.deviceId },
+        { headers: createIdempotencyHeaders(attempt.idempotencyKey) },
       );
       if (response.status === 202) {
         setFiscalDocument(response.data.document);
-        await refreshReceipt(receipt.id);
+        setFiscalAttempt(null);
+        await refreshReceipt(attempt.receiptId);
         setStatusMessage({
           key: 'pos.status.fiscalCreated',
           values: { documentId: response.data.document.id },
@@ -375,7 +445,7 @@ function TerminalShell() {
   const formatAmount = (amountMinor: number) => formatMinorAmount(amountMinor, activeI18n.language);
   const paymentDisplay = payment
     ? `${
-        payment.method === 'card_mock'
+        payment.method === PAYMENT_METHOD_CARD_MOCK
           ? t('pos.paymentMethods.cardMock')
           : t('pos.paymentMethods.cash')
       } · ${payment.status}`
@@ -393,16 +463,17 @@ function TerminalShell() {
                 : t('pos.templateHint')}
             </p>
           </div>
-          <label className="language-select">
-            {t('language.label')}
-            <select
+          <Field className="language-select">
+            <Label htmlFor="pos-language-select">{t('language.label')}</Label>
+            <Select
+              id="pos-language-select"
               value={activeI18n.language}
               onChange={(event) => changeAppLocale(event.target.value as AppLocale)}
             >
               <option value="ru">{t('language.ru')}</option>
               <option value="en">{t('language.en')}</option>
-            </select>
-          </label>
+            </Select>
+          </Field>
         </div>
         <dl className="terminal-meta">
           <div>
@@ -433,41 +504,52 @@ function TerminalShell() {
           </Button>
           <Button
             type="button"
-            disabled={isBusy || !receipt}
+            disabled={isBusy || !receipt || payment !== null || paymentAttempt !== null}
             onClick={() => void scanDemoProduct()}
           >
             {t('pos.actions.scanProduct')}
           </Button>
           <Button
             type="button"
-            disabled={isBusy || !receipt || receipt.totalMinor <= 0}
+            disabled={isBusy || !receipt || receipt.totalMinor <= 0 || payment !== null}
             onClick={() => void capturePayment()}
           >
             {t('pos.actions.capturePayment')}
           </Button>
           <Button
             type="button"
-            disabled={isBusy || !receipt || receipt.status !== 'paid'}
+            disabled={
+              isBusy ||
+              !receipt ||
+              receipt.status !== RECEIPT_STATUS_PAID ||
+              fiscalDocument !== null
+            }
             onClick={() => void fiscalizeReceipt()}
           >
             {t('pos.actions.fiscalize')}
           </Button>
         </div>
         <div className="checkout-form-row">
-          <label>
-            {t('pos.barcode')}
-            <input value={barcode} onChange={(event) => setBarcode(event.target.value)} />
-          </label>
-          <label>
-            {t('pos.paymentMethod')}
-            <select
+          <Field className="checkout-field">
+            <Label htmlFor="pos-barcode-input">{t('pos.barcode')}</Label>
+            <Input
+              id="pos-barcode-input"
+              value={barcode}
+              onChange={(event) => setBarcode(event.target.value)}
+            />
+          </Field>
+          <Field className="checkout-field">
+            <Label htmlFor="pos-payment-method-select">{t('pos.paymentMethod')}</Label>
+            <Select
+              id="pos-payment-method-select"
               value={paymentMethod}
+              disabled={isBusy || payment !== null || paymentAttempt !== null}
               onChange={(event) => setPaymentMethod(event.target.value)}
             >
-              <option value="cash">{t('pos.paymentMethods.cash')}</option>
-              <option value="card_mock">{t('pos.paymentMethods.cardMock')}</option>
-            </select>
-          </label>
+              <option value={PAYMENT_METHOD_CASH}>{t('pos.paymentMethods.cash')}</option>
+              <option value={PAYMENT_METHOD_CARD_MOCK}>{t('pos.paymentMethods.cardMock')}</option>
+            </Select>
+          </Field>
         </div>
         <div className="status-line" data-ready={terminalReady}>
           {displayedStatus}
@@ -529,7 +611,9 @@ function TerminalShell() {
       ) : (
         <div className="pos-terminal-grid">
           <section className="panel">
-            <Button type="button">{t('pos.actions.startSale')}</Button>
+            <Button type="button" disabled={isBusy} onClick={() => void openNewReceipt()}>
+              {t('pos.actions.startSale')}
+            </Button>
             {categories.length > 0 ? (
               <Tabs value={resolvedCategoryId} onValueChange={setActiveCategoryId}>
                 <TabsList aria-label={t('pos.categories')}>
