@@ -14,7 +14,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
-import { canWriteStoreOperations } from '@/auth/permissions.js';
+import { canWriteCashOperations } from '@/auth/permissions.js';
 import { useAuth } from '@/auth/useAuth.js';
 import { CloseShiftModal } from '@/components/eod/CloseShiftModal.js';
 import { BlockerActionCell, BlockerReferenceCell } from '@/components/eod/BlockerReferenceCell.js';
@@ -47,7 +47,7 @@ function formatElapsed(openedAt: string): string {
 export function StoreEodPage() {
   const { t } = useTranslation();
   const { roles } = useAuth();
-  const canWrite = canWriteStoreOperations(roles);
+  const canWrite = canWriteCashOperations(roles);
   const [searchParams] = useSearchParams();
   const initialStoreId = readStoreFromSearchParams(searchParams);
 

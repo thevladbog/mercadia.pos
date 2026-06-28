@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
-import { canWriteStoreOperations } from '@/auth/permissions.js';
+import { canWriteCashOperations } from '@/auth/permissions.js';
 import { useAuth } from '@/auth/useAuth.js';
 import { FormDialog } from '@mercadia/ui';
 import { BlockerActionCell, BlockerReferenceCell } from '@/components/eod/BlockerReferenceCell.js';
@@ -39,7 +39,7 @@ export function CloseOperationalDayModal({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { userId, roles } = useAuth();
-  const canWrite = canWriteStoreOperations(roles);
+  const canWrite = canWriteCashOperations(roles);
   const closedById = userId ?? '';
 
   const [overrideNoSales, setOverrideNoSales] = useState(false);

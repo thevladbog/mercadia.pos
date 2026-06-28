@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 
 import { useAuth } from '@/auth/useAuth.js';
-import { canManageCentralUsers } from '@/auth/permissions.js';
+import { canManageCentralUsers, canWriteStoreOperations } from '@/auth/permissions.js';
 
 type NavItem = {
   end?: boolean;
@@ -44,6 +44,7 @@ export function AppSidebar() {
   const { t } = useTranslation();
   const { roles } = useAuth();
   const isCentralAdmin = canManageCentralUsers(roles);
+  const canAccessSeniorCashierOps = canWriteStoreOperations(roles);
 
   const groups: NavGroup[] = [
     {
@@ -65,6 +66,23 @@ export function AppSidebar() {
       ],
     },
   ];
+
+  if (canAccessSeniorCashierOps) {
+    groups.push({
+      titleKey: 'nav.seniorCashierGroup',
+      items: [
+        { to: '/senior-cashier/dashboard', labelKey: 'nav.seniorCashierDashboard', end: true },
+        { to: '/senior-cashier/change-fund', labelKey: 'nav.seniorCashierChangeFund' },
+        { to: '/senior-cashier/receive-cash', labelKey: 'nav.seniorCashierReceiveCash' },
+        { to: '/senior-cashier/collection', labelKey: 'nav.seniorCashierCollection' },
+        { to: '/senior-cashier/safe-recount', labelKey: 'nav.seniorCashierSafeRecount' },
+        { to: '/senior-cashier/bank-collection', labelKey: 'nav.seniorCashierBankCollection' },
+        { to: '/senior-cashier/expense', labelKey: 'nav.seniorCashierExpense' },
+        { to: '/senior-cashier/journal', labelKey: 'nav.seniorCashierJournal' },
+        { to: '/senior-cashier/handover', labelKey: 'nav.seniorCashierHandover' },
+      ],
+    });
+  }
 
   if (isCentralAdmin) {
     groups.push({
