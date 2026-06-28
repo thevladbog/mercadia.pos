@@ -34,12 +34,15 @@ export function TwoPersonConfirmDialog({
     onSubmit(actorId.trim(), approvedById.trim());
   }
 
-  const isSelfApproval = actorId.trim() && approvedById.trim() && actorId.trim() === approvedById.trim();
+  const isSelfApproval =
+    actorId.trim() && approvedById.trim() && actorId.trim() === approvedById.trim();
 
   return (
     <FormDialog
       cancelLabel={t('common.cancel')}
-      errorMessage={errorMessage || (isSelfApproval ? t('safe.forms.validation.selfApproval') : null)}
+      errorMessage={
+        errorMessage || (isSelfApproval ? t('safe.forms.validation.selfApproval') : null)
+      }
       isSubmitting={isSubmitting}
       submitLabel={isSubmitting ? t('common.submitting') : t('seniorCashier.confirmBySecondPerson')}
       title={title}

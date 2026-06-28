@@ -33,11 +33,12 @@ type FetchEnvelope<TData> = {
   headers: Headers;
 };
 
+import { getSessionToken } from './session.js';
+
 export async function customFetch<T extends FetchEnvelope<unknown>>(
   url: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const { getSessionToken } = await import('./session.js');
   const token = getSessionToken();
   const headers = new Headers(options.headers);
 

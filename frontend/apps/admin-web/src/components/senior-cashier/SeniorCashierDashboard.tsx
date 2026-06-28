@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@mercadia/ui';
-import type { ListCashBalances200BalancesItem, ListOpenStoreShifts200ShiftsItem, ListStoreTerminals200ItemsItem } from '@mercadia/api-clients-store-edge';
+import type {
+  ListCashBalances200BalancesItem,
+  ListOpenStoreShifts200ShiftsItem,
+  ListStoreTerminals200ItemsItem,
+} from '@mercadia/api-clients-store-edge';
 import { formatMinorAmount } from '@/pages/reporting-utils.js';
 
 type Props = {
@@ -13,7 +17,7 @@ type Props = {
   terminals: ListStoreTerminals200ItemsItem[] | null;
 };
 
-export function SeniorCashierDashboard({ balances, shifts, terminals }: Props) {
+export function SeniorCashierDashboard({ storeId, balances, shifts, terminals }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -34,6 +38,10 @@ export function SeniorCashierDashboard({ balances, shifts, terminals }: Props) {
     if (!terminals) return [];
     return terminals.filter((t) => t.kind === 'pos');
   }, [terminals]);
+
+  function sc(path: string) {
+    return `${path}?store=${encodeURIComponent(storeId)}`;
+  }
 
   return (
     <div className="senior-dashboard">
@@ -57,28 +65,28 @@ export function SeniorCashierDashboard({ balances, shifts, terminals }: Props) {
       </div>
 
       <div className="action-grid">
-        <Button onClick={() => navigate('/senior-cashier/change-fund')}>
+        <Button onClick={() => navigate(sc('/senior-cashier/change-fund'))}>
           {t('seniorCashier.changeFund')}
         </Button>
-        <Button onClick={() => navigate('/senior-cashier/receive-cash')}>
+        <Button onClick={() => navigate(sc('/senior-cashier/receive-cash'))}>
           {t('seniorCashier.receiveCash')}
         </Button>
-        <Button onClick={() => navigate('/senior-cashier/collection')}>
+        <Button onClick={() => navigate(sc('/senior-cashier/collection'))}>
           {t('seniorCashier.collection')}
         </Button>
-        <Button onClick={() => navigate('/senior-cashier/safe-recount')}>
+        <Button onClick={() => navigate(sc('/senior-cashier/safe-recount'))}>
           {t('seniorCashier.safeRecount')}
         </Button>
-        <Button onClick={() => navigate('/senior-cashier/bank-collection')}>
+        <Button onClick={() => navigate(sc('/senior-cashier/bank-collection'))}>
           {t('seniorCashier.bankCollection')}
         </Button>
-        <Button onClick={() => navigate('/senior-cashier/expense')}>
+        <Button onClick={() => navigate(sc('/senior-cashier/expense'))}>
           {t('seniorCashier.businessExpense')}
         </Button>
-        <Button variant="secondary" onClick={() => navigate('/senior-cashier/journal')}>
+        <Button variant="secondary" onClick={() => navigate(sc('/senior-cashier/journal'))}>
           {t('seniorCashier.journal')}
         </Button>
-        <Button variant="secondary" onClick={() => navigate('/senior-cashier/handover')}>
+        <Button variant="secondary" onClick={() => navigate(sc('/senior-cashier/handover'))}>
           {t('seniorCashier.handover')}
         </Button>
       </div>
@@ -89,8 +97,12 @@ export function SeniorCashierDashboard({ balances, shifts, terminals }: Props) {
           <div className="cashier-cards">
             {shifts.map((shift) => (
               <div key={shift.id} className="cashier-card">
-                <p><strong>{shift.cashierId}</strong></p>
-                <p>{t('seniorCashier.drawerAmount')}: {formatMinorAmount(shift.closingCashMinor)}</p>
+                <p>
+                  <strong>{shift.cashierId}</strong>
+                </p>
+                <p>
+                  {t('seniorCashier.drawerAmount')}: {formatMinorAmount(shift.closingCashMinor)}
+                </p>
               </div>
             ))}
           </div>

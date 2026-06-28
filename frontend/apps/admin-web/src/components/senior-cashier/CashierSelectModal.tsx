@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Button, Dialog, DialogBody, DialogClose, DialogContent, DialogTitle, DialogTrigger } from '@mercadia/ui';
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from '@mercadia/ui';
 import type { ListOpenStoreShifts200ShiftsItem } from '@mercadia/api-clients-store-edge';
 
 type CashierSelectModalProps = {
@@ -39,7 +47,8 @@ export function CashierSelectModal({ shifts, onSelect, triggerLabel }: CashierSe
                         setOpen(false);
                       }}
                     >
-                      {shift.cashierId} — {t('seniorCashier.drawerAmount')}: {(shift.closingCashMinor / 100).toFixed(2)} ₽
+                      {shift.cashierId} — {t('seniorCashier.drawerAmount')}:{' '}
+                      {(shift.closingCashMinor / 100).toFixed(2)} ₽
                     </Button>
                   </DialogClose>
                 </li>

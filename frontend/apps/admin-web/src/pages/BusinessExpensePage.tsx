@@ -8,7 +8,10 @@ import { createCashMovement, useListCashBalances } from '@mercadia/api-clients-s
 import { useListStores } from '@mercadia/api-clients-central';
 
 import { getApiErrorMessage } from '@/auth/api-errors.js';
-import { DenominationInput, computeDenominationTotal } from '@/components/senior-cashier/DenominationInput.js';
+import {
+  DenominationInput,
+  computeDenominationTotal,
+} from '@/components/senior-cashier/DenominationInput.js';
 import { StorePicker } from '@/components/StorePicker.js';
 import { readStoreFromSearchParams } from '@/pages/store-routes.js';
 import { createIdempotencyHeaders, invalidateSafeQueries } from '@/pages/cash-mutation-utils.js';
@@ -19,13 +22,23 @@ export function BusinessExpensePage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const initialStoreId = readStoreFromSearchParams(searchParams);
-  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(initialStoreId);
+  const [selectedStoreId, setSelectedStoreId_raw] = useState<string | null>(initialStoreId);
+  const setSelectedStoreId = (id: string | null) => {
+    setSelectedStoreId_raw(id);
+    setFromContainerId('');
+    setDenominations({});
+    setActorId('');
+    setApprovedById('');
+    setErrorMessage(null);
+  };
 
   const storesQuery = useListStores();
   const stores = storesQuery.data?.status === 200 ? storesQuery.data.data.stores : [];
   const activeStoreId = selectedStoreId ?? stores[0]?.id ?? '';
 
-  const balancesQuery = useListCashBalances(activeStoreId, { query: { enabled: activeStoreId.length > 0 } });
+  const balancesQuery = useListCashBalances(activeStoreId, {
+    query: { enabled: activeStoreId.length > 0 },
+  });
   const balances = balancesQuery.data?.status === 200 ? balancesQuery.data.data.balances : null;
 
   const safeContainers = useMemo(() => {
@@ -65,7 +78,9 @@ export function BusinessExpensePage() {
     onSuccess: async (response) => {
       if (response.status === 202) {
         await invalidateSafeQueries(queryClient, activeStoreId);
-        navigate('/senior-cashier/dashboard', { state: { notice: t('seniorCashier.businessExpenseReady') } });
+        navigate(`/senior-cashier/dashboard?store=${encodeURIComponent(activeStoreId)}`, {
+          state: { notice: t('seniorCashier.postedSuccessfully') },
+        });
       }
     },
     onError: (error) => setErrorMessage(getApiErrorMessage(error)),
@@ -74,13 +89,24 @@ export function BusinessExpensePage() {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage(null);
-    if (!actorId.trim() || !approvedById.trim()) { setErrorMessage(t('seniorCashier.actorAndApproverRequired')); return; }
-    if (actorId.trim() === approvedById.trim()) { setErrorMessage(t('safe.forms.validation.selfApproval')); return; }
+    if (!actorId.trim() || !approvedById.trim()) {
+      setErrorMessage(t('seniorCashier.actorAndApproverRequired'));
+      return;
+    }
+    if (actorId.trim() === approvedById.trim()) {
+      setErrorMessage(t('safe.forms.validation.selfApproval'));
+      return;
+    }
     mutation.mutate();
   }
 
   if (!activeStoreId) {
-    return <div className="panel"><h1>{t('seniorCashier.businessExpense')}</h1><p className="muted">{t('common.selectStore')}</p></div>;
+    return (
+      <div className="panel">
+        <h1>{t('seniorCashier.businessExpense')}</h1>
+        <p className="muted">{t('common.selectStore')}</p>
+      </div>
+    );
   }
 
   return (
@@ -89,20 +115,41 @@ export function BusinessExpensePage() {
       <StorePicker stores={stores} value={activeStoreId} onChange={setSelectedStoreId} />
       <section className="card">
         <form className="stack" onSubmit={handleSubmit}>
-          <label>{t('seniorCashier.sourceSafe')}
+          <label>
+            {t('seniorCashier.sourceSafe')}
             <select value={fromContainerId} onChange={(e) => setFromContainerId(e.target.value)}>
               <option value="">—</option>
               {safeContainers.map((c) => (
-                <option key={c.containerId} value={c.containerId}>{c.containerId}</option>
+                <option key={c.containerId} value={c.containerId}>
+                  {c.containerId}
+                </option>
               ))}
             </select>
           </label>
-          <label>{t('seniorCashier.reason')}<input type="text" value={expenseReason} onChange={(e) => setExpenseReason(e.target.value)} /></label>
-          <fieldset><legend>{t('seniorCashier.enterDenominations')}</legend>
+          <label>
+            {t('seniorCashier.reason')}
+            <input
+              type="text"
+              value={expenseReason}
+              onChange={(e) => setExpenseReason(e.target.value)}
+            />
+          </label>
+          <fieldset>
+            <legend>{t('seniorCashier.enterDenominations')}</legend>
             <DenominationInput values={denominations} onChange={setDenominations} />
           </fieldset>
-          <label>{t('seniorCashier.confirmBySenior')}<input type="text" value={actorId} onChange={(e) => setActorId(e.target.value)} /></label>
-          <label>{t('seniorCashier.confirmBySecondPerson')}<input type="text" value={approvedById} onChange={(e) => setApprovedById(e.target.value)} /></label>
+          <label>
+            {t('seniorCashier.confirmBySenior')}
+            <input type="text" value={actorId} onChange={(e) => setActorId(e.target.value)} />
+          </label>
+          <label>
+            {t('seniorCashier.confirmBySecondPerson')}
+            <input
+              type="text"
+              value={approvedById}
+              onChange={(e) => setApprovedById(e.target.value)}
+            />
+          </label>
           {errorMessage ? <p className="error">{errorMessage}</p> : null}
           <Button disabled={mutation.isPending} type="submit">
             {mutation.isPending ? t('common.submitting') : t('seniorCashier.confirmOperation')}

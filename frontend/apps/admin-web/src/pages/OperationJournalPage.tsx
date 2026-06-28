@@ -14,8 +14,12 @@ export function OperationJournalPage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const initialStoreId = readStoreFromSearchParams(searchParams);
-  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(initialStoreId);
+  const [selectedStoreId, setSelectedStoreId_raw] = useState<string | null>(initialStoreId);
   const [page, setPage] = useState(0);
+  const setSelectedStoreId = (id: string | null) => {
+    setSelectedStoreId_raw(id);
+    setPage(0);
+  };
   const pageSize = 25;
 
   const storesQuery = useListStores();
@@ -34,7 +38,12 @@ export function OperationJournalPage() {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   if (!activeStoreId) {
-    return <div className="panel"><h1>{t('seniorCashier.operationJournal')}</h1><p className="muted">{t('common.selectStore')}</p></div>;
+    return (
+      <div className="panel">
+        <h1>{t('seniorCashier.operationJournal')}</h1>
+        <p className="muted">{t('common.selectStore')}</p>
+      </div>
+    );
   }
 
   return (

@@ -5,17 +5,17 @@ import { Input } from '@mercadia/ui';
 type DenominationEntry = { value: number; label: string; count: string };
 
 const RUSSIAN_DENOMINATIONS: DenominationEntry[] = [
-  { value: 5000, label: '5 000', count: '' },
-  { value: 2000, label: '2 000', count: '' },
-  { value: 1000, label: '1 000', count: '' },
-  { value: 500, label: '500', count: '' },
-  { value: 200, label: '200', count: '' },
-  { value: 100, label: '100', count: '' },
-  { value: 50, label: '50', count: '' },
-  { value: 10, label: '10', count: '' },
-  { value: 5, label: '5', count: '' },
-  { value: 2, label: '2', count: '' },
-  { value: 1, label: '1', count: '' },
+  { value: 500000, label: '5 000', count: '' },
+  { value: 200000, label: '2 000', count: '' },
+  { value: 100000, label: '1 000', count: '' },
+  { value: 50000, label: '500', count: '' },
+  { value: 20000, label: '200', count: '' },
+  { value: 10000, label: '100', count: '' },
+  { value: 5000, label: '50', count: '' },
+  { value: 1000, label: '10', count: '' },
+  { value: 500, label: '5', count: '' },
+  { value: 200, label: '2', count: '' },
+  { value: 100, label: '1', count: '' },
 ];
 
 type DenominationInputProps = {
@@ -72,7 +72,9 @@ export function DenominationInput({
         </div>
       ) : null}
       <div className="denomination-total">
-        <strong>{t('seniorCashier.amount')}: {(total / 100).toFixed(2)} ₽</strong>
+        <strong>
+          {t('seniorCashier.amount')}: {(total / 100).toFixed(2)} ₽
+        </strong>
       </div>
     </div>
   );

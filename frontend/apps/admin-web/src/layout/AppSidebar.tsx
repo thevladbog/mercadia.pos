@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 
 import { useAuth } from '@/auth/useAuth.js';
-import { canManageCentralUsers, isSeniorCashier } from '@/auth/permissions.js';
+import { canManageCentralUsers, canWriteStoreOperations } from '@/auth/permissions.js';
 
 type NavItem = {
   end?: boolean;
@@ -44,8 +44,7 @@ export function AppSidebar() {
   const { t } = useTranslation();
   const { roles } = useAuth();
   const isCentralAdmin = canManageCentralUsers(roles);
-
-  const isSeniorCashierRole = isSeniorCashier(roles);
+  const canAccessSeniorCashierOps = canWriteStoreOperations(roles);
 
   const groups: NavGroup[] = [
     {
@@ -68,7 +67,7 @@ export function AppSidebar() {
     },
   ];
 
-  if (isSeniorCashierRole) {
+  if (canAccessSeniorCashierOps) {
     groups.push({
       titleKey: 'nav.seniorCashierGroup',
       items: [

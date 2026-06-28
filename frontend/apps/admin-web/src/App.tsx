@@ -13,7 +13,7 @@ import { AuthProvider } from '@/auth/AuthProvider.js';
 import { LoginPage } from '@/auth/LoginPage.js';
 import { ProtectedRoute } from '@/auth/ProtectedRoute.js';
 import { RequireCentralAdmin } from '@/auth/RequireCentralAdmin.js';
-import { RequireSeniorCashier } from '@/auth/RequireSeniorCashier.js';
+import { RequireSeniorCashierOrAdmin } from '@/auth/RequireSeniorCashierOrAdmin.js';
 import { UnauthorizedBridge } from '@/auth/UnauthorizedBridge.js';
 import { AppLayout } from '@/layout/AppLayout.js';
 import { CentralCatalogPage } from '@/pages/CentralCatalogPage.js';
@@ -58,7 +58,7 @@ export function App() {
             <Route element={<CentralDashboardPage />} path="/central/dashboard" />
             <Route element={<CentralReportingPage />} path="/central/reporting" />
             <Route element={<StoreReportingPage />} path="/central/reporting/stores/:storeId" />
-            <Route element={<RequireSeniorCashier />}>
+            <Route element={<RequireSeniorCashierOrAdmin />}>
               <Route element={<SeniorCashierDashboardPage />} path="/senior-cashier/dashboard" />
               <Route element={<IssueChangeFundPage />} path="/senior-cashier/change-fund" />
               <Route element={<ReceiveCashPage />} path="/senior-cashier/receive-cash" />
