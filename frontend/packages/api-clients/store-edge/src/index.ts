@@ -3,6 +3,7 @@ export { clearSessionToken, getSessionToken, setSessionToken } from './session.j
 
 export * from './generated/cash-office/cash-office.js';
 export * from './generated/checkout/checkout.js';
+export * from './generated/fiscalization/fiscalization.js';
 export * from './generated/monitoring/monitoring.js';
 export * from './generated/returns/returns.js';
 export * from './generated/store-operations/store-operations.js';

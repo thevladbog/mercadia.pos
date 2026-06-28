@@ -1,0 +1,69 @@
+{
+  "common": {
+    "none": "нет",
+    "unknownError": "Неизвестная ошибка"
+  },
+  "language": {
+    "label": "Язык",
+    "ru": "Русский",
+    "en": "English"
+  },
+  "pos": {
+    "titleFallback": "POS-терминал (dev)",
+    "templateHint": "Добавьте ?templateId=... или VITE_LAYOUT_TEMPLATE_ID",
+    "templateLoading": "Загрузка шаблона...",
+    "templateLoadError": "Не удалось загрузить шаблон. Укажите VITE_CENTRAL_SESSION_TOKEN для доступа к API.",
+    "templateMissing": "Шаблон раскладки не выбран.",
+    "store": "Магазин",
+    "terminal": "Терминал",
+    "cashier": "Кассир",
+    "checkoutTitle": "Демо продажи",
+    "checkoutDescription": "Сценарий Store Edge: операционный день, смена, чек, сканирование, mock-оплата, mock-фискализация.",
+    "barcode": "Штрихкод",
+    "paymentMethod": "Способ оплаты",
+    "receipt": "Чек {{id}}",
+    "product": "Товар",
+    "quantity": "Кол-во",
+    "price": "Цена",
+    "total": "Итого",
+    "noLines": "Строк пока нет.",
+    "payment": "Оплата",
+    "fiscal": "Фискализация",
+    "categories": "Категории",
+    "allCategories": "Все",
+    "numpadEnter": "Ввод",
+    "demoItem": "Демо товар",
+    "returnItem": "Товар возврата",
+    "paymentMethods": {
+      "cash": "Наличные",
+      "cardMock": "Карта (mock)"
+    },
+    "actions": {
+      "prepareTerminal": "Подготовить терминал",
+      "openReceipt": "Открыть чек",
+      "scanProduct": "Сканировать товар",
+      "capturePayment": "Принять оплату",
+      "fiscalize": "Фискализировать",
+      "startSale": "Начать продажу"
+    },
+    "status": {
+      "notPrepared": "Store Edge еще не подготовлен.",
+      "running": "Выполняется: {{action}}...",
+      "ready": "Готово. Операционный день: {{operationalDayId}}.",
+      "alreadyOpen": "уже открыт",
+      "receiptOpened": "Чек {{receiptId}} открыт.",
+      "productScanned": "Штрихкод {{barcode}} добавлен.",
+      "paymentCaptured": "Оплата {{method}} принята.",
+      "fiscalCreated": "Фискальный документ {{documentId}} создан."
+    },
+    "errors": {
+      "openReceiptBeforeScanning": "Откройте чек перед сканированием.",
+      "openReceiptBeforePayment": "Откройте чек перед оплатой.",
+      "positiveReceiptTotalRequired": "Сумма чека должна быть больше нуля.",
+      "openReceiptBeforeFiscalization": "Откройте чек перед фискализацией.",
+      "paidReceiptRequired": "Примите оплату перед фискализацией.",
+      "paymentAlreadySubmitted": "Оплата по этому чеку уже отправлена.",
+      "fiscalAlreadySubmitted": "Фискализация по этому чеку уже отправлена."
+    }
+  }
+}

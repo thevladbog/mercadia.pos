@@ -1,0 +1,69 @@
+{
+  "common": {
+    "none": "none",
+    "unknownError": "Unknown error"
+  },
+  "language": {
+    "label": "Language",
+    "ru": "Russian",
+    "en": "English"
+  },
+  "pos": {
+    "titleFallback": "POS Terminal (dev)",
+    "templateHint": "Add ?templateId=... or VITE_LAYOUT_TEMPLATE_ID",
+    "templateLoading": "Loading template...",
+    "templateLoadError": "Failed to load template. Set VITE_CENTRAL_SESSION_TOKEN for API access.",
+    "templateMissing": "No layout template selected.",
+    "store": "Store",
+    "terminal": "Terminal",
+    "cashier": "Cashier",
+    "checkoutTitle": "Checkout demo",
+    "checkoutDescription": "Store Edge flow: operational day, shift, receipt, scan, mock payment, mock fiscal document.",
+    "barcode": "Barcode",
+    "paymentMethod": "Payment method",
+    "receipt": "Receipt {{id}}",
+    "product": "Product",
+    "quantity": "Qty",
+    "price": "Price",
+    "total": "Total",
+    "noLines": "No lines yet.",
+    "payment": "Payment",
+    "fiscal": "Fiscal",
+    "categories": "Categories",
+    "allCategories": "All",
+    "numpadEnter": "Enter",
+    "demoItem": "Demo item",
+    "returnItem": "Return item",
+    "paymentMethods": {
+      "cash": "Cash",
+      "cardMock": "Card (mock)"
+    },
+    "actions": {
+      "prepareTerminal": "Prepare terminal",
+      "openReceipt": "Open receipt",
+      "scanProduct": "Scan product",
+      "capturePayment": "Capture payment",
+      "fiscalize": "Fiscalize",
+      "startSale": "Start sale"
+    },
+    "status": {
+      "notPrepared": "Store Edge is not prepared yet.",
+      "running": "Running {{action}}...",
+      "ready": "Ready. Operational day: {{operationalDayId}}.",
+      "alreadyOpen": "already open",
+      "receiptOpened": "Receipt {{receiptId}} opened.",
+      "productScanned": "Scanned barcode {{barcode}}.",
+      "paymentCaptured": "{{method}} payment captured.",
+      "fiscalCreated": "Fiscal document {{documentId}} created."
+    },
+    "errors": {
+      "openReceiptBeforeScanning": "Open a receipt before scanning.",
+      "openReceiptBeforePayment": "Open a receipt before payment.",
+      "positiveReceiptTotalRequired": "Receipt total must be greater than zero.",
+      "openReceiptBeforeFiscalization": "Open a receipt before fiscalization.",
+      "paidReceiptRequired": "Capture payment before fiscalization.",
+      "paymentAlreadySubmitted": "Payment was already submitted for this receipt.",
+      "fiscalAlreadySubmitted": "Fiscalization was already submitted for this receipt."
+    }
+  }
+}
