@@ -33,7 +33,7 @@ export function LayoutTemplatePreview({
 }: LayoutTemplatePreviewProps) {
   const { t } = useTranslation();
   const surface: Surface = kind === 'sco' ? 'sco' : 'terminal';
-  const categories = grid.categories ?? [];
+  const categories = useMemo(() => grid.categories ?? [], [grid.categories]);
   const [activeCategoryId, setActiveCategoryId] = useState(ALL_CATEGORIES);
   const resolvedCategoryId = useMemo(() => {
     if (activeCategoryId === ALL_CATEGORIES) {

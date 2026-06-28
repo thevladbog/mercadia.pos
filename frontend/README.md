@@ -187,6 +187,36 @@ Optional env vars when APIs are not same-origin (bypass Vite proxy):
 - `VITE_CENTRAL_BACKEND_URL` — central-backend base URL
 - `VITE_STORE_EDGE_URL` — store-edge base URL
 
+## Local development — pos-terminal
+
+The POS terminal app is a Vite dev shell with a Store Edge checkout demo and optional central
+layout-template loading.
+
+1. Start **store-edge** on port `8081` and open an operational local catalog (see backend README).
+2. Optionally start **central-backend** on port `8082` when using `?templateId=` layout templates.
+3. Start the POS UI:
+
+   ```bash
+   cd frontend
+   pnpm --filter pos-terminal dev
+   ```
+
+4. Open `http://localhost:5174`. Use **Prepare terminal**, **Open receipt**, **Scan product**,
+   **Capture payment**, and **Fiscalize** to run the mock Store Edge flow.
+
+Default demo env vars:
+
+- `VITE_POS_STORE_ID=store-1`
+- `VITE_POS_TERMINAL_ID=pos-1`
+- `VITE_POS_CASHIER_ID=cashier-1`
+- `VITE_POS_DRAWER_ID=drawer-1`
+- `VITE_POS_OPENED_BY_ID=admin-1`
+- `VITE_POS_FISCAL_DEVICE_ID=fiscal-1`
+- `VITE_POS_DEMO_BARCODE=4600000000000`
+- `VITE_STORE_EDGE_URL` — optional Store Edge base URL when bypassing the Vite proxy
+- `VITE_STORE_EDGE_SESSION_TOKEN` — optional Store Edge session token
+- `VITE_LAYOUT_TEMPLATE_ID` and `VITE_CENTRAL_SESSION_TOKEN` — optional central layout template access
+
 ## Dependency policy
 
 Use stable releases only. Before bumping pins, verify current versions via official docs

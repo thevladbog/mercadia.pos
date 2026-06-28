@@ -1,3 +1,5 @@
+import { getSessionToken } from './session.js';
+
 export class ApiError extends Error {
   readonly problem: {
     code: string;
@@ -37,7 +39,6 @@ export async function customFetch<T extends FetchEnvelope<unknown>>(
   url: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const { getSessionToken } = await import('./session.js');
   const token = getSessionToken();
   const headers = new Headers(options.headers);
 

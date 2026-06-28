@@ -7,6 +7,9 @@ import { defineConfig } from 'vite';
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  build: {
+    chunkSizeWarningLimit: 700,
+  },
   plugins: [react()],
   resolve: {
     alias: {
