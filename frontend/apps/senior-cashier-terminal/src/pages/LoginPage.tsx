@@ -4,11 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Input, Field, Label } from '@mercadia/ui';
 
 import { useAuth } from '@/auth/AuthProvider.js';
-import { readIButton } from '@/auth/ibutton.js';
+import {
+  readStaffCredential,
+  type StaffCredentialKind,
+  type StaffCredentialRead,
+} from '@/auth/ibutton.js';
 import { useIdleTimer } from '@/lib/use-idle-timer.js';
 
 const MAX_ATTEMPTS = 5;
 const ATTEMPTS_KEY = 'mercadia.sr-terminal.login-attempts';
+const CREDENTIAL_KINDS: StaffCredentialKind[] = ['ibutton', 'msr_card', 'barcode_card'];
 
 function loadAttempts(): number {
   try {
@@ -33,47 +38,65 @@ export function LoginPage() {
 
   const [personnelId, setPersonnelId] = useState('');
   const [pin, setPin] = useState('');
-  const [ibuttonStatus, setIbuttonStatus] = useState<'idle' | 'waiting' | 'detected' | 'error'>(
-    'idle',
-  );
-  const [error, setError] = useState('');
+  const [credentialKind, setCredentialKind] = useState<StaffCredentialKind>('ibutton');
+  const [credentialRead, setCredentialRead] = useState<StaffCredentialRead | null>(null);
+  const [credentialStatus, setCredentialStatus] = useState<
+    'idle' | 'waiting' | 'detected' | 'error'
+  >('idle');
+  const [authError, setAuthError] = useState('');
+  const [credentialError, setCredentialError] = useState('');
   const [attempts, setAttempts] = useState(loadAttempts);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isBlocked = attempts >= MAX_ATTEMPTS;
 
   useIdleTimer();
 
-  const handleIButton = useCallback(async () => {
-    setIbuttonStatus('waiting');
-    setError('');
+  const handleCredentialKind = useCallback((kind: StaffCredentialKind) => {
+    setCredentialKind(kind);
+    setCredentialRead(null);
+    setCredentialStatus('idle');
+    setCredentialError('');
+  }, []);
+
+  const handleCredentialRead = useCallback(async () => {
+    setCredentialStatus('waiting');
+    setCredentialError('');
     try {
-      await readIButton();
-      setIbuttonStatus('detected');
+      const nextCredentialRead = await readStaffCredential(credentialKind);
+      setCredentialRead(nextCredentialRead);
+      setCredentialStatus('detected');
     } catch {
-      setIbuttonStatus('error');
-      setError(t('auth.ibuttonError'));
+      setCredentialRead(null);
+      setCredentialStatus('error');
+      setCredentialError(t('auth.credentialError'));
     }
-  }, [t]);
+  }, [credentialKind, t]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (isSubmitting) return;
 
-      if (attempts >= MAX_ATTEMPTS) {
-        setError(t('auth.blocked'));
+      if (isBlocked) {
         return;
       }
 
       if (!personnelId || !pin) {
-        setError(t('auth.invalidCredentials'));
+        setAuthError(t('auth.invalidCredentials'));
+        return;
+      }
+
+      if (!credentialRead || credentialRead.factor.kind !== credentialKind) {
+        setAuthError(t('auth.credentialRequired'));
         return;
       }
 
       setIsSubmitting(true);
-      setError('');
+      setAuthError('');
+      setCredentialError('');
 
       try {
-        const sess = await login(personnelId, pin);
+        const sess = await login(personnelId, pin, credentialRead.factor);
         const target =
           sess.roles.includes('senior_cashier') || sess.roles.includes('admin')
             ? '/dashboard'
@@ -85,12 +108,23 @@ export function LoginPage() {
           setAttempts(next);
           saveAttempts(next);
         }
-        setError(t('auth.invalidCredentials'));
+        setAuthError(t('auth.invalidCredentials'));
       } finally {
         setIsSubmitting(false);
       }
     },
-    [personnelId, pin, login, navigate, t, attempts, isSubmitting],
+    [
+      personnelId,
+      pin,
+      credentialKind,
+      credentialRead,
+      login,
+      navigate,
+      t,
+      attempts,
+      isSubmitting,
+      isBlocked,
+    ],
   );
 
   if (session) {
@@ -104,7 +138,10 @@ export function LoginPage() {
 
   return (
     <div className="sr-terminal-shell" style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <div className="sr-panel" style={{ width: 400, padding: '2rem' }}>
+      <div
+        className="sr-panel"
+        style={{ width: 'min(400px, calc(100vw - 2rem))', padding: '2rem' }}
+      >
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <h1 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--ui-accent)' }}>
             {t('auth.loginTitle')}
@@ -137,32 +174,66 @@ export function LoginPage() {
             />
           </Field>
 
+          <Field>
+            <Label>{t('auth.credentialKind')}</Label>
+            <div
+              className="sr-credential-options"
+              role="radiogroup"
+              aria-label={t('auth.credentialKind')}
+            >
+              {CREDENTIAL_KINDS.map((kind) => (
+                <Button
+                  key={kind}
+                  type="button"
+                  variant={credentialKind === kind ? 'primary' : 'secondary'}
+                  onClick={() => handleCredentialKind(kind)}
+                  disabled={isSubmitting || credentialStatus === 'waiting'}
+                  aria-pressed={credentialKind === kind}
+                >
+                  {t(`auth.credentialKinds.${kind}`)}
+                </Button>
+              ))}
+            </div>
+          </Field>
+
           <div className="sr-field-row">
             <span className="sr-field-label">
-              {ibuttonStatus === 'idle' && t('auth.ibutton')}
-              {ibuttonStatus === 'waiting' && t('auth.ibuttonWaiting')}
-              {ibuttonStatus === 'detected' && t('auth.ibuttonDetected')}
-              {ibuttonStatus === 'error' && t('auth.ibuttonError')}
+              {credentialStatus === 'idle' && t('auth.credentialPrompt')}
+              {credentialStatus === 'waiting' && t('auth.credentialWaiting')}
+              {credentialStatus === 'detected' &&
+                t('auth.credentialDetected', {
+                  value: credentialRead?.maskedToken ?? t(`auth.credentialKinds.${credentialKind}`),
+                })}
+              {credentialStatus === 'error' && t('auth.credentialError')}
             </span>
             <Button
               type="button"
               variant="secondary"
-              onClick={handleIButton}
-              disabled={isSubmitting || ibuttonStatus === 'waiting'}
+              onClick={handleCredentialRead}
+              disabled={isSubmitting || credentialStatus === 'waiting'}
             >
-              {ibuttonStatus === 'detected' ? '\u2713' : t('ibutton.present')}
+              {credentialStatus === 'detected'
+                ? t('auth.rereadCredential')
+                : t('auth.readCredential')}
             </Button>
           </div>
 
-          {error && <p className="sr-field-error">{error}</p>}
+          {isBlocked && <p className="sr-field-error">{t('auth.blocked')}</p>}
 
-          {attempts > 0 && attempts < MAX_ATTEMPTS && (
+          {!isBlocked && authError && <p className="sr-field-error">{authError}</p>}
+
+          {credentialError && <p className="sr-field-error">{credentialError}</p>}
+
+          {attempts > 0 && !isBlocked && (
             <p className="sr-field-error">
               {t('auth.attemptsRemaining', { count: MAX_ATTEMPTS - attempts })}
             </p>
           )}
 
-          <Button type="submit" disabled={isSubmitting || !personnelId || !pin}>
+          <Button
+            type="submit"
+            disabled={isBlocked || isSubmitting || !personnelId || !pin || !credentialRead}
+          >
             {isSubmitting ? t('auth.signingIn') : t('auth.signIn')}
           </Button>
         </form>

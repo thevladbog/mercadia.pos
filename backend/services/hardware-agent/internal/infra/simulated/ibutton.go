@@ -26,7 +26,7 @@ func (a *IButtonAdapter) Execute(_ context.Context, device domain.Device, comman
 		}, nil
 	case "read_key":
 		return map[string]any{
-			"romId": "01A2B3C4D5E6F708",
+			"romId": "demo-ibutton-senior-1",
 		}, nil
 	default:
 		return nil, fmt.Errorf("%w: %s", ErrUnsupportedCommand, commandType)

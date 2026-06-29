@@ -16,14 +16,87 @@ func TestCreateSessionWithValidCredentials(t *testing.T) {
 	auth := app.NewAuthService(store, store)
 
 	result, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
-		ActorID: "senior-1",
-		PIN:     "5678",
+		ActorID: "cashier-1",
+		PIN:     "1234",
+		StoreID: "store-1",
 	})
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	if result.Token == "" || result.ActorID != "senior-1" {
+	if result.Token == "" || result.ActorID != "cashier-1" {
 		t.Fatalf("session = %+v", result)
+	}
+}
+
+func TestCreateSessionAcceptsSeniorCashierCredentialKinds(t *testing.T) {
+	store := memory.NewStore(memory.WithDemoActors())
+	auth := app.NewAuthService(store, store)
+
+	tests := []struct {
+		name  string
+		kind  domain.CredentialKind
+		token string
+	}{
+		{name: "ibutton", kind: domain.CredentialKindIButton, token: "demo-ibutton-senior-1"},
+		{name: "msr", kind: domain.CredentialKindMSRCard, token: "demo-msr-senior-1"},
+		{name: "barcode", kind: domain.CredentialKindBarcodeCard, token: "demo-barcode-senior-1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
+				ActorID: "senior-1",
+				PIN:     "5678",
+				StoreID: "store-1",
+				CredentialFactor: &domain.SubmittedCredentialFactor{
+					Kind:      tt.kind,
+					Token:     tt.token,
+					DeviceID:  "sim-device-1",
+					CommandID: "cmd-1",
+				},
+			})
+			if err != nil {
+				t.Fatalf("create session: %v", err)
+			}
+			if result.CredentialFactor == nil || result.CredentialFactor.Kind != tt.kind {
+				t.Fatalf("credential factor = %+v", result.CredentialFactor)
+			}
+			if result.CredentialFactor.TokenFingerprint == "" || result.CredentialFactor.TokenFingerprint == tt.token {
+				t.Fatalf("unsafe token fingerprint = %q", result.CredentialFactor.TokenFingerprint)
+			}
+		})
+	}
+}
+
+func TestCreateSessionRejectsMissingRequiredCredentialFactor(t *testing.T) {
+	store := memory.NewStore(memory.WithDemoActors())
+	auth := app.NewAuthService(store, store)
+
+	_, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
+		ActorID: "senior-1",
+		PIN:     "5678",
+		StoreID: "store-1",
+	})
+	if !errors.Is(err, app.ErrInvalidCredentials) {
+		t.Fatalf("expected invalid credentials, got %v", err)
+	}
+}
+
+func TestCreateSessionRejectsCredentialFactorForAnotherActor(t *testing.T) {
+	store := memory.NewStore(memory.WithDemoActors())
+	auth := app.NewAuthService(store, store)
+
+	_, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
+		ActorID: "senior-1",
+		PIN:     "5678",
+		StoreID: "store-1",
+		CredentialFactor: &domain.SubmittedCredentialFactor{
+			Kind:  domain.CredentialKindIButton,
+			Token: "unknown-token",
+		},
+	})
+	if !errors.Is(err, app.ErrInvalidCredentials) {
+		t.Fatalf("expected invalid credentials, got %v", err)
 	}
 }
 
@@ -34,6 +107,7 @@ func TestCreateSessionRejectsInvalidPIN(t *testing.T) {
 	_, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
 		ActorID: "senior-1",
 		PIN:     "0000",
+		StoreID: "store-1",
 	})
 	if !errors.Is(err, app.ErrInvalidCredentials) {
 		t.Fatalf("expected invalid credentials, got %v", err)
