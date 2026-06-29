@@ -135,13 +135,44 @@
                   "actorId": {
                     "type": "string"
                   },
+                  "credentialFactor": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "commandId": {
+                        "type": "string"
+                      },
+                      "deviceId": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "enum": [
+                          "ibutton",
+                          "msr_card",
+                          "barcode_card"
+                        ],
+                        "type": "string"
+                      },
+                      "token": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "token"
+                    ],
+                    "type": "object"
+                  },
                   "pin": {
+                    "type": "string"
+                  },
+                  "storeId": {
                     "type": "string"
                   }
                 },
                 "required": [
                   "actorId",
-                  "pin"
+                  "pin",
+                  "storeId"
                 ],
                 "type": "object"
               }
@@ -162,6 +193,36 @@
                       "properties": {
                         "actorId": {
                           "type": "string"
+                        },
+                        "credentialFactor": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "commandId": {
+                              "type": "string"
+                            },
+                            "deviceId": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "enum": [
+                                "ibutton",
+                                "msr_card",
+                                "barcode_card"
+                              ],
+                              "type": "string"
+                            },
+                            "maskedToken": {
+                              "type": "string"
+                            },
+                            "tokenFingerprint": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "tokenFingerprint"
+                          ],
+                          "type": "object"
                         },
                         "expiresAt": {
                           "format": "date-time",

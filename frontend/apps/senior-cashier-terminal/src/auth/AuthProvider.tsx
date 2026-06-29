@@ -1,16 +1,23 @@
 import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 import {
   ApiError,
+  type CreateAuthSessionBodyCredentialFactor,
   clearSessionToken,
   createAuthSession,
   setSessionToken,
 } from '@mercadia/api-clients-store-edge';
 
+import { getStoreId } from '@/api-client-config.js';
+
 import type { SessionResult } from './types.js';
 
 interface AuthContextValue {
   session: SessionResult | null;
-  login: (actorId: string, pin: string) => Promise<SessionResult>;
+  login: (
+    actorId: string,
+    pin: string,
+    credentialFactor: CreateAuthSessionBodyCredentialFactor,
+  ) => Promise<SessionResult>;
   logout: () => void;
 }
 
@@ -65,24 +72,36 @@ function clearSession(): void {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionResult | null>(loadSession);
 
-  const login = useCallback(async (actorId: string, pin: string): Promise<SessionResult> => {
-    try {
-      const response = await createAuthSession({ actorId, pin });
-      if (response.status !== 201) {
-        throw new Error('Authentication failed');
-      }
+  const login = useCallback(
+    async (
+      actorId: string,
+      pin: string,
+      credentialFactor: CreateAuthSessionBodyCredentialFactor,
+    ): Promise<SessionResult> => {
+      try {
+        const response = await createAuthSession({
+          actorId,
+          pin,
+          storeId: getStoreId(),
+          credentialFactor,
+        });
+        if (response.status !== 201) {
+          throw new Error('Authentication failed');
+        }
 
-      const nextSession = response.data.session;
-      saveSession(nextSession);
-      setSession(nextSession);
-      return nextSession;
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        throw new Error('Invalid credentials', { cause: err });
+        const nextSession = response.data.session;
+        saveSession(nextSession);
+        setSession(nextSession);
+        return nextSession;
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          throw new Error('Invalid credentials', { cause: err });
+        }
+        throw err;
       }
-      throw err;
-    }
-  }, []);
+    },
+    [],
+  );
 
   const logout = useCallback(() => {
     clearSession();

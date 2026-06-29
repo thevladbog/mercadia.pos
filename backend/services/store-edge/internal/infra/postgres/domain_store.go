@@ -17,34 +17,84 @@ func (s *Store) SeedDemoActors(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("marshal actor roles: %w", err)
 		}
+		var credentialPolicy []byte
+		if actor.CredentialPolicy != nil {
+			credentialPolicy, err = json.Marshal(actor.CredentialPolicy)
+			if err != nil {
+				return fmt.Errorf("marshal actor credential policy: %w", err)
+			}
+		}
+		bindings := actor.CredentialBindings
+		if bindings == nil {
+			bindings = []domain.CredentialBinding{}
+		}
+		credentialBindings, err := json.Marshal(bindings)
+		if err != nil {
+			return fmt.Errorf("marshal actor credential bindings: %w", err)
+		}
 		_, err = s.conn(ctx).Exec(ctx, `
-			INSERT INTO store_actors (id, pin, roles)
-			VALUES ($1, $2, $3)
-			ON CONFLICT (id) DO UPDATE SET pin = EXCLUDED.pin, roles = EXCLUDED.roles
-		`, actor.ID, actor.PIN, roles)
+			INSERT INTO store_actors (id, pin, roles, credential_policy, credential_bindings)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (id) DO UPDATE SET
+				pin = EXCLUDED.pin,
+				roles = EXCLUDED.roles,
+				credential_policy = EXCLUDED.credential_policy,
+				credential_bindings = EXCLUDED.credential_bindings
+		`, actor.ID, actor.PIN, roles, credentialPolicy, credentialBindings)
 		if err != nil {
 			return fmt.Errorf("seed actor %s: %w", actor.ID, err)
 		}
+	}
+	storePolicy := domain.CredentialPolicy{
+		Required: true,
+		AllowedKinds: []domain.CredentialKind{
+			domain.CredentialKindIButton,
+			domain.CredentialKindMSRCard,
+			domain.CredentialKindBarcodeCard,
+		},
+	}
+	policyJSON, err := json.Marshal(storePolicy)
+	if err != nil {
+		return fmt.Errorf("marshal store credential policy: %w", err)
+	}
+	if _, err := s.conn(ctx).Exec(ctx, `
+		INSERT INTO store_credential_policies (store_id, policy)
+		VALUES ($1, $2)
+		ON CONFLICT (store_id) DO UPDATE SET policy = EXCLUDED.policy
+	`, "store-1", policyJSON); err != nil {
+		return fmt.Errorf("seed store credential policy: %w", err)
 	}
 	return nil
 }
 
 func demoActors() []domain.Actor {
+	notRequired := domain.CredentialPolicy{Required: false}
 	return []domain.Actor{
-		{ID: "cashier-1", PIN: "1234", Roles: []domain.Role{domain.RoleCashier}},
-		{ID: "senior-1", PIN: "5678", Roles: []domain.Role{domain.RoleSeniorCashier}},
-		{ID: "admin-1", PIN: "9999", Roles: []domain.Role{domain.RoleAdmin}},
+		{ID: "cashier-1", PIN: "1234", Roles: []domain.Role{domain.RoleCashier}, CredentialPolicy: &notRequired},
+		{
+			ID:    "senior-1",
+			PIN:   "5678",
+			Roles: []domain.Role{domain.RoleSeniorCashier},
+			CredentialBindings: []domain.CredentialBinding{
+				{Kind: domain.CredentialKindIButton, TokenHash: app.HashCredentialToken("01A2B3C4D5E6F708"), MaskedToken: "iButton ****F708", Active: true},
+				{Kind: domain.CredentialKindMSRCard, TokenHash: app.HashCredentialToken("MSR-STAFF-SENIOR-1"), MaskedToken: "MSR staff ****0001", Active: true},
+				{Kind: domain.CredentialKindBarcodeCard, TokenHash: app.HashCredentialToken("BARCODE-STAFF-SENIOR-1"), MaskedToken: "Barcode staff ****0001", Active: true},
+			},
+		},
+		{ID: "admin-1", PIN: "9999", Roles: []domain.Role{domain.RoleAdmin}, CredentialPolicy: &notRequired},
 	}
 }
 
 func (s *Store) FindActor(ctx context.Context, actorID string) (domain.Actor, error) {
 	row := s.pool.QueryRow(ctx, `
-		SELECT id, pin, roles FROM store_actors WHERE id = $1
+		SELECT id, pin, roles, credential_policy, credential_bindings FROM store_actors WHERE id = $1
 	`, actorID)
 
 	var actor domain.Actor
 	var rolesJSON []byte
-	if err := row.Scan(&actor.ID, &actor.PIN, &rolesJSON); err != nil {
+	var credentialPolicyJSON []byte
+	var credentialBindingsJSON []byte
+	if err := row.Scan(&actor.ID, &actor.PIN, &rolesJSON, &credentialPolicyJSON, &credentialBindingsJSON); err != nil {
 		if err == pgx.ErrNoRows {
 			return domain.Actor{}, app.ErrActorNotFound
 		}
@@ -53,7 +103,38 @@ func (s *Store) FindActor(ctx context.Context, actorID string) (domain.Actor, er
 	if err := json.Unmarshal(rolesJSON, &actor.Roles); err != nil {
 		return domain.Actor{}, fmt.Errorf("decode actor roles: %w", err)
 	}
+	if len(credentialPolicyJSON) > 0 && string(credentialPolicyJSON) != "null" {
+		var policy domain.CredentialPolicy
+		if err := json.Unmarshal(credentialPolicyJSON, &policy); err != nil {
+			return domain.Actor{}, fmt.Errorf("decode actor credential policy: %w", err)
+		}
+		actor.CredentialPolicy = &policy
+	}
+	if len(credentialBindingsJSON) > 0 {
+		if err := json.Unmarshal(credentialBindingsJSON, &actor.CredentialBindings); err != nil {
+			return domain.Actor{}, fmt.Errorf("decode actor credential bindings: %w", err)
+		}
+	}
 	return actor, nil
+}
+
+func (s *Store) FindStoreCredentialPolicy(ctx context.Context, storeID string) (domain.CredentialPolicy, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT policy FROM store_credential_policies WHERE store_id = $1
+	`, storeID)
+
+	var policyJSON []byte
+	if err := row.Scan(&policyJSON); err != nil {
+		if err == pgx.ErrNoRows {
+			return domain.CredentialPolicy{}, nil
+		}
+		return domain.CredentialPolicy{}, fmt.Errorf("find store credential policy: %w", err)
+	}
+	var policy domain.CredentialPolicy
+	if err := json.Unmarshal(policyJSON, &policy); err != nil {
+		return domain.CredentialPolicy{}, fmt.Errorf("decode store credential policy: %w", err)
+	}
+	return policy, nil
 }
 
 func (s *Store) SaveSession(ctx context.Context, session domain.Session) error {
@@ -61,15 +142,20 @@ func (s *Store) SaveSession(ctx context.Context, session domain.Session) error {
 	if err != nil {
 		return fmt.Errorf("marshal session roles: %w", err)
 	}
+	credentialFactor, err := json.Marshal(session.CredentialFactor)
+	if err != nil {
+		return fmt.Errorf("marshal session credential factor: %w", err)
+	}
 	_, err = s.conn(ctx).Exec(ctx, `
-		INSERT INTO sessions (token, actor_id, roles, created_at, expires_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO sessions (token, actor_id, roles, credential_factor, created_at, expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (token) DO UPDATE SET
 			actor_id = EXCLUDED.actor_id,
 			roles = EXCLUDED.roles,
+			credential_factor = EXCLUDED.credential_factor,
 			created_at = EXCLUDED.created_at,
 			expires_at = EXCLUDED.expires_at
-	`, session.Token, session.ActorID, roles, session.CreatedAt, session.ExpiresAt)
+	`, session.Token, session.ActorID, roles, credentialFactor, session.CreatedAt, session.ExpiresAt)
 	if err != nil {
 		return fmt.Errorf("save session: %w", err)
 	}
@@ -78,13 +164,14 @@ func (s *Store) SaveSession(ctx context.Context, session domain.Session) error {
 
 func (s *Store) FindSessionByToken(ctx context.Context, token string) (domain.Session, error) {
 	row := s.pool.QueryRow(ctx, `
-		SELECT token, actor_id, roles, created_at, expires_at
+		SELECT token, actor_id, roles, credential_factor, created_at, expires_at
 		FROM sessions WHERE token = $1
 	`, token)
 
 	var session domain.Session
 	var rolesJSON []byte
-	if err := row.Scan(&session.Token, &session.ActorID, &rolesJSON, &session.CreatedAt, &session.ExpiresAt); err != nil {
+	var credentialFactorJSON []byte
+	if err := row.Scan(&session.Token, &session.ActorID, &rolesJSON, &credentialFactorJSON, &session.CreatedAt, &session.ExpiresAt); err != nil {
 		if err == pgx.ErrNoRows {
 			return domain.Session{}, app.ErrSessionNotFound
 		}
@@ -92,6 +179,15 @@ func (s *Store) FindSessionByToken(ctx context.Context, token string) (domain.Se
 	}
 	if err := json.Unmarshal(rolesJSON, &session.Roles); err != nil {
 		return domain.Session{}, fmt.Errorf("decode session roles: %w", err)
+	}
+	if len(credentialFactorJSON) > 0 && string(credentialFactorJSON) != "null" && string(credentialFactorJSON) != "{}" {
+		var factor domain.SessionCredentialFactor
+		if err := json.Unmarshal(credentialFactorJSON, &factor); err != nil {
+			return domain.Session{}, fmt.Errorf("decode session credential factor: %w", err)
+		}
+		if factor.Kind != "" {
+			session.CredentialFactor = &factor
+		}
 	}
 	return session, nil
 }

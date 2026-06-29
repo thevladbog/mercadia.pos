@@ -13,14 +13,32 @@ func WithDemoActors() StoreOption {
 		for _, actor := range demoActors() {
 			store.actors[actor.ID] = actor
 		}
+		store.credentialPolicies["store-1"] = domain.CredentialPolicy{
+			Required: true,
+			AllowedKinds: []domain.CredentialKind{
+				domain.CredentialKindIButton,
+				domain.CredentialKindMSRCard,
+				domain.CredentialKindBarcodeCard,
+			},
+		}
 	}
 }
 
 func demoActors() []domain.Actor {
+	notRequired := domain.CredentialPolicy{Required: false}
 	return []domain.Actor{
-		{ID: "cashier-1", PIN: "1234", Roles: []domain.Role{domain.RoleCashier}},
-		{ID: "senior-1", PIN: "5678", Roles: []domain.Role{domain.RoleSeniorCashier}},
-		{ID: "admin-1", PIN: "9999", Roles: []domain.Role{domain.RoleAdmin}},
+		{ID: "cashier-1", PIN: "1234", Roles: []domain.Role{domain.RoleCashier}, CredentialPolicy: &notRequired},
+		{
+			ID:    "senior-1",
+			PIN:   "5678",
+			Roles: []domain.Role{domain.RoleSeniorCashier},
+			CredentialBindings: []domain.CredentialBinding{
+				{Kind: domain.CredentialKindIButton, TokenHash: app.HashCredentialToken("01A2B3C4D5E6F708"), MaskedToken: "iButton ****F708", Active: true},
+				{Kind: domain.CredentialKindMSRCard, TokenHash: app.HashCredentialToken("MSR-STAFF-SENIOR-1"), MaskedToken: "MSR staff ****0001", Active: true},
+				{Kind: domain.CredentialKindBarcodeCard, TokenHash: app.HashCredentialToken("BARCODE-STAFF-SENIOR-1"), MaskedToken: "Barcode staff ****0001", Active: true},
+			},
+		},
+		{ID: "admin-1", PIN: "9999", Roles: []domain.Role{domain.RoleAdmin}, CredentialPolicy: &notRequired},
 	}
 }
 
@@ -33,6 +51,18 @@ func (s *Store) FindActor(ctx context.Context, actorID string) (domain.Actor, er
 		return domain.Actor{}, app.ErrActorNotFound
 	}
 	return actor, nil
+}
+
+func (s *Store) FindStoreCredentialPolicy(ctx context.Context, storeID string) (domain.CredentialPolicy, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	policy, ok := s.credentialPolicies[storeID]
+	if !ok {
+		return domain.CredentialPolicy{}, nil
+	}
+	policy.AllowedKinds = append([]domain.CredentialKind(nil), policy.AllowedKinds...)
+	return policy, nil
 }
 
 func (s *Store) SaveSession(ctx context.Context, session domain.Session) error {

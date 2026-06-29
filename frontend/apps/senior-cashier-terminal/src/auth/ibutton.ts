@@ -6,19 +6,44 @@ import {
   type ListDevices200Item,
   type SendDeviceCommand202Command,
 } from '@mercadia/api-clients-hardware-agent';
+import type { CreateAuthSessionBodyCredentialFactor } from '@mercadia/api-clients-store-edge';
 
 const COMMAND_POLL_INTERVAL_MS = 50;
 const COMMAND_POLL_TIMEOUT_MS = 3_000;
 
 type DeviceCommand = SendDeviceCommand202Command | GetDeviceCommand200;
+export type StaffCredentialKind = CreateAuthSessionBodyCredentialFactor['kind'];
 
-async function findIButtonDevice(signal?: AbortSignal): Promise<ListDevices200Item | null> {
+export type StaffCredentialRead = {
+  factor: CreateAuthSessionBodyCredentialFactor;
+  maskedToken?: string;
+};
+
+const CREDENTIAL_COMMANDS: Record<
+  StaffCredentialKind,
+  {
+    commandType: string;
+    deviceKind: string;
+    tokenField: 'romId' | 'staffToken';
+  }
+> = {
+  ibutton: { commandType: 'read_key', deviceKind: 'ibutton', tokenField: 'romId' },
+  msr_card: { commandType: 'read_staff_card', deviceKind: 'msr', tokenField: 'staffToken' },
+  barcode_card: { commandType: 'scan_staff_card', deviceKind: 'scanner', tokenField: 'staffToken' },
+};
+
+async function findCredentialDevice(
+  kind: StaffCredentialKind,
+  signal?: AbortSignal,
+): Promise<ListDevices200Item | null> {
+  const config = CREDENTIAL_COMMANDS[kind];
   try {
     const response = await listDevices({ signal });
     return (
       response.data.find(
         (device) =>
-          device.kind === 'ibutton' && (device.status === 'ready' || device.status === 'simulated'),
+          device.kind === config.deviceKind &&
+          (device.status === 'ready' || device.status === 'simulated'),
       ) ?? null
     );
   } catch {
@@ -28,7 +53,7 @@ async function findIButtonDevice(signal?: AbortSignal): Promise<ListDevices200It
 
 function wait(ms: number, signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) {
-    return Promise.reject(new Error('iButton read aborted'));
+    return Promise.reject(new Error('Staff credential read aborted'));
   }
 
   return new Promise((resolve, reject) => {
@@ -38,7 +63,7 @@ function wait(ms: number, signal?: AbortSignal): Promise<void> {
     }, ms);
     const handleAbort = () => {
       clearTimeout(timeoutId);
-      reject(new Error('iButton read aborted'));
+      reject(new Error('Staff credential read aborted'));
     };
     signal?.addEventListener('abort', handleAbort, { once: true });
   });
@@ -54,13 +79,13 @@ async function waitForCommandCompletion(
 
   while (command.status !== 'completed' && command.status !== 'failed') {
     if (Date.now() >= deadline) {
-      throw new Error('iButton read timed out');
+      throw new Error('Staff credential read timed out');
     }
 
     await wait(COMMAND_POLL_INTERVAL_MS, signal);
     const response = await getDeviceCommand(deviceId, command.id, { signal });
     if (response.status !== 200) {
-      throw new Error('Failed to get iButton command status');
+      throw new Error('Failed to get staff credential command status');
     }
     command = response.data;
   }
@@ -68,15 +93,19 @@ async function waitForCommandCompletion(
   return command;
 }
 
-export async function readIButton(signal?: AbortSignal): Promise<string> {
-  const device = await findIButtonDevice(signal);
+export async function readStaffCredential(
+  kind: StaffCredentialKind,
+  signal?: AbortSignal,
+): Promise<StaffCredentialRead> {
+  const config = CREDENTIAL_COMMANDS[kind];
+  const device = await findCredentialDevice(kind, signal);
   if (!device) {
-    throw new Error('No iButton reader is available');
+    throw new Error('No staff credential reader is available');
   }
 
   const response = await sendDeviceCommand(
     device.id,
-    { type: 'read_key' },
+    { type: config.commandType },
     {
       headers: { 'Idempotency-Key': crypto.randomUUID() },
       signal,
@@ -84,18 +113,33 @@ export async function readIButton(signal?: AbortSignal): Promise<string> {
   );
 
   if (response.status !== 202) {
-    throw new Error('Failed to send iButton command');
+    throw new Error('Failed to send staff credential command');
   }
 
   const command = await waitForCommandCompletion(device.id, response.data.command, signal);
 
   if (command.status === 'failed') {
-    throw new Error(command.error ?? 'iButton read failed');
+    throw new Error(command.error ?? 'Staff credential read failed');
   }
 
-  if (typeof command.result?.romId === 'string') {
-    return command.result.romId;
+  const token = command.result?.[config.tokenField];
+  if (typeof token !== 'string') {
+    throw new Error('Staff credential command returned no token');
   }
 
-  throw new Error('iButton returned no ROM ID');
+  const maskedToken = command.result?.masked;
+  return {
+    factor: {
+      kind,
+      token,
+      deviceId: device.id,
+      commandId: command.id,
+    },
+    maskedToken: typeof maskedToken === 'string' ? maskedToken : undefined,
+  };
+}
+
+export async function readIButton(signal?: AbortSignal): Promise<string> {
+  const credential = await readStaffCredential('ibutton', signal);
+  return credential.factor.token;
 }

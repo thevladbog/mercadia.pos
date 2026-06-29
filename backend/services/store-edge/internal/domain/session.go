@@ -13,6 +13,14 @@ const (
 	RoleAdmin         Role = "admin"
 )
 
+type CredentialKind string
+
+const (
+	CredentialKindIButton     CredentialKind = "ibutton"
+	CredentialKindMSRCard     CredentialKind = "msr_card"
+	CredentialKindBarcodeCard CredentialKind = "barcode_card"
+)
+
 var (
 	ErrInvalidSessionInput = errors.New("invalid session input")
 	ErrInvalidActorInput   = errors.New("invalid actor input")
@@ -20,17 +28,47 @@ var (
 )
 
 type Actor struct {
-	ID    string
-	PIN   string
-	Roles []Role
+	ID                 string
+	PIN                string
+	Roles              []Role
+	CredentialPolicy   *CredentialPolicy
+	CredentialBindings []CredentialBinding
+}
+
+type CredentialPolicy struct {
+	Required     bool
+	AllowedKinds []CredentialKind
+}
+
+type CredentialBinding struct {
+	Kind        CredentialKind
+	TokenHash   string
+	MaskedToken string
+	Active      bool
+}
+
+type SubmittedCredentialFactor struct {
+	Kind      CredentialKind
+	Token     string
+	DeviceID  string
+	CommandID string
+}
+
+type SessionCredentialFactor struct {
+	Kind             CredentialKind
+	DeviceID         string
+	CommandID        string
+	TokenFingerprint string
+	MaskedToken      string
 }
 
 type Session struct {
-	Token     string
-	ActorID   string
-	Roles     []Role
-	CreatedAt time.Time
-	ExpiresAt time.Time
+	Token            string
+	ActorID          string
+	Roles            []Role
+	CredentialFactor *SessionCredentialFactor
+	CreatedAt        time.Time
+	ExpiresAt        time.Time
 }
 
 type CreateSessionInput struct {
@@ -40,7 +78,7 @@ type CreateSessionInput struct {
 	TTL     time.Duration
 }
 
-func NewSession(actor Actor, token string, now time.Time, ttl time.Duration) (Session, error) {
+func NewSession(actor Actor, token string, now time.Time, ttl time.Duration, credentialFactor *SessionCredentialFactor) (Session, error) {
 	if token == "" || actor.ID == "" {
 		return Session{}, ErrInvalidSessionInput
 	}
@@ -53,11 +91,12 @@ func NewSession(actor Actor, token string, now time.Time, ttl time.Duration) (Se
 
 	roles := append([]Role(nil), actor.Roles...)
 	return Session{
-		Token:     token,
-		ActorID:   actor.ID,
-		Roles:     roles,
-		CreatedAt: now,
-		ExpiresAt: now.Add(ttl),
+		Token:            token,
+		ActorID:          actor.ID,
+		Roles:            roles,
+		CredentialFactor: credentialFactor,
+		CreatedAt:        now,
+		ExpiresAt:        now.Add(ttl),
 	}, nil
 }
 

@@ -36,8 +36,17 @@ func OptionalSessionFromRequest(r *http.Request, auth *app.AuthService) (*Sessio
 }
 
 type CreateSessionRequest struct {
-	ActorID string `json:"actorId"`
-	PIN     string `json:"pin"`
+	ActorID          string                   `json:"actorId"`
+	PIN              string                   `json:"pin"`
+	StoreID          string                   `json:"storeId"`
+	CredentialFactor *CredentialFactorRequest `json:"credentialFactor,omitempty"`
+}
+
+type CredentialFactorRequest struct {
+	Kind      domain.CredentialKind `json:"kind"`
+	Token     string                `json:"token"`
+	DeviceID  string                `json:"deviceId,omitempty"`
+	CommandID string                `json:"commandId,omitempty"`
 }
 
 type SessionAcceptedResponse struct {
@@ -45,10 +54,19 @@ type SessionAcceptedResponse struct {
 }
 
 type SessionResponse struct {
-	Token     string        `json:"token"`
-	ActorID   string        `json:"actorId"`
-	Roles     []domain.Role `json:"roles"`
-	ExpiresAt time.Time     `json:"expiresAt"`
+	Token            string                    `json:"token"`
+	ActorID          string                    `json:"actorId"`
+	Roles            []domain.Role             `json:"roles"`
+	CredentialFactor *CredentialFactorResponse `json:"credentialFactor,omitempty"`
+	ExpiresAt        time.Time                 `json:"expiresAt"`
+}
+
+type CredentialFactorResponse struct {
+	Kind             domain.CredentialKind `json:"kind"`
+	DeviceID         string                `json:"deviceId,omitempty"`
+	CommandID        string                `json:"commandId,omitempty"`
+	TokenFingerprint string                `json:"tokenFingerprint"`
+	MaskedToken      string                `json:"maskedToken,omitempty"`
 }
 
 type PaginatedReceiptsResponse struct {
@@ -208,8 +226,10 @@ func mountDomainRoutes(
 			return
 		}
 		result, err := auth.CreateSession(r.Context(), app.CreateSessionCommand{
-			ActorID: request.ActorID,
-			PIN:     request.PIN,
+			ActorID:          request.ActorID,
+			PIN:              request.PIN,
+			StoreID:          request.StoreID,
+			CredentialFactor: submittedCredentialFactor(request.CredentialFactor),
 		})
 		if err != nil {
 			writeAppError(w, err)
@@ -606,10 +626,36 @@ func toReturnLineCommands(lines []ReturnLineRequest) []app.ReturnLineCommand {
 
 func sessionResponse(result app.SessionResult) SessionResponse {
 	return SessionResponse{
-		Token:     result.Token,
-		ActorID:   result.ActorID,
-		Roles:     result.Roles,
-		ExpiresAt: result.ExpiresAt,
+		Token:            result.Token,
+		ActorID:          result.ActorID,
+		Roles:            result.Roles,
+		CredentialFactor: credentialFactorResponse(result.CredentialFactor),
+		ExpiresAt:        result.ExpiresAt,
+	}
+}
+
+func submittedCredentialFactor(factor *CredentialFactorRequest) *domain.SubmittedCredentialFactor {
+	if factor == nil {
+		return nil
+	}
+	return &domain.SubmittedCredentialFactor{
+		Kind:      factor.Kind,
+		Token:     factor.Token,
+		DeviceID:  factor.DeviceID,
+		CommandID: factor.CommandID,
+	}
+}
+
+func credentialFactorResponse(factor *domain.SessionCredentialFactor) *CredentialFactorResponse {
+	if factor == nil {
+		return nil
+	}
+	return &CredentialFactorResponse{
+		Kind:             factor.Kind,
+		DeviceID:         factor.DeviceID,
+		CommandID:        factor.CommandID,
+		TokenFingerprint: factor.TokenFingerprint,
+		MaskedToken:      factor.MaskedToken,
 	}
 }
 
@@ -666,9 +712,20 @@ func operationJournalEntryResponses(entries []domain.OperationJournalEntry) []Op
 
 func createSessionRequestSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"actorId": httpapi.StringSchema(),
-		"pin":     httpapi.StringSchema(),
-	}, "actorId", "pin")
+		"actorId":          httpapi.StringSchema(),
+		"pin":              httpapi.StringSchema(),
+		"storeId":          httpapi.StringSchema(),
+		"credentialFactor": credentialFactorRequestSchema(),
+	}, "actorId", "pin", "storeId")
+}
+
+func credentialFactorRequestSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"kind":      httpapi.EnumStringSchema("ibutton", "msr_card", "barcode_card"),
+		"token":     httpapi.StringSchema(),
+		"deviceId":  httpapi.StringSchema(),
+		"commandId": httpapi.StringSchema(),
+	}, "kind", "token")
 }
 
 func sessionAcceptedResponseSchema() httpapi.Schema {
@@ -679,11 +736,22 @@ func sessionAcceptedResponseSchema() httpapi.Schema {
 
 func sessionResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"token":     httpapi.StringSchema(),
-		"actorId":   httpapi.StringSchema(),
-		"roles":     httpapi.ArraySchema(httpapi.StringSchema()),
-		"expiresAt": httpapi.DateTimeSchema(),
+		"token":            httpapi.StringSchema(),
+		"actorId":          httpapi.StringSchema(),
+		"roles":            httpapi.ArraySchema(httpapi.StringSchema()),
+		"credentialFactor": credentialFactorResponseSchema(),
+		"expiresAt":        httpapi.DateTimeSchema(),
 	}, "token", "actorId", "roles", "expiresAt")
+}
+
+func credentialFactorResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"kind":             httpapi.EnumStringSchema("ibutton", "msr_card", "barcode_card"),
+		"deviceId":         httpapi.StringSchema(),
+		"commandId":        httpapi.StringSchema(),
+		"tokenFingerprint": httpapi.StringSchema(),
+		"maskedToken":      httpapi.StringSchema(),
+	}, "kind", "tokenFingerprint")
 }
 
 func createReceiptReturnRequestSchema() httpapi.Schema {

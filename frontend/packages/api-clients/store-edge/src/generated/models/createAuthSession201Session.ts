@@ -5,9 +5,11 @@
  * Store-local operational API for POS, SCO/KSO, senior cashier, assistant, and store admin clients.
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateAuthSession201SessionCredentialFactor } from './createAuthSession201SessionCredentialFactor.ts';
 
 export type CreateAuthSession201Session = {
   actorId: string;
+  credentialFactor?: CreateAuthSession201SessionCredentialFactor;
   expiresAt: string;
   roles: string[];
   token: string;

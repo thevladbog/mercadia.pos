@@ -30,6 +30,11 @@ func (a *MSRAdapter) Execute(_ context.Context, device domain.Device, commandTyp
 			"track2": ";4111111111111111=3012?",
 			"masked": "****1111",
 		}, nil
+	case "read_staff_card":
+		return map[string]any{
+			"staffToken": "MSR-STAFF-SENIOR-1",
+			"masked":     "MSR staff ****0001",
+		}, nil
 	default:
 		return nil, fmt.Errorf("%w: %s", ErrUnsupportedCommand, commandType)
 	}

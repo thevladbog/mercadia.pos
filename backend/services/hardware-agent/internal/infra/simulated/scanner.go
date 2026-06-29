@@ -33,6 +33,16 @@ func (a *ScannerAdapter) Execute(_ context.Context, device domain.Device, comman
 			"barcode":   barcode,
 			"symbology": "EAN13",
 		}, nil
+	case "scan_staff_card":
+		staffToken := "BARCODE-STAFF-SENIOR-1"
+		if value, ok := payload["staffToken"].(string); ok && value != "" {
+			staffToken = value
+		}
+		return map[string]any{
+			"staffToken": staffToken,
+			"masked":     "Barcode staff ****0001",
+			"symbology":  "CODE128",
+		}, nil
 	default:
 		return nil, fmt.Errorf("%w: %s", ErrUnsupportedCommand, commandType)
 	}
