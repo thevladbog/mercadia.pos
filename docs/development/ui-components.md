@@ -116,9 +116,12 @@ pnpm storybook:ui
 pnpm build-storybook:ui
 ```
 
-Use the Storybook toolbar to switch `surface`, `colorMode`, and `accentPreset`. The Foundations
-stories show computed CSS custom properties for primitive colors, semantic colors, spacing,
-radii, shadows, and surface sizing tokens.
+Use the Storybook toolbar to switch `surface`, `colorMode` (`light` / `dark`), `accentPreset`,
+and language (`en` / `ru`). The Foundations stories show computed CSS custom properties for
+primitive colors, semantic colors, spacing, radii, shadows, and surface sizing tokens.
+
+Storybook also includes `@storybook/addon-mcp` so compatible MCP clients can inspect the UI
+catalog while developing components.
 
 ## Central backend branding APIs
 

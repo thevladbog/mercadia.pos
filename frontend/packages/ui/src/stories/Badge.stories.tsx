@@ -1,6 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import { Badge } from '../index.js';
+import { getStorybookLocale } from './locale.js';
+
+const badgeCopy = {
+  en: ['Default', 'Accent', 'Success', 'Warning', 'Danger', 'Info', 'Outline'],
+  ru: ['Базовый', 'Акцент', 'Успех', 'Внимание', 'Опасность', 'Инфо', 'Контур'],
+};
 
 const meta = {
   title: 'Components/Badge',
@@ -27,15 +33,18 @@ type Story = StoryObj<typeof meta>;
 export const Playground: Story = {};
 
 export const Variants: Story = {
-  render: () => (
-    <div className="mercadia-story-row">
-      <Badge>Default</Badge>
-      <Badge variant="accent">Accent</Badge>
-      <Badge variant="success">Success</Badge>
-      <Badge variant="warning">Warning</Badge>
-      <Badge variant="danger">Danger</Badge>
-      <Badge variant="info">Info</Badge>
-      <Badge variant="outline">Outline</Badge>
-    </div>
-  ),
+  render: (_args, context) => {
+    const copy = badgeCopy[getStorybookLocale(context.globals.locale)];
+    return (
+      <div className="mercadia-story-row">
+        <Badge>{copy[0]}</Badge>
+        <Badge variant="accent">{copy[1]}</Badge>
+        <Badge variant="success">{copy[2]}</Badge>
+        <Badge variant="warning">{copy[3]}</Badge>
+        <Badge variant="danger">{copy[4]}</Badge>
+        <Badge variant="info">{copy[5]}</Badge>
+        <Badge variant="outline">{copy[6]}</Badge>
+      </div>
+    );
+  },
 };

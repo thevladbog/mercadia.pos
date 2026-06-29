@@ -4,6 +4,32 @@ import { useEffect, useState } from 'react';
 
 import { Badge, Button, Card, CardHeading, ThemePreview } from '../index.js';
 import type { AccentPreset, ColorMode, Surface } from '../index.js';
+import { getStorybookLocale, type StorybookLocale } from './locale.js';
+
+const foundationCopy = {
+  en: {
+    toolbarHint: 'Use the Storybook toolbar to switch surface, mode, accent, and language.',
+    primitiveColors: 'Primitive colors',
+    semanticColors: 'Semantic colors',
+    spacingAndLayout: 'Spacing and layout',
+    radiiAndShadows: 'Radii and shadows',
+    surfaceTokens: 'Surface tokens',
+    themeMatrixSubtitle: 'Surface preset across modes and accents',
+    operationalSample: 'Operational UI sample',
+    primaryAction: 'Primary action',
+  },
+  ru: {
+    toolbarHint: 'Используйте toolbar Storybook для переключения surface, mode, accent и языка.',
+    primitiveColors: 'Базовые цвета',
+    semanticColors: 'Семантические цвета',
+    spacingAndLayout: 'Отступы и размеры',
+    radiiAndShadows: 'Радиусы и тени',
+    surfaceTokens: 'Переменные surface',
+    themeMatrixSubtitle: 'Surface preset в разных режимах и акцентах',
+    operationalSample: 'Пример операционного интерфейса',
+    primaryAction: 'Основное действие',
+  },
+};
 
 type Token = {
   name: string;
@@ -145,14 +171,19 @@ function TokenTable({ tokens }: { tokens: Token[] }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  locale,
+  children,
+}: {
+  title: string;
+  locale: StorybookLocale;
+  children: ReactNode;
+}) {
   return (
     <div className="mercadia-story-section">
       <Card>
-        <CardHeading
-          title={title}
-          subtitle="Use the Storybook toolbar to switch surface, mode, and accent."
-        />
+        <CardHeading title={title} subtitle={foundationCopy[locale].toolbarHint} />
       </Card>
       {children}
     </div>
@@ -171,72 +202,91 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PrimitiveColors: Story = {
-  render: () => (
-    <Section title="Primitive colors">
-      <TokenTable tokens={primitiveColorTokens} />
-    </Section>
-  ),
+  render: (_args, context) => {
+    const locale = getStorybookLocale(context.globals.locale);
+    return (
+      <Section title={foundationCopy[locale].primitiveColors} locale={locale}>
+        <TokenTable tokens={primitiveColorTokens} />
+      </Section>
+    );
+  },
 };
 
 export const SemanticColors: Story = {
-  render: () => (
-    <Section title="Semantic colors">
-      <TokenTable tokens={semanticColorTokens} />
-    </Section>
-  ),
+  render: (_args, context) => {
+    const locale = getStorybookLocale(context.globals.locale);
+    return (
+      <Section title={foundationCopy[locale].semanticColors} locale={locale}>
+        <TokenTable tokens={semanticColorTokens} />
+      </Section>
+    );
+  },
 };
 
 export const SpacingAndLayout: Story = {
-  render: () => (
-    <Section title="Spacing and layout">
-      <TokenTable tokens={spacingTokens} />
-    </Section>
-  ),
+  render: (_args, context) => {
+    const locale = getStorybookLocale(context.globals.locale);
+    return (
+      <Section title={foundationCopy[locale].spacingAndLayout} locale={locale}>
+        <TokenTable tokens={spacingTokens} />
+      </Section>
+    );
+  },
 };
 
 export const RadiiAndShadows: Story = {
-  render: () => (
-    <Section title="Radii and shadows">
-      <TokenTable tokens={[...radiusTokens, ...shadowTokens]} />
-    </Section>
-  ),
+  render: (_args, context) => {
+    const locale = getStorybookLocale(context.globals.locale);
+    return (
+      <Section title={foundationCopy[locale].radiiAndShadows} locale={locale}>
+        <TokenTable tokens={[...radiusTokens, ...shadowTokens]} />
+      </Section>
+    );
+  },
 };
 
 export const SurfaceTokens: Story = {
-  render: () => (
-    <Section title="Surface tokens">
-      <TokenTable tokens={surfaceTokens} />
-    </Section>
-  ),
+  render: (_args, context) => {
+    const locale = getStorybookLocale(context.globals.locale);
+    return (
+      <Section title={foundationCopy[locale].surfaceTokens} locale={locale}>
+        <TokenTable tokens={surfaceTokens} />
+      </Section>
+    );
+  },
 };
 
 export const ThemeMatrix: Story = {
-  render: () => (
-    <div className="mercadia-story-section">
-      {surfaces.map((surface) => (
-        <Card key={surface}>
-          <CardHeading title={surface} subtitle="Surface preset across modes and accents" />
-          <div className="mercadia-story-grid">
-            {colorModes.map((colorMode) =>
-              accentPresets.map((accentPreset) => (
-                <ThemePreview
-                  key={`${surface}-${colorMode}-${accentPreset}`}
-                  className="mercadia-theme-sample"
-                  theme={{ surface, colorMode, accentPreset }}
-                >
-                  <div className="mercadia-story-row">
-                    <Badge variant="accent">{accentPreset}</Badge>
-                    <Badge variant="outline">{colorMode}</Badge>
-                  </div>
-                  <strong>{surface}</strong>
-                  <span style={{ color: 'var(--ui-text-muted)' }}>Operational UI sample</span>
-                  <Button size="sm">Primary action</Button>
-                </ThemePreview>
-              )),
-            )}
-          </div>
-        </Card>
-      ))}
-    </div>
-  ),
+  render: (_args, context) => {
+    const locale = getStorybookLocale(context.globals.locale);
+    const copy = foundationCopy[locale];
+    return (
+      <div className="mercadia-story-section">
+        {surfaces.map((surface) => (
+          <Card key={surface}>
+            <CardHeading title={surface} subtitle={copy.themeMatrixSubtitle} />
+            <div className="mercadia-story-grid">
+              {colorModes.map((colorMode) =>
+                accentPresets.map((accentPreset) => (
+                  <ThemePreview
+                    key={`${surface}-${colorMode}-${accentPreset}`}
+                    className="mercadia-theme-sample"
+                    theme={{ surface, colorMode, accentPreset }}
+                  >
+                    <div className="mercadia-story-row">
+                      <Badge variant="accent">{accentPreset}</Badge>
+                      <Badge variant="outline">{colorMode}</Badge>
+                    </div>
+                    <strong>{surface}</strong>
+                    <span style={{ color: 'var(--ui-text-muted)' }}>{copy.operationalSample}</span>
+                    <Button size="sm">{copy.primaryAction}</Button>
+                  </ThemePreview>
+                )),
+              )}
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  },
 };

@@ -2,6 +2,7 @@ import type { Decorator, Preview } from '@storybook/react-vite';
 
 import '../src/styles/index.css';
 import '../src/stories/storybook.css';
+import { getStorybookLocale } from '../src/stories/locale.js';
 import { ThemeProvider } from '../src/theme/ThemeProvider.js';
 import type { AccentPreset, ColorMode, Surface } from '../src/theme/types.js';
 
@@ -9,6 +10,9 @@ const withMercadiaTheme: Decorator = (Story, context) => {
   const surface = (context.globals.surface ?? 'admin') as Surface;
   const colorMode = (context.globals.colorMode ?? 'light') as ColorMode;
   const accentPreset = (context.globals.accentPreset ?? 'neutral') as AccentPreset;
+  const locale = getStorybookLocale(context.globals.locale);
+
+  document.documentElement.lang = locale;
 
   return (
     <ThemeProvider
@@ -52,11 +56,24 @@ const preview: Preview = {
         dynamicTitle: true,
       },
     },
+    locale: {
+      description: 'Storybook language',
+      toolbar: {
+        title: 'Language',
+        icon: 'globe',
+        items: [
+          { value: 'en', title: 'English' },
+          { value: 'ru', title: 'Русский' },
+        ],
+        dynamicTitle: true,
+      },
+    },
   },
   initialGlobals: {
     surface: 'admin',
     colorMode: 'light',
     accentPreset: 'neutral',
+    locale: 'en',
   },
   parameters: {
     controls: {
