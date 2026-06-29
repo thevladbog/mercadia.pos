@@ -5,6 +5,7 @@
  * Store-local operational API for POS, SCO/KSO, senior cashier, assistant, and store admin clients.
  * OpenAPI spec version: 0.1.0
  */
+import type { SettleReturn202PaymentsItemStatus } from './settleReturn202PaymentsItemStatus.ts';
 
 export type SettleReturn202PaymentsItem = {
   amountMinor: number;
@@ -15,6 +16,6 @@ export type SettleReturn202PaymentsItem = {
   providerReference?: string;
   receiptId: string;
   refundedAmountMinor: number;
-  status: string;
+  status: SettleReturn202PaymentsItemStatus;
   updatedAt: string;
 };

@@ -9,6 +9,7 @@ import {
   type CreateReceiptPaymentBody,
   getCurrentOperationalDay,
   type GetReceipt200,
+  GetReceipt200Status,
   getReceipt,
   openOperationalDay,
   openReceipt,
@@ -39,7 +40,6 @@ import { changeAppLocale, i18n, type AppLocale } from '@/i18n/config.js';
 import { queryClient } from '@/query-client.js';
 
 const ALL_CATEGORIES = '__all__';
-const RECEIPT_STATUS_PAID = 'paid' satisfies GetReceipt200['status'];
 const PAYMENT_METHOD_CARD_MOCK = 'card_mock' satisfies CreateReceiptPaymentBody['method'];
 const PAYMENT_METHOD_CASH = 'cash' satisfies CreateReceiptPaymentBody['method'];
 
@@ -403,7 +403,7 @@ function TerminalShell() {
       setErrorMessage(t('pos.errors.openReceiptBeforeFiscalization'));
       return;
     }
-    if (receipt.status !== RECEIPT_STATUS_PAID) {
+    if (receipt.status !== GetReceipt200Status.paid) {
       setErrorMessage(t('pos.errors.paidReceiptRequired'));
       return;
     }
@@ -521,7 +521,7 @@ function TerminalShell() {
             disabled={
               isBusy ||
               !receipt ||
-              receipt.status !== RECEIPT_STATUS_PAID ||
+              receipt.status !== GetReceipt200Status.paid ||
               fiscalDocument !== null
             }
             onClick={() => void fiscalizeReceipt()}

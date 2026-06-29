@@ -102,6 +102,28 @@ func TestOpenAPIUsesVersion31AndRequiresOperationIDs(t *testing.T) {
 	}
 }
 
+func TestEnumStringSchema(t *testing.T) {
+	schema := EnumStringSchema("draft", "paid")
+
+	if schema["type"] != "string" {
+		t.Fatalf("type = %v, want string", schema["type"])
+	}
+	enumValues := schema["enum"].([]any)
+	if len(enumValues) != 2 || enumValues[0] != "draft" || enumValues[1] != "paid" {
+		t.Fatalf("enum = %#v", enumValues)
+	}
+}
+
+func TestEnumStringSchemaRequiresValues(t *testing.T) {
+	defer func() {
+		if recovered := recover(); recovered == nil {
+			t.Fatal("expected panic for empty enum values")
+		}
+	}()
+
+	_ = EnumStringSchema()
+}
+
 func TestScalarHTMLPinsVersionedCDN(t *testing.T) {
 	html := ScalarHTML("Mercadia Test")
 	if !strings.Contains(html, "@scalar/api-reference@1.60.0") {

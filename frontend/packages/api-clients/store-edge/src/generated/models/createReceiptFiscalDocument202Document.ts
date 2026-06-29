@@ -5,6 +5,7 @@
  * Store-local operational API for POS, SCO/KSO, senior cashier, assistant, and store admin clients.
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateReceiptFiscalDocument202DocumentStatus } from './createReceiptFiscalDocument202DocumentStatus.ts';
 
 export type CreateReceiptFiscalDocument202Document = {
   amountMinor: number;
@@ -16,5 +17,5 @@ export type CreateReceiptFiscalDocument202Document = {
   kind: string;
   receiptId: string;
   returnId?: string;
-  status: string;
+  status: CreateReceiptFiscalDocument202DocumentStatus;
 };
