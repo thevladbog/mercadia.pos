@@ -1,41 +1,50 @@
-import type { HardwareAgentDevice, HardwareAgentCommandResponse } from './types.js';
+import {
+  listDevices,
+  sendDeviceCommand,
+  type ListDevices200Item,
+} from '@mercadia/api-clients-hardware-agent';
 
-const HARDWARE_AGENT_BASE = import.meta.env.VITE_HARDWARE_AGENT_URL ?? '';
-
-async function findIButtonDevice(): Promise<HardwareAgentDevice | null> {
-  const res = await fetch(`${HARDWARE_AGENT_BASE}/v1/devices`);
-  if (!res.ok) {
+async function findIButtonDevice(signal?: AbortSignal): Promise<ListDevices200Item | null> {
+  try {
+    const response = await listDevices({ signal });
+    return (
+      response.data.find(
+        (device) =>
+          device.kind === 'ibutton' && (device.status === 'ready' || device.status === 'simulated'),
+      ) ?? null
+    );
+  } catch {
     return null;
   }
-  const data = (await res.json()) as { devices: HardwareAgentDevice[] };
-  return data.devices.find((d) => d.kind === 'ibutton' && d.status === 'ready') ?? null;
 }
 
 export async function readIButton(signal?: AbortSignal): Promise<string> {
-  let device = await findIButtonDevice();
+  const device = await findIButtonDevice(signal);
   if (!device) {
-    device = { id: 'ibutton-sim', kind: 'ibutton', status: 'ready', model: 'Simulated iButton' };
+    throw new Error('No iButton reader is available');
   }
 
-  const commandRes = await fetch(`${HARDWARE_AGENT_BASE}/v1/devices/${device.id}/commands`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'read_key' }),
-    signal,
-  });
+  const response = await sendDeviceCommand(
+    device.id,
+    { type: 'read_key' },
+    {
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
+      signal,
+    },
+  );
 
-  if (!commandRes.ok) {
+  if (response.status !== 202) {
     throw new Error('Failed to send iButton command');
   }
 
-  const commandData = (await commandRes.json()) as HardwareAgentCommandResponse;
+  const command = response.data.command;
 
-  if (commandData.status === 'failed') {
-    throw new Error(commandData.error ?? 'iButton read failed');
+  if (command.status === 'failed') {
+    throw new Error(command.error ?? 'iButton read failed');
   }
 
-  if (commandData.result?.romId) {
-    return commandData.result.romId;
+  if (typeof command.result?.romId === 'string') {
+    return command.result.romId;
   }
 
   throw new Error('iButton returned no ROM ID');

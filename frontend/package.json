@@ -10,6 +10,7 @@
   "scripts": {
     "typecheck": "pnpm -r typecheck",
     "orval:central": "orval --config packages/api-clients/central/orval.config.ts",
+    "orval:hardware-agent": "orval --config packages/api-clients/hardware-agent/orval.config.ts",
     "orval:store-edge": "orval --config packages/api-clients/store-edge/orval.config.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -17,7 +18,7 @@
     "format:check": "prettier --check .",
     "storybook:ui": "pnpm --filter @mercadia/ui storybook",
     "build-storybook:ui": "pnpm --filter @mercadia/ui build-storybook",
-    "verify": "pnpm orval:central && pnpm orval:store-edge && pnpm typecheck && pnpm lint && pnpm format:check && pnpm --filter @mercadia/ui test && pnpm --filter admin-web build && pnpm --filter pos-terminal typecheck"
+    "verify": "pnpm orval:central && pnpm orval:store-edge && pnpm orval:hardware-agent && pnpm typecheck && pnpm lint && pnpm format:check && pnpm --filter @mercadia/ui test && pnpm --filter admin-web build && pnpm --filter pos-terminal typecheck && pnpm --filter senior-cashier-terminal typecheck"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

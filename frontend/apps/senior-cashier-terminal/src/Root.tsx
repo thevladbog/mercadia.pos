@@ -4,12 +4,9 @@ import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from '@mercadia/ui';
 
 import { AuthProvider } from '@/auth/AuthProvider.js';
-import { configureStoreEdgeClient } from '@/api-client-config.js';
 import { i18n } from '@/i18n/config.js';
 import { App } from '@/App.js';
 import { queryClient } from '@/query-client.js';
-
-configureStoreEdgeClient();
 
 export function Root() {
   return (

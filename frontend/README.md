@@ -20,9 +20,11 @@ registry=https://registry.npmjs.org/
 frontend/
   apps/admin-web/                      # Central admin UI (Vite + React)
   apps/pos-terminal/                   # POS terminal dev shell (Vite + React)
+  apps/senior-cashier-terminal/        # Senior cashier touch terminal (Vite + React)
   packages/ui/                         # @mercadia/ui — Radix components + theme system
   packages/api-clients/central/        # Orval client for central-backend OpenAPI
   packages/api-clients/store-edge/     # Orval client for store-edge OpenAPI
+  packages/api-clients/hardware-agent/ # Orval client for hardware-agent OpenAPI
 ```
 
 ## Install and verify
@@ -33,8 +35,8 @@ pnpm install
 pnpm verify
 ```
 
-`pnpm verify` runs, in order: Orval generation, typecheck, ESLint, Prettier check, `@mercadia/ui` unit tests, and
-admin-web production build.
+`pnpm verify` runs, in order: Orval generation, typecheck, ESLint, Prettier check, `@mercadia/ui` unit tests,
+admin-web production build, and terminal typechecks.
 
 CI workflow details: [`docs/development/ci.md`](../docs/development/ci.md).
 
@@ -43,6 +45,7 @@ Individual checks:
 ```bash
 pnpm orval:central
 pnpm orval:store-edge
+pnpm orval:hardware-agent
 pnpm typecheck
 pnpm lint              # ESLint
 pnpm lint:fix          # ESLint with auto-fix
@@ -60,6 +63,7 @@ Regenerate clients after backend OpenAPI changes:
 ```bash
 pnpm orval:central
 pnpm orval:store-edge
+pnpm orval:hardware-agent
 ```
 
 ## Local development — admin-web
@@ -220,6 +224,31 @@ Default demo env vars:
 - `VITE_STORE_EDGE_URL` — optional Store Edge base URL when bypassing the Vite proxy
 - `VITE_STORE_EDGE_SESSION_TOKEN` — optional Store Edge session token
 - `VITE_LAYOUT_TEMPLATE_ID` and `VITE_CENTRAL_SESSION_TOKEN` — optional central layout template access
+
+## Local development — senior-cashier-terminal
+
+The senior cashier terminal uses Store Edge for operational commands and Hardware Agent for local
+iButton reads used by hardware-backed login and handover flows.
+
+1. Start **store-edge** on port `8081` and **hardware-agent** on port `8083`.
+2. Start the terminal UI:
+
+   ```bash
+   cd frontend
+   pnpm --filter senior-cashier-terminal dev
+   ```
+
+3. Open `http://localhost:5175`.
+
+Required env vars:
+
+- `VITE_STORE_EDGE_URL` — Store Edge base URL.
+- `VITE_STORE_ID` — active store ID for senior cashier workflows.
+
+Optional env vars:
+
+- `VITE_HARDWARE_AGENT_URL` — Hardware Agent base URL when bypassing the Vite proxy. When unset,
+  `/v1/devices` is proxied to local hardware-agent in dev.
 
 ## Dependency policy
 
