@@ -7,6 +7,8 @@
     "./styles.css": "./src/styles/index.css"
   },
   "scripts": {
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run"
   },
@@ -23,9 +25,13 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@storybook/addon-docs": "10.4.6",
+    "@storybook/addon-mcp": "0.6.0",
+    "@storybook/react-vite": "10.4.6",
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
     "happy-dom": "^20.0.10",
+    "storybook": "10.4.6",
     "typescript": "^6.0.3",
     "vitest": "^4.0.18"
   }
