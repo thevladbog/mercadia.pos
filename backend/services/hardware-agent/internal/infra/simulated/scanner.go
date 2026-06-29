@@ -34,13 +34,13 @@ func (a *ScannerAdapter) Execute(_ context.Context, device domain.Device, comman
 			"symbology": "EAN13",
 		}, nil
 	case "scan_staff_card":
-		staffToken := "BARCODE-STAFF-SENIOR-1"
+		staffToken := "demo-barcode-senior-1" // #nosec G101 -- deterministic simulator fixture, not a secret.
 		if value, ok := payload["staffToken"].(string); ok && value != "" {
 			staffToken = value
 		}
 		return map[string]any{
 			"staffToken": staffToken,
-			"masked":     "Barcode staff ****0001",
+			"masked":     "Barcode staff demo ****0001",
 			"symbology":  "CODE128",
 		}, nil
 	default:

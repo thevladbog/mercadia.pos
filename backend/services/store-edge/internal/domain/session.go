@@ -90,11 +90,16 @@ func NewSession(actor Actor, token string, now time.Time, ttl time.Duration, cre
 	}
 
 	roles := append([]Role(nil), actor.Roles...)
+	var factor *SessionCredentialFactor
+	if credentialFactor != nil {
+		cloned := *credentialFactor
+		factor = &cloned
+	}
 	return Session{
 		Token:            token,
 		ActorID:          actor.ID,
 		Roles:            roles,
-		CredentialFactor: credentialFactor,
+		CredentialFactor: factor,
 		CreatedAt:        now,
 		ExpiresAt:        now.Add(ttl),
 	}, nil

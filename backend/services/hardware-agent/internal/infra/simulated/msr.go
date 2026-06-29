@@ -32,8 +32,8 @@ func (a *MSRAdapter) Execute(_ context.Context, device domain.Device, commandTyp
 		}, nil
 	case "read_staff_card":
 		return map[string]any{
-			"staffToken": "MSR-STAFF-SENIOR-1",
-			"masked":     "MSR staff ****0001",
+			"staffToken": "demo-msr-senior-1", // #nosec G101 -- deterministic simulator fixture, not a secret.
+			"masked":     "MSR staff demo ****0001",
 		}, nil
 	default:
 		return nil, fmt.Errorf("%w: %s", ErrUnsupportedCommand, commandType)

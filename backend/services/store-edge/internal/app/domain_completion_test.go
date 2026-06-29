@@ -37,9 +37,9 @@ func TestCreateSessionAcceptsSeniorCashierCredentialKinds(t *testing.T) {
 		kind  domain.CredentialKind
 		token string
 	}{
-		{name: "ibutton", kind: domain.CredentialKindIButton, token: "01A2B3C4D5E6F708"},
-		{name: "msr", kind: domain.CredentialKindMSRCard, token: "MSR-STAFF-SENIOR-1"},
-		{name: "barcode", kind: domain.CredentialKindBarcodeCard, token: "BARCODE-STAFF-SENIOR-1"},
+		{name: "ibutton", kind: domain.CredentialKindIButton, token: "demo-ibutton-senior-1"},
+		{name: "msr", kind: domain.CredentialKindMSRCard, token: "demo-msr-senior-1"},
+		{name: "barcode", kind: domain.CredentialKindBarcodeCard, token: "demo-barcode-senior-1"},
 	}
 
 	for _, tt := range tests {

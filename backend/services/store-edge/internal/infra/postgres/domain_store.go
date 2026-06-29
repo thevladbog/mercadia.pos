@@ -12,27 +12,28 @@ import (
 )
 
 func (s *Store) SeedDemoActors(ctx context.Context) error {
-	for _, actor := range demoActors() {
-		roles, err := json.Marshal(actor.Roles)
-		if err != nil {
-			return fmt.Errorf("marshal actor roles: %w", err)
-		}
-		var credentialPolicy []byte
-		if actor.CredentialPolicy != nil {
-			credentialPolicy, err = json.Marshal(actor.CredentialPolicy)
+	return s.Run(ctx, func(ctx context.Context) error {
+		for _, actor := range demoActors() {
+			roles, err := json.Marshal(actor.Roles)
 			if err != nil {
-				return fmt.Errorf("marshal actor credential policy: %w", err)
+				return fmt.Errorf("marshal actor roles: %w", err)
 			}
-		}
-		bindings := actor.CredentialBindings
-		if bindings == nil {
-			bindings = []domain.CredentialBinding{}
-		}
-		credentialBindings, err := json.Marshal(bindings)
-		if err != nil {
-			return fmt.Errorf("marshal actor credential bindings: %w", err)
-		}
-		_, err = s.conn(ctx).Exec(ctx, `
+			var credentialPolicy []byte
+			if actor.CredentialPolicy != nil {
+				credentialPolicy, err = json.Marshal(actor.CredentialPolicy)
+				if err != nil {
+					return fmt.Errorf("marshal actor credential policy: %w", err)
+				}
+			}
+			bindings := actor.CredentialBindings
+			if bindings == nil {
+				bindings = []domain.CredentialBinding{}
+			}
+			credentialBindings, err := json.Marshal(bindings)
+			if err != nil {
+				return fmt.Errorf("marshal actor credential bindings: %w", err)
+			}
+			_, err = s.conn(ctx).Exec(ctx, `
 			INSERT INTO store_actors (id, pin, roles, credential_policy, credential_bindings)
 			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (id) DO UPDATE SET
@@ -41,30 +42,31 @@ func (s *Store) SeedDemoActors(ctx context.Context) error {
 				credential_policy = EXCLUDED.credential_policy,
 				credential_bindings = EXCLUDED.credential_bindings
 		`, actor.ID, actor.PIN, roles, credentialPolicy, credentialBindings)
-		if err != nil {
-			return fmt.Errorf("seed actor %s: %w", actor.ID, err)
+			if err != nil {
+				return fmt.Errorf("seed actor %s: %w", actor.ID, err)
+			}
 		}
-	}
-	storePolicy := domain.CredentialPolicy{
-		Required: true,
-		AllowedKinds: []domain.CredentialKind{
-			domain.CredentialKindIButton,
-			domain.CredentialKindMSRCard,
-			domain.CredentialKindBarcodeCard,
-		},
-	}
-	policyJSON, err := json.Marshal(storePolicy)
-	if err != nil {
-		return fmt.Errorf("marshal store credential policy: %w", err)
-	}
-	if _, err := s.conn(ctx).Exec(ctx, `
+		storePolicy := domain.CredentialPolicy{
+			Required: true,
+			AllowedKinds: []domain.CredentialKind{
+				domain.CredentialKindIButton,
+				domain.CredentialKindMSRCard,
+				domain.CredentialKindBarcodeCard,
+			},
+		}
+		policyJSON, err := json.Marshal(storePolicy)
+		if err != nil {
+			return fmt.Errorf("marshal store credential policy: %w", err)
+		}
+		if _, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO store_credential_policies (store_id, policy)
 		VALUES ($1, $2)
 		ON CONFLICT (store_id) DO UPDATE SET policy = EXCLUDED.policy
 	`, "store-1", policyJSON); err != nil {
-		return fmt.Errorf("seed store credential policy: %w", err)
-	}
-	return nil
+			return fmt.Errorf("seed store credential policy: %w", err)
+		}
+		return nil
+	})
 }
 
 func demoActors() []domain.Actor {
@@ -76,9 +78,9 @@ func demoActors() []domain.Actor {
 			PIN:   "5678",
 			Roles: []domain.Role{domain.RoleSeniorCashier},
 			CredentialBindings: []domain.CredentialBinding{
-				{Kind: domain.CredentialKindIButton, TokenHash: app.HashCredentialToken("01A2B3C4D5E6F708"), MaskedToken: "iButton ****F708", Active: true},
-				{Kind: domain.CredentialKindMSRCard, TokenHash: app.HashCredentialToken("MSR-STAFF-SENIOR-1"), MaskedToken: "MSR staff ****0001", Active: true},
-				{Kind: domain.CredentialKindBarcodeCard, TokenHash: app.HashCredentialToken("BARCODE-STAFF-SENIOR-1"), MaskedToken: "Barcode staff ****0001", Active: true},
+				{Kind: domain.CredentialKindIButton, TokenHash: app.HashCredentialToken("demo-ibutton-senior-1"), MaskedToken: "iButton demo ****0001", Active: true},           // #nosec G101 -- deterministic demo binding fixture, not a secret.
+				{Kind: domain.CredentialKindMSRCard, TokenHash: app.HashCredentialToken("demo-msr-senior-1"), MaskedToken: "MSR staff demo ****0001", Active: true},             // #nosec G101 -- deterministic demo binding fixture, not a secret.
+				{Kind: domain.CredentialKindBarcodeCard, TokenHash: app.HashCredentialToken("demo-barcode-senior-1"), MaskedToken: "Barcode staff demo ****0001", Active: true}, // #nosec G101 -- deterministic demo binding fixture, not a secret.
 			},
 		},
 		{ID: "admin-1", PIN: "9999", Roles: []domain.Role{domain.RoleAdmin}, CredentialPolicy: &notRequired},

@@ -47,6 +47,9 @@ async function findCredentialDevice(
       ) ?? null
     );
   } catch {
+    if (signal?.aborted) {
+      throw new Error('Staff credential read aborted');
+    }
     return null;
   }
 }

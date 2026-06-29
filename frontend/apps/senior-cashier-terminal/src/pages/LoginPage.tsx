@@ -43,9 +43,11 @@ export function LoginPage() {
   const [credentialStatus, setCredentialStatus] = useState<
     'idle' | 'waiting' | 'detected' | 'error'
   >('idle');
-  const [error, setError] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [credentialError, setCredentialError] = useState('');
   const [attempts, setAttempts] = useState(loadAttempts);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isBlocked = attempts >= MAX_ATTEMPTS;
 
   useIdleTimer();
 
@@ -53,12 +55,12 @@ export function LoginPage() {
     setCredentialKind(kind);
     setCredentialRead(null);
     setCredentialStatus('idle');
-    setError('');
+    setCredentialError('');
   }, []);
 
   const handleCredentialRead = useCallback(async () => {
     setCredentialStatus('waiting');
-    setError('');
+    setCredentialError('');
     try {
       const nextCredentialRead = await readStaffCredential(credentialKind);
       setCredentialRead(nextCredentialRead);
@@ -66,7 +68,7 @@ export function LoginPage() {
     } catch {
       setCredentialRead(null);
       setCredentialStatus('error');
-      setError(t('auth.credentialError'));
+      setCredentialError(t('auth.credentialError'));
     }
   }, [credentialKind, t]);
 
@@ -75,23 +77,23 @@ export function LoginPage() {
       e.preventDefault();
       if (isSubmitting) return;
 
-      if (attempts >= MAX_ATTEMPTS) {
-        setError(t('auth.blocked'));
+      if (isBlocked) {
         return;
       }
 
       if (!personnelId || !pin) {
-        setError(t('auth.invalidCredentials'));
+        setAuthError(t('auth.invalidCredentials'));
         return;
       }
 
       if (!credentialRead || credentialRead.factor.kind !== credentialKind) {
-        setError(t('auth.credentialRequired'));
+        setAuthError(t('auth.credentialRequired'));
         return;
       }
 
       setIsSubmitting(true);
-      setError('');
+      setAuthError('');
+      setCredentialError('');
 
       try {
         const sess = await login(personnelId, pin, credentialRead.factor);
@@ -106,12 +108,23 @@ export function LoginPage() {
           setAttempts(next);
           saveAttempts(next);
         }
-        setError(t('auth.invalidCredentials'));
+        setAuthError(t('auth.invalidCredentials'));
       } finally {
         setIsSubmitting(false);
       }
     },
-    [personnelId, pin, credentialKind, credentialRead, login, navigate, t, attempts, isSubmitting],
+    [
+      personnelId,
+      pin,
+      credentialKind,
+      credentialRead,
+      login,
+      navigate,
+      t,
+      attempts,
+      isSubmitting,
+      isBlocked,
+    ],
   );
 
   if (session) {
@@ -205,15 +218,22 @@ export function LoginPage() {
             </Button>
           </div>
 
-          {error && <p className="sr-field-error">{error}</p>}
+          {isBlocked && <p className="sr-field-error">{t('auth.blocked')}</p>}
 
-          {attempts > 0 && attempts < MAX_ATTEMPTS && (
+          {!isBlocked && authError && <p className="sr-field-error">{authError}</p>}
+
+          {credentialError && <p className="sr-field-error">{credentialError}</p>}
+
+          {attempts > 0 && !isBlocked && (
             <p className="sr-field-error">
               {t('auth.attemptsRemaining', { count: MAX_ATTEMPTS - attempts })}
             </p>
           )}
 
-          <Button type="submit" disabled={isSubmitting || !personnelId || !pin || !credentialRead}>
+          <Button
+            type="submit"
+            disabled={isBlocked || isSubmitting || !personnelId || !pin || !credentialRead}
+          >
             {isSubmitting ? t('auth.signingIn') : t('auth.signIn')}
           </Button>
         </form>

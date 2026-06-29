@@ -33,9 +33,9 @@ func demoActors() []domain.Actor {
 			PIN:   "5678",
 			Roles: []domain.Role{domain.RoleSeniorCashier},
 			CredentialBindings: []domain.CredentialBinding{
-				{Kind: domain.CredentialKindIButton, TokenHash: app.HashCredentialToken("01A2B3C4D5E6F708"), MaskedToken: "iButton ****F708", Active: true},
-				{Kind: domain.CredentialKindMSRCard, TokenHash: app.HashCredentialToken("MSR-STAFF-SENIOR-1"), MaskedToken: "MSR staff ****0001", Active: true},
-				{Kind: domain.CredentialKindBarcodeCard, TokenHash: app.HashCredentialToken("BARCODE-STAFF-SENIOR-1"), MaskedToken: "Barcode staff ****0001", Active: true},
+				{Kind: domain.CredentialKindIButton, TokenHash: app.HashCredentialToken("demo-ibutton-senior-1"), MaskedToken: "iButton demo ****0001", Active: true},           // #nosec G101 -- deterministic demo binding fixture, not a secret.
+				{Kind: domain.CredentialKindMSRCard, TokenHash: app.HashCredentialToken("demo-msr-senior-1"), MaskedToken: "MSR staff demo ****0001", Active: true},             // #nosec G101 -- deterministic demo binding fixture, not a secret.
+				{Kind: domain.CredentialKindBarcodeCard, TokenHash: app.HashCredentialToken("demo-barcode-senior-1"), MaskedToken: "Barcode staff demo ****0001", Active: true}, // #nosec G101 -- deterministic demo binding fixture, not a secret.
 			},
 		},
 		{ID: "admin-1", PIN: "9999", Roles: []domain.Role{domain.RoleAdmin}, CredentialPolicy: &notRequired},
