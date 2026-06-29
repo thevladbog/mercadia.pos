@@ -189,7 +189,7 @@ Optional env vars when APIs are not same-origin (bypass Vite proxy):
 
 ## Local development — pos-terminal
 
-The POS terminal app is a Vite dev shell with a Store Edge checkout demo and optional central
+The POS terminal app is a Vite dev shell with a Store Edge checkout cockpit and optional central
 layout-template loading.
 
 1. Start **store-edge** on port `8081` and open an operational local catalog (see backend README).
@@ -201,8 +201,10 @@ layout-template loading.
    pnpm --filter pos-terminal dev
    ```
 
-4. Open `http://localhost:5174`. Use **Prepare terminal**, **Open receipt**, **Scan product**,
-   **Capture payment**, and **Fiscalize** to run the mock Store Edge flow.
+4. Open `http://localhost:5174`. Use **Prepare terminal** to open the operational day and cashier
+   shift, then **Start sale**, scan the configured demo barcode, capture one or more cash/card mock
+   payments, and **Fiscalize** after the receipt is fully paid. The app also sends a POS terminal
+   heartbeat so store monitoring can show the terminal as online.
 
 Default demo env vars:
 
@@ -213,6 +215,7 @@ Default demo env vars:
 - `VITE_POS_OPENED_BY_ID=admin-1`
 - `VITE_POS_FISCAL_DEVICE_ID=fiscal-1`
 - `VITE_POS_DEMO_BARCODE=4600000000000`
+- `VITE_POS_SOFTWARE_VERSION=dev`
 - `VITE_POS_STORE_TIME_ZONE` — optional IANA store time zone for operational day date selection
 - `VITE_STORE_EDGE_URL` — optional Store Edge base URL when bypassing the Vite proxy
 - `VITE_STORE_EDGE_SESSION_TOKEN` — optional Store Edge session token

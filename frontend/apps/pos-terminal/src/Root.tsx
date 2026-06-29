@@ -14,11 +14,15 @@ import {
   openOperationalDay,
   openReceipt,
   openShift,
+  recordTerminalHeartbeat,
   scanReceiptLine,
 } from '@mercadia/api-clients-store-edge';
 import {
   applyTheme,
+  Badge,
   Button,
+  Card,
+  CardHeading,
   Field,
   Input,
   Label,
@@ -42,6 +46,7 @@ import { queryClient } from '@/query-client.js';
 const ALL_CATEGORIES = '__all__';
 const PAYMENT_METHOD_CARD_MOCK = 'card_mock' satisfies CreateReceiptPaymentBody['method'];
 const PAYMENT_METHOD_CASH = 'cash' satisfies CreateReceiptPaymentBody['method'];
+const HEARTBEAT_INTERVAL_MS = 30_000;
 
 type PaymentAttempt = CreateReceiptPaymentBody & {
   idempotencyKey: string;
@@ -70,6 +75,7 @@ const terminalConfig = {
   openedById: envValue('VITE_POS_OPENED_BY_ID', 'admin-1'),
   fiscalDeviceId: envValue('VITE_POS_FISCAL_DEVICE_ID', 'fiscal-1'),
   demoBarcode: envValue('VITE_POS_DEMO_BARCODE', '4600000000000'),
+  softwareVersion: envValue('VITE_POS_SOFTWARE_VERSION', 'dev'),
   storeTimeZone: envValue(
     'VITE_POS_STORE_TIME_ZONE',
     Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -144,6 +150,26 @@ function filterGridByCategory(grid: LayoutGridSpec, categoryId: string | null): 
   };
 }
 
+function parseAmountToMinor(value: string): number | null {
+  const normalized = value.trim().replace(',', '.');
+  if (!normalized) {
+    return null;
+  }
+  if (!/^\d+(?:\.\d{0,2})?$/.test(normalized)) {
+    return null;
+  }
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  const [major, fractional = ''] = normalized.split('.');
+  return Number(major) * 100 + Number(fractional.padEnd(2, '0'));
+}
+
+function formatInputAmount(amountMinor: number): string {
+  return (amountMinor / 100).toFixed(2);
+}
+
 function TerminalShell() {
   const { t, i18n: activeI18n } = useTranslation();
   const templateId = useMemo(() => resolveTemplateId(), []);
@@ -156,13 +182,15 @@ function TerminalShell() {
   const [barcode, setBarcode] = useState(terminalConfig.demoBarcode);
   const [paymentMethod, setPaymentMethod] =
     useState<CreateReceiptPaymentBody['method']>(PAYMENT_METHOD_CASH);
+  const [paymentAmountInput, setPaymentAmountInput] = useState('');
   const [receipt, setReceipt] = useState<GetReceipt200 | null>(null);
-  const [payment, setPayment] = useState<CreateReceiptPayment202Payment | null>(null);
+  const [payments, setPayments] = useState<CreateReceiptPayment202Payment[]>([]);
   const [paymentAttempt, setPaymentAttempt] = useState<PaymentAttempt | null>(null);
   const [fiscalDocument, setFiscalDocument] =
     useState<CreateReceiptFiscalDocument202Document | null>(null);
   const [fiscalAttempt, setFiscalAttempt] = useState<FiscalAttempt | null>(null);
   const [terminalReady, setTerminalReady] = useState(false);
+  const [lastHeartbeatAt, setLastHeartbeatAt] = useState<string | null>(null);
   const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<StatusMessage>({
     key: 'pos.status.notPrepared',
@@ -180,6 +208,36 @@ function TerminalShell() {
       accent: template.resolvedAccentColor,
     });
   }, [template]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function sendHeartbeat(): Promise<void> {
+      try {
+        const response = await recordTerminalHeartbeat(
+          terminalConfig.terminalId,
+          {
+            kind: 'pos',
+            softwareVersion: terminalConfig.softwareVersion,
+            storeId: terminalConfig.storeId,
+          },
+          { headers: createIdempotencyHeaders(createIdempotencyKey('heartbeat')) },
+        );
+        if (!cancelled && response.status === 202) {
+          setLastHeartbeatAt(response.data.terminal.lastSeenAt);
+        }
+      } catch {
+        if (!cancelled) {
+          setLastHeartbeatAt(null);
+        }
+      }
+    }
+    void sendHeartbeat();
+    const intervalId = window.setInterval(() => void sendHeartbeat(), HEARTBEAT_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   const grid: LayoutGridSpec = useMemo(
     () =>
@@ -224,6 +282,18 @@ function TerminalShell() {
       filterGridByCategory(grid, resolvedCategoryId === ALL_CATEGORIES ? null : resolvedCategoryId),
     [grid, resolvedCategoryId],
   );
+  const paidMinor = payments.reduce((total, payment) => total + payment.amountMinor, 0);
+  const receiptTotalMinor = receipt?.totalMinor ?? 0;
+  const remainingMinor = Math.max(receiptTotalMinor - paidMinor, 0);
+  const lineCount = receipt?.lines.length ?? 0;
+  const canEditReceipt = receipt?.status === GetReceipt200Status.draft;
+  const canCapturePayment =
+    !!receipt && receiptTotalMinor > 0 && remainingMinor > 0 && !fiscalDocument && !paymentAttempt;
+  const isBusy = busyActionKey !== null;
+  const displayedStatus = busyActionKey
+    ? t('pos.status.running', { action: t(busyActionKey) })
+    : t(statusMessage.key, statusMessage.values);
+  const formatAmount = (amountMinor: number) => formatMinorAmount(amountMinor, activeI18n.language);
 
   async function refreshReceipt(receiptId: string): Promise<void> {
     const response = await getReceipt(receiptId);
@@ -312,8 +382,9 @@ function TerminalShell() {
       );
       if (response.status === 202) {
         setReceipt(response.data.receipt);
-        setPayment(null);
+        setPayments([]);
         setPaymentAttempt(null);
+        setPaymentAmountInput(formatInputAmount(response.data.receipt.totalMinor));
         setFiscalDocument(null);
         setFiscalAttempt(null);
         setStatusMessage({
@@ -324,13 +395,13 @@ function TerminalShell() {
     });
   }
 
-  async function scanDemoProduct(): Promise<void> {
+  async function scanProduct(): Promise<void> {
     if (!receipt) {
       setErrorMessage(t('pos.errors.openReceiptBeforeScanning'));
       return;
     }
-    if (payment || paymentAttempt) {
-      setErrorMessage(t('pos.errors.paymentAlreadySubmitted'));
+    if (!canEditReceipt) {
+      setErrorMessage(t('pos.errors.receiptNotEditable'));
       return;
     }
     await runCommand('pos.actions.scanProduct', async () => {
@@ -340,7 +411,9 @@ function TerminalShell() {
         { headers: createIdempotencyHeaders(createIdempotencyKey('scan-product')) },
       );
       if (response.status === 202) {
+        const nextRemainingMinor = Math.max(response.data.receipt.totalMinor - paidMinor, 0);
         setReceipt(response.data.receipt);
+        setPaymentAmountInput(nextRemainingMinor > 0 ? formatInputAmount(nextRemainingMinor) : '');
         setStatusMessage({ key: 'pos.status.productScanned', values: { barcode } });
       }
     });
@@ -351,43 +424,54 @@ function TerminalShell() {
       setErrorMessage(t('pos.errors.openReceiptBeforePayment'));
       return;
     }
-    if (receipt.totalMinor <= 0) {
+    if (receiptTotalMinor <= 0) {
       setErrorMessage(t('pos.errors.positiveReceiptTotalRequired'));
       return;
     }
-    if (payment) {
-      setErrorMessage(t('pos.errors.paymentAlreadySubmitted'));
+    const requestedAmount = parseAmountToMinor(paymentAmountInput);
+    if (!requestedAmount) {
+      setErrorMessage(t('pos.errors.invalidPaymentAmount'));
       return;
     }
-    const attempt: PaymentAttempt =
-      paymentAttempt?.receiptId === receipt.id
-        ? paymentAttempt
-        : {
-            amountMinor: receipt.totalMinor,
-            idempotencyKey: createIdempotencyKey('capture-payment'),
-            method: paymentMethod,
-            providerReference:
-              paymentMethod === PAYMENT_METHOD_CARD_MOCK ? `POS-${Date.now()}` : undefined,
-            receiptId: receipt.id,
-          };
+    if (requestedAmount > remainingMinor) {
+      setErrorMessage(t('pos.errors.paymentAmountTooHigh'));
+      return;
+    }
+    const attempt: PaymentAttempt = {
+      amountMinor: requestedAmount,
+      idempotencyKey: createIdempotencyKey('capture-payment'),
+      method: paymentMethod,
+      providerReference:
+        paymentMethod === PAYMENT_METHOD_CARD_MOCK ? `POS-${Date.now()}` : undefined,
+      receiptId: receipt.id,
+    };
     setPaymentAttempt(attempt);
     await runCommand('pos.actions.capturePayment', async () => {
-      const response = await createReceiptPayment(
-        attempt.receiptId,
-        {
-          amountMinor: attempt.amountMinor,
-          method: attempt.method,
-          providerReference: attempt.providerReference,
-        },
-        { headers: createIdempotencyHeaders(attempt.idempotencyKey) },
-      );
-      if (response.status === 202) {
-        setPayment(response.data.payment);
+      let response: Awaited<ReturnType<typeof createReceiptPayment>>;
+      try {
+        response = await createReceiptPayment(
+          attempt.receiptId,
+          {
+            amountMinor: attempt.amountMinor,
+            method: attempt.method,
+            providerReference: attempt.providerReference,
+          },
+          { headers: createIdempotencyHeaders(attempt.idempotencyKey) },
+        );
+      } catch (error) {
         setPaymentAttempt(null);
+        throw error;
+      }
+      if (response.status === 202) {
+        const nextRemainingMinor = Math.max(remainingMinor - attempt.amountMinor, 0);
+        setPayments((currentPayments) => [...currentPayments, response.data.payment]);
+        setPaymentAttempt(null);
+        setPaymentAmountInput(nextRemainingMinor > 0 ? formatInputAmount(nextRemainingMinor) : '');
         await refreshReceipt(attempt.receiptId);
         setStatusMessage({
           key: 'pos.status.paymentCaptured',
           values: {
+            amount: formatAmount(attempt.amountMinor),
             method:
               attempt.method === PAYMENT_METHOD_CARD_MOCK
                 ? t('pos.paymentMethods.cardMock')
@@ -438,31 +522,27 @@ function TerminalShell() {
     });
   }
 
-  const isBusy = busyActionKey !== null;
-  const displayedStatus = busyActionKey
-    ? t('pos.status.running', { action: t(busyActionKey) })
-    : t(statusMessage.key, statusMessage.values);
-  const formatAmount = (amountMinor: number) => formatMinorAmount(amountMinor, activeI18n.language);
-  const paymentDisplay = payment
-    ? `${
-        payment.method === PAYMENT_METHOD_CARD_MOCK
-          ? t('pos.paymentMethods.cardMock')
-          : t('pos.paymentMethods.cash')
-      } · ${payment.status}`
-    : t('common.none');
+  function handleTileClick(): void {
+    if (!receipt) {
+      setErrorMessage(t('pos.errors.openReceiptBeforeScanning'));
+      return;
+    }
+    void scanProduct();
+  }
 
   return (
-    <main className="pos-terminal-shell">
-      <header className="pos-terminal-header">
-        <div className="pos-terminal-title-row">
-          <div>
-            <h1>{template?.name ?? t('pos.titleFallback')}</h1>
-            <p className="muted">
-              {template
-                ? `${template.kind} · ${template.resolvedAccentColor}`
-                : t('pos.templateHint')}
-            </p>
-          </div>
+    <main className="pos-cockpit-shell">
+      <header className="pos-cockpit-header">
+        <div>
+          <p className="eyebrow">{t('pos.eyebrow')}</p>
+          <h1>{template?.name ?? t('pos.titleFallback')}</h1>
+          <p className="muted">
+            {template
+              ? `${template.kind} · ${template.resolvedAccentColor}`
+              : t('pos.templateHint')}
+          </p>
+        </div>
+        <div className="pos-header-actions">
           <Field className="language-select">
             <Label htmlFor="pos-language-select">{t('language.label')}</Label>
             <Select
@@ -474,95 +554,65 @@ function TerminalShell() {
               <option value="en">{t('language.en')}</option>
             </Select>
           </Field>
-        </div>
-        <dl className="terminal-meta">
-          <div>
-            <dt>{t('pos.store')}</dt>
-            <dd>{terminalConfig.storeId}</dd>
-          </div>
-          <div>
-            <dt>{t('pos.terminal')}</dt>
-            <dd>{terminalConfig.terminalId}</dd>
-          </div>
-          <div>
-            <dt>{t('pos.cashier')}</dt>
-            <dd>{terminalConfig.cashierId}</dd>
-          </div>
-        </dl>
-      </header>
-      <section className="checkout-panel panel">
-        <div>
-          <h2>{t('pos.checkoutTitle')}</h2>
-          <p className="muted">{t('pos.checkoutDescription')}</p>
-        </div>
-        <div className="checkout-actions">
           <Button type="button" disabled={isBusy} onClick={() => void prepareTerminal()}>
-            {t('pos.actions.prepareTerminal')}
-          </Button>
-          <Button type="button" disabled={isBusy} onClick={() => void openNewReceipt()}>
-            {t('pos.actions.openReceipt')}
-          </Button>
-          <Button
-            type="button"
-            disabled={isBusy || !receipt || payment !== null || paymentAttempt !== null}
-            onClick={() => void scanDemoProduct()}
-          >
-            {t('pos.actions.scanProduct')}
-          </Button>
-          <Button
-            type="button"
-            disabled={isBusy || !receipt || receipt.totalMinor <= 0 || payment !== null}
-            onClick={() => void capturePayment()}
-          >
-            {t('pos.actions.capturePayment')}
-          </Button>
-          <Button
-            type="button"
-            disabled={
-              isBusy ||
-              !receipt ||
-              receipt.status !== GetReceipt200Status.paid ||
-              fiscalDocument !== null
-            }
-            onClick={() => void fiscalizeReceipt()}
-          >
-            {t('pos.actions.fiscalize')}
+            {terminalReady ? t('pos.actions.refreshReadiness') : t('pos.actions.prepareTerminal')}
           </Button>
         </div>
-        <div className="checkout-form-row">
-          <Field className="checkout-field">
-            <Label htmlFor="pos-barcode-input">{t('pos.barcode')}</Label>
-            <Input
-              id="pos-barcode-input"
-              value={barcode}
-              onChange={(event) => setBarcode(event.target.value)}
-            />
-          </Field>
-          <Field className="checkout-field">
-            <Label htmlFor="pos-payment-method-select">{t('pos.paymentMethod')}</Label>
-            <Select
-              id="pos-payment-method-select"
-              value={paymentMethod}
-              disabled={isBusy || payment !== null || paymentAttempt !== null}
-              onChange={(event) => setPaymentMethod(event.target.value)}
-            >
-              <option value={PAYMENT_METHOD_CASH}>{t('pos.paymentMethods.cash')}</option>
-              <option value={PAYMENT_METHOD_CARD_MOCK}>{t('pos.paymentMethods.cardMock')}</option>
-            </Select>
-          </Field>
+      </header>
+
+      <section className="terminal-strip" aria-label={t('pos.terminalState')}>
+        <div>
+          <span>{t('pos.store')}</span>
+          <strong>{terminalConfig.storeId}</strong>
         </div>
-        <div className="status-line" data-ready={terminalReady}>
-          {displayedStatus}
+        <div>
+          <span>{t('pos.terminal')}</span>
+          <strong>{terminalConfig.terminalId}</strong>
         </div>
-        {errorMessage ? <div className="error-box">{errorMessage}</div> : null}
-        {receipt ? (
-          <div className="receipt-board">
-            <div className="receipt-summary">
-              <strong>{t('pos.receipt', { id: receipt.id })}</strong>
-              <span>{receipt.status}</span>
-              <span>{formatAmount(receipt.totalMinor)}</span>
-            </div>
-            <table>
+        <div>
+          <span>{t('pos.cashier')}</span>
+          <strong>{terminalConfig.cashierId}</strong>
+        </div>
+        <div>
+          <span>{t('pos.drawer')}</span>
+          <strong>{terminalConfig.drawerId}</strong>
+        </div>
+        <div>
+          <span>{t('pos.heartbeat')}</span>
+          <strong>{lastHeartbeatAt ? t('pos.heartbeatOnline') : t('pos.heartbeatPending')}</strong>
+        </div>
+      </section>
+
+      <section
+        aria-atomic="true"
+        aria-live={errorMessage ? 'assertive' : 'polite'}
+        className="status-line"
+        data-ready={terminalReady}
+        role={errorMessage ? 'alert' : 'status'}
+      >
+        <span>{displayedStatus}</span>
+        {errorMessage ? <strong>{errorMessage}</strong> : null}
+      </section>
+
+      <section className="cockpit-grid">
+        <Card className="receipt-card">
+          <CardHeading
+            title={receipt ? t('pos.receipt', { id: receipt.id }) : t('pos.noActiveReceipt')}
+            subtitle={receipt ? t('pos.receiptDescription') : t('pos.openReceiptHint')}
+          />
+          <div className="receipt-toolbar">
+            <Button type="button" disabled={isBusy} onClick={() => void openNewReceipt()}>
+              {t('pos.actions.startSale')}
+            </Button>
+            <Badge variant={receipt ? 'accent' : 'outline'}>
+              {receipt?.status ?? t('pos.status.noReceipt')}
+            </Badge>
+            <Badge variant={lineCount > 0 ? 'success' : 'outline'}>
+              {t('pos.linesCount', { count: lineCount })}
+            </Badge>
+          </div>
+          <div className="receipt-table-wrap">
+            <table className="receipt-table">
               <thead>
                 <tr>
                   <th>{t('pos.product')}</th>
@@ -572,14 +622,17 @@ function TerminalShell() {
                 </tr>
               </thead>
               <tbody>
-                {receipt.lines.length === 0 ? (
+                {!receipt || receipt.lines.length === 0 ? (
                   <tr>
                     <td colSpan={4}>{t('pos.noLines')}</td>
                   </tr>
                 ) : (
                   receipt.lines.map((line) => (
                     <tr key={line.id}>
-                      <td>{line.name}</td>
+                      <td>
+                        <strong>{line.name}</strong>
+                        <span>{line.barcode || line.productId}</span>
+                      </td>
                       <td>{line.quantity}</td>
                       <td>{formatAmount(line.unitPriceMinor)}</td>
                       <td>{formatAmount(line.totalMinor)}</td>
@@ -588,55 +641,145 @@ function TerminalShell() {
                 )}
               </tbody>
             </table>
-            <div className="receipt-events">
-              <span>
-                {t('pos.payment')}: {paymentDisplay}
-              </span>
-              <span>
-                {t('pos.fiscal')}:{' '}
-                {fiscalDocument
-                  ? `${fiscalDocument.status} · ${fiscalDocument.fiscalSign}`
-                  : t('common.none')}
-              </span>
-            </div>
           </div>
-        ) : null}
-      </section>
-      {!templateId ? (
-        <p className="muted">{t('pos.templateMissing')}</p>
-      ) : templateQuery.isLoading ? (
-        <p className="muted">{t('pos.templateLoading')}</p>
-      ) : templateQuery.isError ? (
-        <p className="error">{t('pos.templateLoadError')}</p>
-      ) : (
-        <div className="pos-terminal-grid">
-          <section className="panel">
-            <Button type="button" disabled={isBusy} onClick={() => void openNewReceipt()}>
-              {t('pos.actions.startSale')}
+        </Card>
+
+        <aside className="totals-rail">
+          <Card className="total-card total-card--primary">
+            <span>{t('pos.totalDue')}</span>
+            <strong>{formatAmount(receiptTotalMinor)}</strong>
+          </Card>
+          <Card className="total-card">
+            <span>{t('pos.paid')}</span>
+            <strong>{formatAmount(paidMinor)}</strong>
+          </Card>
+          <Card className="total-card">
+            <span>{t('pos.remaining')}</span>
+            <strong>{formatAmount(remainingMinor)}</strong>
+          </Card>
+          <Card className="payment-card">
+            <CardHeading title={t('pos.payment')} subtitle={t('pos.paymentDescription')} />
+            <Field>
+              <Label htmlFor="pos-payment-method-select">{t('pos.paymentMethod')}</Label>
+              <Select
+                id="pos-payment-method-select"
+                value={paymentMethod}
+                disabled={isBusy || !canCapturePayment}
+                onChange={(event) =>
+                  setPaymentMethod(event.target.value as CreateReceiptPaymentBody['method'])
+                }
+              >
+                <option value={PAYMENT_METHOD_CASH}>{t('pos.paymentMethods.cash')}</option>
+                <option value={PAYMENT_METHOD_CARD_MOCK}>{t('pos.paymentMethods.cardMock')}</option>
+              </Select>
+            </Field>
+            <Field>
+              <Label htmlFor="pos-payment-amount-input">{t('pos.paymentAmount')}</Label>
+              <Input
+                id="pos-payment-amount-input"
+                inputMode="decimal"
+                value={paymentAmountInput}
+                disabled={isBusy || !canCapturePayment}
+                onChange={(event) => setPaymentAmountInput(event.target.value)}
+              />
+            </Field>
+            <Button
+              type="button"
+              disabled={isBusy || !canCapturePayment}
+              onClick={() => void capturePayment()}
+            >
+              {t('pos.actions.capturePayment')}
             </Button>
-            {categories.length > 0 ? (
-              <Tabs value={resolvedCategoryId} onValueChange={setActiveCategoryId}>
-                <TabsList aria-label={t('pos.categories')}>
-                  <TabsTrigger value={ALL_CATEGORIES}>{t('pos.allCategories')}</TabsTrigger>
-                  {categories.map((category) => (
-                    <TabsTrigger key={category.id} value={category.id}>
-                      {category.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            ) : null}
-            <LayoutGrid grid={displayGrid} onTileClick={() => void scanDemoProduct()} />
-          </section>
-          <section className="panel">
-            <Numpad
-              enterLabel={t('pos.numpadEnter')}
-              value={numpadValue}
-              onChange={setNumpadValue}
-            />
-          </section>
-        </div>
-      )}
+            <div className="payment-list">
+              {payments.length === 0 ? (
+                <span className="muted">{t('pos.noPayments')}</span>
+              ) : (
+                payments.map((payment) => (
+                  <span key={payment.id}>
+                    {payment.method === PAYMENT_METHOD_CARD_MOCK
+                      ? t('pos.paymentMethods.cardMock')
+                      : t('pos.paymentMethods.cash')}{' '}
+                    · {formatAmount(payment.amountMinor)} · {payment.status}
+                  </span>
+                ))
+              )}
+            </div>
+          </Card>
+          <Card className="payment-card">
+            <CardHeading title={t('pos.fiscal')} subtitle={t('pos.fiscalDescription')} />
+            <Button
+              type="button"
+              disabled={
+                isBusy ||
+                !receipt ||
+                receipt.status !== GetReceipt200Status.paid ||
+                fiscalDocument !== null
+              }
+              onClick={() => void fiscalizeReceipt()}
+            >
+              {t('pos.actions.fiscalize')}
+            </Button>
+            <span className="muted">
+              {fiscalDocument
+                ? `${fiscalDocument.status} · ${fiscalDocument.fiscalSign}`
+                : t('pos.noFiscalDocument')}
+            </span>
+          </Card>
+        </aside>
+      </section>
+
+      <section className="workbench-grid">
+        <Card className="scanner-card">
+          <CardHeading title={t('pos.scanner')} subtitle={t('pos.scannerDescription')} />
+          <div className="scanner-row">
+            <Field>
+              <Label htmlFor="pos-barcode-input">{t('pos.barcode')}</Label>
+              <Input
+                id="pos-barcode-input"
+                value={barcode}
+                disabled={isBusy || !canEditReceipt}
+                onChange={(event) => setBarcode(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    void scanProduct();
+                  }
+                }}
+              />
+            </Field>
+            <Button
+              type="button"
+              disabled={isBusy || !receipt || !canEditReceipt}
+              onClick={() => void scanProduct()}
+            >
+              {t('pos.actions.scanProduct')}
+            </Button>
+          </div>
+          {!templateId ? (
+            <p className="muted">{t('pos.templateMissing')}</p>
+          ) : templateQuery.isLoading ? (
+            <p className="muted">{t('pos.templateLoading')}</p>
+          ) : templateQuery.isError ? (
+            <p className="error">{t('pos.templateLoadError')}</p>
+          ) : null}
+          {categories.length > 0 ? (
+            <Tabs value={resolvedCategoryId} onValueChange={setActiveCategoryId}>
+              <TabsList aria-label={t('pos.categories')}>
+                <TabsTrigger value={ALL_CATEGORIES}>{t('pos.allCategories')}</TabsTrigger>
+                {categories.map((category) => (
+                  <TabsTrigger key={category.id} value={category.id}>
+                    {category.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          ) : null}
+          <LayoutGrid grid={displayGrid} onTileClick={handleTileClick} />
+        </Card>
+        <Card className="numpad-card">
+          <CardHeading title={t('pos.numpad')} subtitle={t('pos.numpadDescription')} />
+          <Numpad enterLabel={t('pos.numpadEnter')} value={numpadValue} onChange={setNumpadValue} />
+        </Card>
+      </section>
     </main>
   );
 }

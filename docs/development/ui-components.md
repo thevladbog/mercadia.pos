@@ -140,7 +140,7 @@ Admin CRUD lives under `/central/color-schemes` and `/central/layout-templates` 
 
 ## POS terminal scaffold
 
-`frontend/apps/pos-terminal` loads a template via `?templateId=` or `VITE_LAYOUT_TEMPLATE_ID`, calls `applyTheme` from resolved accent fields, and renders `LayoutGrid` + `Numpad` demo. It also includes a Store Edge checkout demo that prepares an operational day/shift, opens a receipt, scans a product, captures a mock payment, and creates a mock fiscal document. Set `VITE_CENTRAL_SESSION_TOKEN` for central layout-template access and `VITE_STORE_EDGE_URL` only when bypassing the Vite proxy.
+`frontend/apps/pos-terminal` loads a template via `?templateId=` or `VITE_LAYOUT_TEMPLATE_ID`, calls `applyTheme` from resolved accent fields, and renders a checkout cockpit with receipt lines, scanner input, product grid, payment rail, fiscalization action, terminal readiness, and Store Edge heartbeat. It prepares an operational day/shift, opens a receipt, scans a product, supports split mock cash/card payment amounts, and creates a mock fiscal document. Set `VITE_CENTRAL_SESSION_TOKEN` for central layout-template access and `VITE_STORE_EDGE_URL` only when bypassing the Vite proxy.
 
 ```bash
 cd frontend
