@@ -1224,6 +1224,13 @@
                             "type": "string"
                           },
                           "status": {
+                            "enum": [
+                              "draft",
+                              "payment_started",
+                              "paid",
+                              "fiscalized",
+                              "cancelled"
+                            ],
                             "type": "string"
                           },
                           "storeId": {
@@ -2074,6 +2081,13 @@
                           "type": "string"
                         },
                         "status": {
+                          "enum": [
+                            "draft",
+                            "payment_started",
+                            "paid",
+                            "fiscalized",
+                            "cancelled"
+                          ],
                           "type": "string"
                         },
                         "storeId": {
@@ -2300,6 +2314,13 @@
                       "type": "string"
                     },
                     "status": {
+                      "enum": [
+                        "draft",
+                        "payment_started",
+                        "paid",
+                        "fiscalized",
+                        "cancelled"
+                      ],
                       "type": "string"
                     },
                     "storeId": {
@@ -2526,6 +2547,13 @@
                           "type": "string"
                         },
                         "status": {
+                          "enum": [
+                            "draft",
+                            "payment_started",
+                            "paid",
+                            "fiscalized",
+                            "cancelled"
+                          ],
                           "type": "string"
                         },
                         "storeId": {
@@ -2729,6 +2757,9 @@
                             "type": "string"
                           },
                           "status": {
+                            "enum": [
+                              "fiscalized"
+                            ],
                             "type": "string"
                           }
                         },
@@ -2879,6 +2910,9 @@
                           "type": "string"
                         },
                         "status": {
+                          "enum": [
+                            "fiscalized"
+                          ],
                           "type": "string"
                         }
                       },
@@ -3175,6 +3209,13 @@
                           "type": "string"
                         },
                         "status": {
+                          "enum": [
+                            "draft",
+                            "payment_started",
+                            "paid",
+                            "fiscalized",
+                            "cancelled"
+                          ],
                           "type": "string"
                         },
                         "storeId": {
@@ -3485,6 +3526,13 @@
                           "type": "string"
                         },
                         "status": {
+                          "enum": [
+                            "draft",
+                            "payment_started",
+                            "paid",
+                            "fiscalized",
+                            "cancelled"
+                          ],
                           "type": "string"
                         },
                         "storeId": {
@@ -3858,6 +3906,12 @@
                             "type": "integer"
                           },
                           "status": {
+                            "enum": [
+                              "captured",
+                              "partially_refunded",
+                              "cancelled",
+                              "refunded"
+                            ],
                             "type": "string"
                           },
                           "updatedAt": {
@@ -4017,6 +4071,12 @@
                           "type": "integer"
                         },
                         "status": {
+                          "enum": [
+                            "captured",
+                            "partially_refunded",
+                            "cancelled",
+                            "refunded"
+                          ],
                           "type": "string"
                         },
                         "updatedAt": {
@@ -4244,6 +4304,12 @@
                           "type": "integer"
                         },
                         "status": {
+                          "enum": [
+                            "captured",
+                            "partially_refunded",
+                            "cancelled",
+                            "refunded"
+                          ],
                           "type": "string"
                         },
                         "updatedAt": {
@@ -4475,6 +4541,12 @@
                           "type": "integer"
                         },
                         "status": {
+                          "enum": [
+                            "captured",
+                            "partially_refunded",
+                            "cancelled",
+                            "refunded"
+                          ],
                           "type": "string"
                         },
                         "updatedAt": {
@@ -5259,6 +5331,13 @@
                           "type": "string"
                         },
                         "status": {
+                          "enum": [
+                            "draft",
+                            "payment_started",
+                            "paid",
+                            "fiscalized",
+                            "cancelled"
+                          ],
                           "type": "string"
                         },
                         "storeId": {
@@ -5614,6 +5693,9 @@
                             "type": "string"
                           },
                           "status": {
+                            "enum": [
+                              "fiscalized"
+                            ],
                             "type": "string"
                           }
                         },
@@ -5765,6 +5847,9 @@
                           "type": "string"
                         },
                         "status": {
+                          "enum": [
+                            "fiscalized"
+                          ],
                           "type": "string"
                         }
                       },
@@ -5985,6 +6070,12 @@
                             "type": "integer"
                           },
                           "status": {
+                            "enum": [
+                              "captured",
+                              "partially_refunded",
+                              "cancelled",
+                              "refunded"
+                            ],
                             "type": "string"
                           },
                           "updatedAt": {
@@ -7390,6 +7481,13 @@
                             "type": "string"
                           },
                           "status": {
+                            "enum": [
+                              "draft",
+                              "payment_started",
+                              "paid",
+                              "fiscalized",
+                              "cancelled"
+                            ],
                             "type": "string"
                           },
                           "storeId": {

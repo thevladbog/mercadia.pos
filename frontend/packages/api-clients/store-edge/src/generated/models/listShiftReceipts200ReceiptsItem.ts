@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ListShiftReceipts200ReceiptsItemLinesItem } from './listShiftReceipts200ReceiptsItemLinesItem.ts';
+import type { ListShiftReceipts200ReceiptsItemStatus } from './listShiftReceipts200ReceiptsItemStatus.ts';
 
 export type ListShiftReceipts200ReceiptsItem = {
   businessDate?: string;
@@ -21,7 +22,7 @@ export type ListShiftReceipts200ReceiptsItem = {
   lines: ListShiftReceipts200ReceiptsItemLinesItem[];
   operationalDayId?: string;
   shiftId?: string;
-  status: string;
+  status: ListShiftReceipts200ReceiptsItemStatus;
   storeId: string;
   terminalId: string;
   totalMinor: number;

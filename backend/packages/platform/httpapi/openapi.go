@@ -199,6 +199,14 @@ func StringSchema() Schema {
 	return Schema{"type": "string"}
 }
 
+func EnumStringSchema(values ...string) Schema {
+	enumValues := make([]any, 0, len(values))
+	for _, value := range values {
+		enumValues = append(enumValues, value)
+	}
+	return Schema{"type": "string", "enum": enumValues}
+}
+
 func DateTimeSchema() Schema {
 	return Schema{"type": "string", "format": "date-time"}
 }

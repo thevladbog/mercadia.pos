@@ -2936,7 +2936,7 @@ func receiptResponseSchema() httpapi.Schema {
 		"cashierId":          httpapi.StringSchema(),
 		"drawerId":           httpapi.StringSchema(),
 		"channel":            httpapi.StringSchema(),
-		"status":             httpapi.StringSchema(),
+		"status":             receiptStatusSchema(),
 		"lines":              httpapi.ArraySchema(receiptLineResponseSchema()),
 		"cancelReason":       httpapi.StringSchema(),
 		"cancelledById":      httpapi.StringSchema(),
@@ -2946,6 +2946,16 @@ func receiptResponseSchema() httpapi.Schema {
 		"createdAt":          httpapi.DateTimeSchema(),
 		"updatedAt":          httpapi.DateTimeSchema(),
 	}, "id", "storeId", "terminalId", "cashierId", "channel", "status", "lines", "totalMinor", "createdAt", "updatedAt")
+}
+
+func receiptStatusSchema() httpapi.Schema {
+	return httpapi.EnumStringSchema(
+		string(domain.ReceiptStatusDraft),
+		string(domain.ReceiptStatusPaymentStarted),
+		string(domain.ReceiptStatusPaid),
+		string(domain.ReceiptStatusFiscalized),
+		string(domain.ReceiptStatusCancelled),
+	)
 }
 
 func receiptLineResponseSchema() httpapi.Schema {
@@ -3041,7 +3051,7 @@ func paymentResponseSchema() httpapi.Schema {
 		"id":                  httpapi.StringSchema(),
 		"receiptId":           httpapi.StringSchema(),
 		"method":              httpapi.StringSchema(),
-		"status":              httpapi.StringSchema(),
+		"status":              paymentStatusSchema(),
 		"amountMinor":         {"type": "integer"},
 		"refundedAmountMinor": {"type": "integer"},
 		"providerReference":   httpapi.StringSchema(),
@@ -3049,6 +3059,15 @@ func paymentResponseSchema() httpapi.Schema {
 		"updatedAt":           httpapi.DateTimeSchema(),
 		"capturedAt":          httpapi.DateTimeSchema(),
 	}, "id", "receiptId", "method", "status", "amountMinor", "refundedAmountMinor", "createdAt", "updatedAt", "capturedAt")
+}
+
+func paymentStatusSchema() httpapi.Schema {
+	return httpapi.EnumStringSchema(
+		string(domain.PaymentStatusCaptured),
+		string(domain.PaymentStatusPartiallyRefunded),
+		string(domain.PaymentStatusCancelled),
+		string(domain.PaymentStatusRefunded),
+	)
 }
 
 func fiscalDocumentAcceptedResponseSchema() httpapi.Schema {
@@ -3069,13 +3088,17 @@ func fiscalDocumentResponseSchema() httpapi.Schema {
 		"receiptId":    httpapi.StringSchema(),
 		"returnId":     httpapi.StringSchema(),
 		"kind":         httpapi.StringSchema(),
-		"status":       httpapi.StringSchema(),
+		"status":       fiscalDocumentStatusSchema(),
 		"amountMinor":  {"type": "integer"},
 		"deviceId":     httpapi.StringSchema(),
 		"fiscalSign":   httpapi.StringSchema(),
 		"fiscalizedAt": httpapi.DateTimeSchema(),
 		"createdAt":    httpapi.DateTimeSchema(),
 	}, "id", "receiptId", "kind", "status", "amountMinor", "deviceId", "fiscalSign", "fiscalizedAt", "createdAt")
+}
+
+func fiscalDocumentStatusSchema() httpapi.Schema {
+	return httpapi.EnumStringSchema(string(domain.FiscalDocumentStatusFiscalized))
 }
 
 func cashMovementAcceptedResponseSchema() httpapi.Schema {

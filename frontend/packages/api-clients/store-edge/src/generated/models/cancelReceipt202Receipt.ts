@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CancelReceipt202ReceiptLinesItem } from './cancelReceipt202ReceiptLinesItem.ts';
+import type { CancelReceipt202ReceiptStatus } from './cancelReceipt202ReceiptStatus.ts';
 
 export type CancelReceipt202Receipt = {
   businessDate?: string;
@@ -21,7 +22,7 @@ export type CancelReceipt202Receipt = {
   lines: CancelReceipt202ReceiptLinesItem[];
   operationalDayId?: string;
   shiftId?: string;
-  status: string;
+  status: CancelReceipt202ReceiptStatus;
   storeId: string;
   terminalId: string;
   totalMinor: number;
