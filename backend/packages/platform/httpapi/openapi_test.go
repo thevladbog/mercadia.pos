@@ -114,6 +114,16 @@ func TestEnumStringSchema(t *testing.T) {
 	}
 }
 
+func TestEnumStringSchemaRequiresValues(t *testing.T) {
+	defer func() {
+		if recovered := recover(); recovered == nil {
+			t.Fatal("expected panic for empty enum values")
+		}
+	}()
+
+	_ = EnumStringSchema()
+}
+
 func TestScalarHTMLPinsVersionedCDN(t *testing.T) {
 	html := ScalarHTML("Mercadia Test")
 	if !strings.Contains(html, "@scalar/api-reference@1.60.0") {

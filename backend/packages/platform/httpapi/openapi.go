@@ -200,6 +200,9 @@ func StringSchema() Schema {
 }
 
 func EnumStringSchema(values ...string) Schema {
+	if len(values) == 0 {
+		panic("httpapi.EnumStringSchema requires at least one value")
+	}
 	enumValues := make([]any, 0, len(values))
 	for _, value := range values {
 		enumValues = append(enumValues, value)
