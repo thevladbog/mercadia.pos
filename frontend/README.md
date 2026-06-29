@@ -243,12 +243,8 @@ iButton reads used by hardware-backed login and handover flows.
 Required env vars:
 
 - `VITE_STORE_EDGE_URL` — Store Edge base URL.
+- `VITE_HARDWARE_AGENT_URL` — Hardware Agent base URL.
 - `VITE_STORE_ID` — active store ID for senior cashier workflows.
-
-Optional env vars:
-
-- `VITE_HARDWARE_AGENT_URL` — Hardware Agent base URL when bypassing the Vite proxy. When unset,
-  `/v1/devices` is proxied to local hardware-agent in dev.
 
 ## Dependency policy
 

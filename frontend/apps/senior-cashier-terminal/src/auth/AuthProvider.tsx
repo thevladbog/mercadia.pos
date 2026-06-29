@@ -18,18 +18,36 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const SESSION_KEY = 'mercadia.sr-terminal.session';
 
+function isSessionResult(value: unknown): value is SessionResult {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<SessionResult>;
+  return (
+    typeof candidate.token === 'string' &&
+    typeof candidate.actorId === 'string' &&
+    typeof candidate.expiresAt === 'string' &&
+    Array.isArray(candidate.roles) &&
+    candidate.roles.every((role) => typeof role === 'string')
+  );
+}
+
 function loadSession(): SessionResult | null {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as SessionResult;
-    if (new Date(parsed.expiresAt) <= new Date()) {
-      sessionStorage.removeItem(SESSION_KEY);
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isSessionResult(parsed)) {
+      clearSession();
+      return null;
+    }
+    const expiresAt = new Date(parsed.expiresAt).getTime();
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      clearSession();
       return null;
     }
     setSessionToken(parsed.token);
     return parsed;
   } catch {
+    clearSession();
     return null;
   }
 }
