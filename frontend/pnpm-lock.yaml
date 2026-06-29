@@ -133,6 +133,9 @@ importers:
 
   apps/senior-cashier-terminal:
     dependencies:
+      '@mercadia/api-clients-hardware-agent':
+        specifier: workspace:*
+        version: link:../../packages/api-clients/hardware-agent
       '@mercadia/api-clients-store-edge':
         specifier: workspace:*
         version: link:../../packages/api-clients/store-edge
@@ -175,6 +178,22 @@ importers:
         version: 8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0)
 
   packages/api-clients/central:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.101.0
+        version: 5.101.0(react@19.2.7)
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.0
+        version: 24.13.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages/api-clients/hardware-agent:
     dependencies:
       '@tanstack/react-query':
         specifier: ^5.101.0

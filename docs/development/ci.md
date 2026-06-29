@@ -30,7 +30,7 @@ backend and consumed by Orval on the frontend.
 ### `frontend`
 
 - `pnpm install --frozen-lockfile`
-- Orval generation for central and store-edge clients
+- Orval generation for central, store-edge, and hardware-agent clients
 - Generated client diff check
 - Typecheck, ESLint, Prettier, admin-web build
 - `pnpm audit --audit-level=high` (blocking on high/critical)

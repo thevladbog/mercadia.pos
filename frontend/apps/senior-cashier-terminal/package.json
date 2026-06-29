@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@mercadia/api-clients-hardware-agent": "workspace:*",
     "@mercadia/api-clients-store-edge": "workspace:*",
     "@mercadia/ui": "workspace:*",
     "@tanstack/react-query": "^5.101.0",
