@@ -155,11 +155,15 @@ function parseAmountToMinor(value: string): number | null {
   if (!normalized) {
     return null;
   }
+  if (!/^\d+(?:\.\d{0,2})?$/.test(normalized)) {
+    return null;
+  }
   const parsed = Number(normalized);
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return null;
   }
-  return Math.round(parsed * 100);
+  const [major, fractional = ''] = normalized.split('.');
+  return Number(major) * 100 + Number(fractional.padEnd(2, '0'));
 }
 
 function formatInputAmount(amountMinor: number): string {
@@ -407,8 +411,9 @@ function TerminalShell() {
         { headers: createIdempotencyHeaders(createIdempotencyKey('scan-product')) },
       );
       if (response.status === 202) {
+        const nextRemainingMinor = Math.max(response.data.receipt.totalMinor - paidMinor, 0);
         setReceipt(response.data.receipt);
-        setPaymentAmountInput(formatInputAmount(response.data.receipt.totalMinor));
+        setPaymentAmountInput(nextRemainingMinor > 0 ? formatInputAmount(nextRemainingMinor) : '');
         setStatusMessage({ key: 'pos.status.productScanned', values: { barcode } });
       }
     });
@@ -442,15 +447,21 @@ function TerminalShell() {
     };
     setPaymentAttempt(attempt);
     await runCommand('pos.actions.capturePayment', async () => {
-      const response = await createReceiptPayment(
-        attempt.receiptId,
-        {
-          amountMinor: attempt.amountMinor,
-          method: attempt.method,
-          providerReference: attempt.providerReference,
-        },
-        { headers: createIdempotencyHeaders(attempt.idempotencyKey) },
-      );
+      let response: Awaited<ReturnType<typeof createReceiptPayment>>;
+      try {
+        response = await createReceiptPayment(
+          attempt.receiptId,
+          {
+            amountMinor: attempt.amountMinor,
+            method: attempt.method,
+            providerReference: attempt.providerReference,
+          },
+          { headers: createIdempotencyHeaders(attempt.idempotencyKey) },
+        );
+      } catch (error) {
+        setPaymentAttempt(null);
+        throw error;
+      }
       if (response.status === 202) {
         const nextRemainingMinor = Math.max(remainingMinor - attempt.amountMinor, 0);
         setPayments((currentPayments) => [...currentPayments, response.data.payment]);
@@ -572,7 +583,13 @@ function TerminalShell() {
         </div>
       </section>
 
-      <section className="status-line" data-ready={terminalReady}>
+      <section
+        aria-atomic="true"
+        aria-live={errorMessage ? 'assertive' : 'polite'}
+        className="status-line"
+        data-ready={terminalReady}
+        role={errorMessage ? 'alert' : 'status'}
+      >
         <span>{displayedStatus}</span>
         {errorMessage ? <strong>{errorMessage}</strong> : null}
       </section>
