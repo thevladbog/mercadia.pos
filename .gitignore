@@ -1,6 +1,7 @@
 .cache/
 bin/
 dist/
+storybook-static/
 node_modules/
 *.log
 *.tsbuildinfo

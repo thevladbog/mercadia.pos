@@ -1,0 +1,118 @@
+.mercadia-storybook-shell {
+  min-height: 100vh;
+  padding: var(--ui-space-xl);
+  color: var(--ui-text);
+  background: var(--ui-bg);
+}
+
+.mercadia-story-section {
+  display: grid;
+  gap: var(--ui-space-lg);
+  max-width: 1040px;
+}
+
+.mercadia-story-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-md);
+  align-items: center;
+}
+
+.mercadia-story-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--ui-space-md);
+}
+
+.mercadia-story-panel {
+  padding: var(--ui-space-lg);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-card);
+}
+
+.mercadia-token-table {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+}
+
+.mercadia-token-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(120px, 1fr) minmax(180px, 1.4fr);
+  gap: var(--ui-space-md);
+  align-items: center;
+  padding: var(--ui-space-md) var(--ui-space-lg);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.mercadia-token-row:last-child {
+  border-bottom: 0;
+}
+
+.mercadia-token-name {
+  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--ui-text);
+}
+
+.mercadia-token-value {
+  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--ui-text-muted);
+}
+
+.mercadia-token-swatch {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--token-preview);
+}
+
+.mercadia-token-size-preview {
+  width: var(--token-preview);
+  min-width: 1px;
+  height: 20px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-accent);
+}
+
+.mercadia-token-radius-preview {
+  width: 64px;
+  height: 36px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--token-preview);
+  background: var(--ui-accent-muted);
+}
+
+.mercadia-token-shadow-preview {
+  width: 96px;
+  height: 44px;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  box-shadow: var(--token-preview);
+}
+
+.mercadia-theme-sample {
+  display: grid;
+  gap: var(--ui-space-md);
+  padding: var(--ui-space-lg);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+}
+
+@media (max-width: 720px) {
+  .mercadia-storybook-shell {
+    padding: var(--ui-space-lg);
+  }
+
+  .mercadia-token-row {
+    grid-template-columns: 1fr;
+  }
+}

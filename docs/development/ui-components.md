@@ -106,6 +106,20 @@ Layout templates and Color Schemes may supply `accentPreset` or `accentColor`; P
 
 New interactive controls belong in `@mercadia/ui`, not as global CSS in apps.
 
+## Storybook
+
+`@mercadia/ui` includes a Storybook catalog for shared components and design tokens.
+
+```bash
+cd frontend
+pnpm storybook:ui
+pnpm build-storybook:ui
+```
+
+Use the Storybook toolbar to switch `surface`, `colorMode`, and `accentPreset`. The Foundations
+stories show computed CSS custom properties for primitive colors, semantic colors, spacing,
+radii, shadows, and surface sizing tokens.
+
 ## Central backend branding APIs
 
 Color schemes and layout templates are stored in central-backend:
