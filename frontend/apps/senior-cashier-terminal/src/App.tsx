@@ -12,6 +12,7 @@ import { BusinessExpensePage } from '@/pages/BusinessExpensePage.js';
 import { MonitoringPage } from '@/pages/MonitoringPage.js';
 import { OperationJournalPage } from '@/pages/OperationJournalPage.js';
 import { ShiftHandoverPage } from '@/pages/ShiftHandoverPage.js';
+import { CredentialEnrollmentPage } from '@/pages/CredentialEnrollmentPage.js';
 
 function isSeniorOrAdmin(roles: string[]): boolean {
   return roles.includes('senior_cashier') || roles.includes('admin');
@@ -132,6 +133,15 @@ export function App() {
         element={
           <RequireSeniorCashier>
             <OperationJournalPage />
+          </RequireSeniorCashier>
+        }
+      />
+
+      <Route
+        path="/credentials"
+        element={
+          <RequireSeniorCashier>
+            <CredentialEnrollmentPage />
           </RequireSeniorCashier>
         }
       />

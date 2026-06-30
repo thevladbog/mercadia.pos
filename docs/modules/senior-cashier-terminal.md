@@ -93,6 +93,22 @@ Hardware authentication factors:
 Authentication and signing events must record which factor was used, which physical terminal
 was used, and which Hardware Agent/device reported the factor.
 
+## Staff Credential Enrollment
+
+The senior cashier touch terminal can issue employee physical credentials because it has local
+Hardware Agent access. The flow is:
+
+1. Senior cashier signs in with a Store Edge session that has credential-management permission.
+2. Senior cashier selects the target employee.
+3. Terminal reads the selected credential kind through Hardware Agent (`iButton`, staff MSR card,
+   or barcode staff card).
+4. Terminal sends the safe token returned by Hardware Agent to Store Edge once for hashing and
+   binding.
+5. Store Edge returns only masked labels and token fingerprints.
+
+Senior cashiers cannot manage their own credential bindings from the same session; Store Edge
+enforces this separation-of-duties rule server-side.
+
 ## Home Dashboard
 
 The dashboard answers "what needs to be done now" for the senior cashier.
