@@ -183,6 +183,17 @@ function isFiscalReceipt(document: ReceiptFiscalDocument): boolean {
   return document.kind === 'receipt';
 }
 
+function settledPaymentAmountMinor(payment: ReceiptPayment): number {
+  switch (payment.status) {
+    case 'captured':
+      return payment.amountMinor;
+    case 'partially_refunded':
+      return Math.max(payment.amountMinor - payment.refundedAmountMinor, 0);
+    default:
+      return 0;
+  }
+}
+
 function TerminalShell() {
   const { t, i18n: activeI18n } = useTranslation();
   const templateId = useMemo(() => resolveTemplateId(), []);
@@ -294,7 +305,10 @@ function TerminalShell() {
       filterGridByCategory(grid, resolvedCategoryId === ALL_CATEGORIES ? null : resolvedCategoryId),
     [grid, resolvedCategoryId],
   );
-  const paidMinor = payments.reduce((total, payment) => total + payment.amountMinor, 0);
+  const paidMinor = payments.reduce(
+    (total, payment) => total + settledPaymentAmountMinor(payment),
+    0,
+  );
   const receiptTotalMinor = receipt?.totalMinor ?? 0;
   const remainingMinor = Math.max(receiptTotalMinor - paidMinor, 0);
   const lineCount = receipt?.lines.length ?? 0;
@@ -471,14 +485,6 @@ function TerminalShell() {
   }
 
   async function scanTileProduct(tile: LayoutGridSpec['tiles'][number]): Promise<void> {
-    if (!receipt) {
-      setErrorMessage(t('pos.errors.openReceiptBeforeScanning'));
-      return;
-    }
-    if (!canEditReceipt) {
-      setErrorMessage(t('pos.errors.receiptNotEditable'));
-      return;
-    }
     if (await scanProduct()) {
       setStatusMessage({ key: 'pos.status.tileScanned', values: { product: tile.label, barcode } });
     }
