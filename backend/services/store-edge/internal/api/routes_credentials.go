@@ -70,6 +70,9 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 		OperationID: "getCredentialManagement",
 		Summary:     "Get staff credential policies and bindings. Requires `X-Session-Token` header.",
 		Tags:        []string{"auth"},
+		HeaderParameters: []httpapi.HeaderParamSpec{
+			credentialSessionHeaderParameter(),
+		},
 		Responses: map[string]httpapi.ResponseSpec{
 			"200": {Description: "Credential management state", Schema: credentialManagementResponseSchema()},
 			"400": {Description: "Invalid credential management query", Schema: httpapi.ProblemSchema()},
@@ -94,11 +97,14 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
-		Method:              http.MethodPut,
-		Path:                "/v1/stores/{storeId}/credential-policy",
-		OperationID:         "setStoreCredentialPolicy",
-		Summary:             "Set store staff credential policy. Requires `X-Session-Token` header.",
-		Tags:                []string{"auth"},
+		Method:      http.MethodPut,
+		Path:        "/v1/stores/{storeId}/credential-policy",
+		OperationID: "setStoreCredentialPolicy",
+		Summary:     "Set store staff credential policy. Requires `X-Session-Token` header.",
+		Tags:        []string{"auth"},
+		HeaderParameters: []httpapi.HeaderParamSpec{
+			credentialSessionHeaderParameter(),
+		},
 		RequiresIdempotency: true,
 		RequestBody: &httpapi.BodySpec{
 			Description: "Store credential policy command",
@@ -140,11 +146,14 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
-		Method:              http.MethodPut,
-		Path:                "/v1/stores/{storeId}/actors/{actorId}/credential-policy",
-		OperationID:         "setActorCredentialPolicy",
-		Summary:             "Set actor staff credential policy override. Requires `X-Session-Token` header.",
-		Tags:                []string{"auth"},
+		Method:      http.MethodPut,
+		Path:        "/v1/stores/{storeId}/actors/{actorId}/credential-policy",
+		OperationID: "setActorCredentialPolicy",
+		Summary:     "Set actor staff credential policy override. Requires `X-Session-Token` header.",
+		Tags:        []string{"auth"},
+		HeaderParameters: []httpapi.HeaderParamSpec{
+			credentialSessionHeaderParameter(),
+		},
 		RequiresIdempotency: true,
 		RequestBody: &httpapi.BodySpec{
 			Description: "Actor credential policy command",
@@ -188,11 +197,14 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
-		Method:              http.MethodPost,
-		Path:                "/v1/stores/{storeId}/actors/{actorId}/credential-bindings",
-		OperationID:         "addActorCredentialBinding",
-		Summary:             "Add actor staff credential binding. Requires `X-Session-Token` header.",
-		Tags:                []string{"auth"},
+		Method:      http.MethodPost,
+		Path:        "/v1/stores/{storeId}/actors/{actorId}/credential-bindings",
+		OperationID: "addActorCredentialBinding",
+		Summary:     "Add actor staff credential binding. Requires `X-Session-Token` header.",
+		Tags:        []string{"auth"},
+		HeaderParameters: []httpapi.HeaderParamSpec{
+			credentialSessionHeaderParameter(),
+		},
 		RequiresIdempotency: true,
 		RequestBody: &httpapi.BodySpec{
 			Description: "Actor credential binding command",
@@ -236,11 +248,14 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
-		Method:              http.MethodPost,
-		Path:                "/v1/stores/{storeId}/actors/{actorId}/credential-bindings/revoke",
-		OperationID:         "revokeActorCredentialBinding",
-		Summary:             "Revoke actor staff credential binding. Requires `X-Session-Token` header.",
-		Tags:                []string{"auth"},
+		Method:      http.MethodPost,
+		Path:        "/v1/stores/{storeId}/actors/{actorId}/credential-bindings/revoke",
+		OperationID: "revokeActorCredentialBinding",
+		Summary:     "Revoke actor staff credential binding. Requires `X-Session-Token` header.",
+		Tags:        []string{"auth"},
+		HeaderParameters: []httpapi.HeaderParamSpec{
+			credentialSessionHeaderParameter(),
+		},
 		RequiresIdempotency: true,
 		RequestBody: &httpapi.BodySpec{
 			Description: "Actor credential binding revoke command",
@@ -281,6 +296,15 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 		}
 		httpapi.WriteJSON(w, http.StatusOK, ActorCredentialAcceptedResponse{Actor: actorCredentialResponse(result)})
 	})
+}
+
+func credentialSessionHeaderParameter() httpapi.HeaderParamSpec {
+	return httpapi.HeaderParamSpec{
+		Name:        sessionTokenHeader,
+		Description: "Store Edge session token for the credential manager.",
+		Required:    true,
+		Schema:      httpapi.StringSchema(),
+	}
 }
 
 func credentialManagerID(w http.ResponseWriter, r *http.Request, auth *app.AuthService) (string, bool) {

@@ -7743,6 +7743,15 @@
               "minLength": 8,
               "type": "string"
             }
+          },
+          {
+            "description": "Store Edge session token for the credential manager.",
+            "in": "header",
+            "name": "X-Session-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -8075,6 +8084,15 @@
               "minLength": 8,
               "type": "string"
             }
+          },
+          {
+            "description": "Store Edge session token for the credential manager.",
+            "in": "header",
+            "name": "X-Session-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -8402,6 +8420,15 @@
             "required": true,
             "schema": {
               "minLength": 8,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Store Edge session token for the credential manager.",
+            "in": "header",
+            "name": "X-Session-Token",
+            "required": true,
+            "schema": {
               "type": "string"
             }
           }
@@ -10421,6 +10448,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Store Edge session token for the credential manager.",
+            "in": "header",
+            "name": "X-Session-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -10709,6 +10745,15 @@
             "required": true,
             "schema": {
               "minLength": 8,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Store Edge session token for the credential manager.",
+            "in": "header",
+            "name": "X-Session-Token",
+            "required": true,
+            "schema": {
               "type": "string"
             }
           }

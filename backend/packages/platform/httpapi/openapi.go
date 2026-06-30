@@ -26,6 +26,13 @@ type QueryParamSpec struct {
 	Schema      Schema
 }
 
+type HeaderParamSpec struct {
+	Name        string
+	Description string
+	Required    bool
+	Schema      Schema
+}
+
 type Operation struct {
 	Method              string
 	Path                string
@@ -33,6 +40,7 @@ type Operation struct {
 	Summary             string
 	Description         string
 	Tags                []string
+	HeaderParameters    []HeaderParamSpec
 	QueryParameters     []QueryParamSpec
 	RequestBody         *BodySpec
 	Responses           map[string]ResponseSpec
@@ -84,6 +92,15 @@ func (s *Spec) OpenAPI() map[string]any {
 					"type":      "string",
 					"minLength": 8,
 				},
+			})
+		}
+		for _, header := range op.HeaderParameters {
+			parameters = append(parameters, map[string]any{
+				"name":        header.Name,
+				"in":          "header",
+				"required":    header.Required,
+				"description": header.Description,
+				"schema":      header.Schema,
 			})
 		}
 		for _, query := range op.QueryParameters {
