@@ -220,6 +220,14 @@ body,
   background: var(--ui-bg);
 }
 
+.sr-binding-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .sr-credential-options {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

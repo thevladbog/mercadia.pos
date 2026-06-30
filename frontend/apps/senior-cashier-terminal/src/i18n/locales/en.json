@@ -121,9 +121,15 @@
     "noActors": "No employees are available in Store Edge.",
     "selfTarget": "You cannot manage your own credential from this session.",
     "currentBindings": "Current bindings",
+    "replaceHint": "To replace a credential, revoke the active binding, read the replacement credential, then bind it.",
     "noBindings": "No credential bindings yet.",
     "active": "Active",
-    "revoked": "Revoked"
+    "revoked": "Revoked",
+    "revoke": "Revoke",
+    "revoking": "Revoking…",
+    "revokeConfirm": "Revoke this active credential binding?",
+    "revokeSuccess": "Credential revoked for {{actorId}}.",
+    "revokeError": "Credential revocation failed. Check permissions and try again."
   },
   "cash": {
     "changeFundTitle": "Issue Change Fund",
