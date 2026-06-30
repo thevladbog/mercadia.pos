@@ -188,6 +188,38 @@ body,
   gap: 1rem;
 }
 
+.sr-form-wide {
+  max-width: 720px;
+}
+
+.sr-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sr-button-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.sr-binding-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.sr-binding-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg);
+}
+
 .sr-credential-options {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

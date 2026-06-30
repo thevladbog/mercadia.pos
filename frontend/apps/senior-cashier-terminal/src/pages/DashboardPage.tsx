@@ -70,6 +70,7 @@ export function DashboardPage() {
     { label: t('dashboard.safeRecount'), path: '/cash/safe-recount', accent: false },
     { label: t('dashboard.bankCollection'), path: '/cash/bank-collection', accent: false },
     { label: t('dashboard.expense'), path: '/cash/expense', accent: false },
+    { label: t('dashboard.credentials'), path: '/credentials', accent: false },
     { label: t('dashboard.journal'), path: '/journal', accent: false },
     { label: t('dashboard.handover'), path: '/handover', accent: false },
   ];
