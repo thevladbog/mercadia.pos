@@ -8,7 +8,6 @@
 import type { AddActorCredentialBindingBodyKind } from './addActorCredentialBindingBodyKind.ts';
 
 export type AddActorCredentialBindingBody = {
-  actorId: string;
   kind: AddActorCredentialBindingBodyKind;
   maskedToken?: string;
   token: string;

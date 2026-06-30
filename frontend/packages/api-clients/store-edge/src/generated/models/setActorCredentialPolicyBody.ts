@@ -8,7 +8,6 @@
 import type { SetActorCredentialPolicyBodyAllowedKindsItem } from './setActorCredentialPolicyBodyAllowedKindsItem.ts';
 
 export type SetActorCredentialPolicyBody = {
-  actorId: string;
   allowedKinds: SetActorCredentialPolicyBodyAllowedKindsItem[];
   inheritStorePolicy: boolean;
   required: boolean;

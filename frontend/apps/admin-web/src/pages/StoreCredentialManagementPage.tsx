@@ -1,8 +1,11 @@
 import { useListStores } from '@mercadia/api-clients-central';
 import {
   addActorCredentialBinding,
+  createAuthSession,
+  getSessionToken as getStoreEdgeSessionToken,
   revokeActorCredentialBinding,
   setActorCredentialPolicy,
+  setSessionToken as setStoreEdgeSessionToken,
   setStoreCredentialPolicy,
   useGetCredentialManagement,
   type AddActorCredentialBindingBody,
@@ -69,6 +72,12 @@ export function StoreCredentialManagementPage() {
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(initialStoreId);
   const activeStoreId = selectedStoreId ?? stores[0]?.id ?? '';
   const [managerActorId, setManagerActorId] = useState('admin-1');
+  const [managerPin, setManagerPin] = useState('');
+  const [managerCredentialKind, setManagerCredentialKind] = useState<CredentialKind>('ibutton');
+  const [managerCredentialToken, setManagerCredentialToken] = useState('');
+  const [hasManagerSession, setHasManagerSession] = useState(
+    () => getStoreEdgeSessionToken() !== null,
+  );
   const [storePolicyDraft, setStorePolicyDraft] = useState<CredentialPolicyDraft | null>(null);
   const [selectedActorId, setSelectedActorId] = useState('');
   const [actorPolicyDraft, setActorPolicyDraft] = useState<ActorPolicyDraft | null>(null);
@@ -79,11 +88,9 @@ export function StoreCredentialManagementPage() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const credentialsQuery = useGetCredentialManagement(
-    activeStoreId,
-    { actorId: managerActorId },
-    { query: { enabled: activeStoreId.length > 0 && managerActorId.trim().length > 0 } },
-  );
+  const credentialsQuery = useGetCredentialManagement(activeStoreId, {
+    query: { enabled: activeStoreId.length > 0 && hasManagerSession },
+  });
   const credentials = credentialsQuery.data?.status === 200 ? credentialsQuery.data.data : null;
   const actors = credentials?.actors ?? [];
   const selectedActor = actors.find((actor) => actor.id === selectedActorId) ?? actors[0] ?? null;
@@ -96,7 +103,37 @@ export function StoreCredentialManagementPage() {
   const loadError =
     credentialsQuery.error != null ? getApiErrorMessage(credentialsQuery.error) : null;
 
-  async function runCommand(action: () => Promise<unknown>, successKey: string): Promise<void> {
+  async function loginManager(): Promise<void> {
+    setIsSubmitting(true);
+    setError('');
+    setMessage('');
+    try {
+      const credentialToken = managerCredentialToken.trim();
+      const response = await createAuthSession({
+        actorId: managerActorId.trim(),
+        pin: managerPin.trim(),
+        storeId: activeStoreId,
+        credentialFactor:
+          credentialToken.length > 0
+            ? { kind: managerCredentialKind, token: credentialToken }
+            : undefined,
+      });
+      if (response.status === 201) {
+        setStoreEdgeSessionToken(response.data.session.token);
+        setHasManagerSession(true);
+        setManagerPin('');
+        setManagerCredentialToken('');
+        setMessage(t('credentials.managerLoggedIn'));
+      }
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+      setHasManagerSession(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function runCommand(action: () => Promise<unknown>, successKey: string): Promise<boolean> {
     setIsSubmitting(true);
     setError('');
     setMessage('');
@@ -104,8 +141,10 @@ export function StoreCredentialManagementPage() {
       await action();
       await credentialsQuery.refetch();
       setMessage(t(successKey));
+      return true;
     } catch (err) {
       setError(getApiErrorMessage(err));
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -135,7 +174,9 @@ export function StoreCredentialManagementPage() {
             <Button
               type="button"
               variant="secondary"
-              disabled={credentialsQuery.isFetching || activeStoreId.length === 0}
+              disabled={
+                credentialsQuery.isFetching || activeStoreId.length === 0 || !hasManagerSession
+              }
               onClick={() => void credentialsQuery.refetch()}
             >
               {credentialsQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
@@ -160,7 +201,54 @@ export function StoreCredentialManagementPage() {
             onValueChange={setManagerActorId}
             placeholder={t('credentials.managerActorPlaceholder')}
           />
+          <TextField
+            label={t('credentials.managerPin')}
+            type="password"
+            autoComplete="off"
+            value={managerPin}
+            onValueChange={setManagerPin}
+            placeholder={t('credentials.managerPinPlaceholder')}
+          />
+          <SelectField
+            label={t('credentials.managerCredentialKind')}
+            value={managerCredentialKind}
+            onValueChange={(value) => setManagerCredentialKind(value as CredentialKind)}
+          >
+            {CREDENTIAL_KINDS.map((kind) => (
+              <option key={kind} value={kind}>
+                {t(kindLabelKey(kind))}
+              </option>
+            ))}
+          </SelectField>
+          <TextField
+            label={t('credentials.managerCredentialTokenOptional')}
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            value={managerCredentialToken}
+            onValueChange={setManagerCredentialToken}
+            placeholder={t('credentials.rawTokenPlaceholder')}
+          />
         </div>
+
+        <div className="header-actions-inline">
+          <Button
+            type="button"
+            disabled={
+              isSubmitting ||
+              activeStoreId.length === 0 ||
+              managerActorId.trim().length === 0 ||
+              managerPin.trim().length === 0
+            }
+            onClick={() => void loginManager()}
+          >
+            {isSubmitting ? t('common.submitting') : t('credentials.managerLogin')}
+          </Button>
+          {hasManagerSession && (
+            <span className="muted">{t('credentials.managerSessionReady')}</span>
+          )}
+        </div>
+        <p className="muted">{t('credentials.managerLoginHint')}</p>
 
         {loadError && <p className="error">{loadError}</p>}
         {!activeStoreId && <p className="muted">{t('common.selectStore')}</p>}
@@ -215,7 +303,6 @@ export function StoreCredentialManagementPage() {
                       setStoreCredentialPolicy(
                         activeStoreId,
                         {
-                          actorId: managerActorId,
                           required: storePolicyForm.required,
                           allowedKinds: storePolicyForm.allowedKinds,
                         },
@@ -294,7 +381,6 @@ export function StoreCredentialManagementPage() {
                       activeStoreId,
                       targetActorId,
                       {
-                        actorId: managerActorId,
                         inheritStorePolicy: actorPolicyForm.inheritStorePolicy,
                         required: actorPolicyForm.required,
                         allowedKinds: actorPolicyForm.allowedKinds,
@@ -345,7 +431,6 @@ export function StoreCredentialManagementPage() {
                                     activeStoreId,
                                     actor.id,
                                     {
-                                      actorId: managerActorId,
                                       kind: binding.kind,
                                       tokenFingerprint: binding.tokenFingerprint,
                                     },
@@ -385,6 +470,9 @@ export function StoreCredentialManagementPage() {
               />
               <TextField
                 label={t('credentials.rawToken')}
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
                 value={bindingToken}
                 onValueChange={setBindingToken}
                 placeholder={t('credentials.rawTokenPlaceholder')}
@@ -401,15 +489,15 @@ export function StoreCredentialManagementPage() {
                       activeStoreId,
                       targetActorId,
                       {
-                        actorId: managerActorId,
                         kind: bindingKind,
-                        token: bindingToken,
+                        token: bindingToken.trim(),
                         maskedToken: bindingMaskedToken || undefined,
                       },
                       { headers: createIdempotencyHeaders() },
                     ),
                   'credentials.bindingAdded',
-                ).then(() => {
+                ).then((ok) => {
+                  if (!ok) return;
                   setBindingToken('');
                   setBindingMaskedToken('');
                 })

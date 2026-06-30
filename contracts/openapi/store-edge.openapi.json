@@ -7751,9 +7751,6 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
-                  "actorId": {
-                    "type": "string"
-                  },
                   "kind": {
                     "enum": [
                       "ibutton",
@@ -7770,7 +7767,6 @@
                   }
                 },
                 "required": [
-                  "actorId",
                   "kind",
                   "token"
                 ],
@@ -7907,6 +7903,40 @@
             },
             "description": "Invalid credential binding command"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Session is missing or invalid"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -7973,7 +8003,7 @@
                 }
               }
             },
-            "description": "Actor was not found"
+            "description": "Actor or manager was not found"
           },
           "409": {
             "content": {
@@ -8010,7 +8040,7 @@
             "description": "Separation of duties conflict"
           }
         },
-        "summary": "Add actor staff credential binding",
+        "summary": "Add actor staff credential binding. Requires `X-Session-Token` header.",
         "tags": [
           "auth"
         ]
@@ -8053,9 +8083,6 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
-                  "actorId": {
-                    "type": "string"
-                  },
                   "kind": {
                     "enum": [
                       "ibutton",
@@ -8069,7 +8096,6 @@
                   }
                 },
                 "required": [
-                  "actorId",
                   "kind",
                   "tokenFingerprint"
                 ],
@@ -8206,6 +8232,40 @@
             },
             "description": "Invalid credential binding command"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Session is missing or invalid"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -8309,7 +8369,7 @@
             "description": "Separation of duties conflict"
           }
         },
-        "summary": "Revoke actor staff credential binding",
+        "summary": "Revoke actor staff credential binding. Requires `X-Session-Token` header.",
         "tags": [
           "auth"
         ]
@@ -8352,9 +8412,6 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
-                  "actorId": {
-                    "type": "string"
-                  },
                   "allowedKinds": {
                     "items": {
                       "enum": [
@@ -8374,7 +8431,6 @@
                   }
                 },
                 "required": [
-                  "actorId",
                   "inheritStorePolicy",
                   "required",
                   "allowedKinds"
@@ -8512,6 +8568,40 @@
             },
             "description": "Invalid credential policy command"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Session is missing or invalid"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -8578,7 +8668,7 @@
                 }
               }
             },
-            "description": "Actor was not found"
+            "description": "Actor or manager was not found"
           },
           "409": {
             "content": {
@@ -8615,7 +8705,7 @@
             "description": "Separation of duties conflict"
           }
         },
-        "summary": "Set actor staff credential policy override",
+        "summary": "Set actor staff credential policy override. Requires `X-Session-Token` header.",
         "tags": [
           "auth"
         ]
@@ -10331,15 +10421,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "description": "Actor requesting credential management state",
-            "in": "query",
-            "name": "actorId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
@@ -10500,6 +10581,40 @@
             },
             "description": "Invalid credential management query"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Session is missing or invalid"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -10533,9 +10648,43 @@
               }
             },
             "description": "Permission denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Manager actor was not found"
           }
         },
-        "summary": "Get staff credential policies and bindings",
+        "summary": "Get staff credential policies and bindings. Requires `X-Session-Token` header.",
         "tags": [
           "auth"
         ]
@@ -10570,9 +10719,6 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
-                  "actorId": {
-                    "type": "string"
-                  },
                   "allowedKinds": {
                     "items": {
                       "enum": [
@@ -10589,7 +10735,6 @@
                   }
                 },
                 "required": [
-                  "actorId",
                   "required",
                   "allowedKinds"
                 ],
@@ -10675,6 +10820,40 @@
             },
             "description": "Invalid credential policy command"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Session is missing or invalid"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -10708,9 +10887,43 @@
               }
             },
             "description": "Permission denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Manager actor was not found"
           }
         },
-        "summary": "Set store staff credential policy",
+        "summary": "Set store staff credential policy. Requires `X-Session-Token` header.",
         "tags": [
           "auth"
         ]

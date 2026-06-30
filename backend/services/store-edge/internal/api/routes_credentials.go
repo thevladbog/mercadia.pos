@@ -34,27 +34,23 @@ type CredentialBindingResponse struct {
 }
 
 type SetCredentialPolicyRequest struct {
-	ActorID      string                  `json:"actorId"`
 	Required     bool                    `json:"required"`
 	AllowedKinds []domain.CredentialKind `json:"allowedKinds"`
 }
 
 type SetActorCredentialPolicyRequest struct {
-	ActorID            string                  `json:"actorId"`
 	InheritStorePolicy bool                    `json:"inheritStorePolicy"`
 	Required           bool                    `json:"required"`
 	AllowedKinds       []domain.CredentialKind `json:"allowedKinds"`
 }
 
 type AddCredentialBindingRequest struct {
-	ActorID     string                `json:"actorId"`
 	Kind        domain.CredentialKind `json:"kind"`
 	Token       string                `json:"token"`
 	MaskedToken string                `json:"maskedToken,omitempty"`
 }
 
 type RevokeCredentialBindingRequest struct {
-	ActorID          string                `json:"actorId"`
 	Kind             domain.CredentialKind `json:"kind"`
 	TokenFingerprint string                `json:"tokenFingerprint"`
 }
@@ -67,25 +63,28 @@ type ActorCredentialAcceptedResponse struct {
 	Actor ActorCredentialResponse `json:"actor"`
 }
 
-func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *app.CredentialManagementService) {
+func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.AuthService, credentials *app.CredentialManagementService) {
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
 		Path:        "/v1/stores/{storeId}/credential-management",
 		OperationID: "getCredentialManagement",
-		Summary:     "Get staff credential policies and bindings",
+		Summary:     "Get staff credential policies and bindings. Requires `X-Session-Token` header.",
 		Tags:        []string{"auth"},
-		QueryParameters: []httpapi.QueryParamSpec{
-			{Name: "actorId", Description: "Actor requesting credential management state", Required: true, Schema: httpapi.StringSchema()},
-		},
 		Responses: map[string]httpapi.ResponseSpec{
 			"200": {Description: "Credential management state", Schema: credentialManagementResponseSchema()},
 			"400": {Description: "Invalid credential management query", Schema: httpapi.ProblemSchema()},
+			"401": {Description: "Session is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Manager actor was not found", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
+		managerID, ok := credentialManagerID(w, r, auth)
+		if !ok {
+			return
+		}
 		result, err := credentials.GetCredentialManagement(r.Context(), app.GetCredentialManagementQuery{
 			StoreID:   r.PathValue("storeId"),
-			ManagerID: r.URL.Query().Get("actorId"),
+			ManagerID: managerID,
 		})
 		if err != nil {
 			writeAppError(w, err)
@@ -98,7 +97,7 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *
 		Method:              http.MethodPut,
 		Path:                "/v1/stores/{storeId}/credential-policy",
 		OperationID:         "setStoreCredentialPolicy",
-		Summary:             "Set store staff credential policy",
+		Summary:             "Set store staff credential policy. Requires `X-Session-Token` header.",
 		Tags:                []string{"auth"},
 		RequiresIdempotency: true,
 		RequestBody: &httpapi.BodySpec{
@@ -109,9 +108,15 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *
 		Responses: map[string]httpapi.ResponseSpec{
 			"200": {Description: "Store credential policy", Schema: credentialPolicyAcceptedResponseSchema()},
 			"400": {Description: "Invalid credential policy command", Schema: httpapi.ProblemSchema()},
+			"401": {Description: "Session is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Manager actor was not found", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
+		managerID, ok := credentialManagerID(w, r, auth)
+		if !ok {
+			return
+		}
 		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
 			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 			return
@@ -123,7 +128,7 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *
 		}
 		result, err := credentials.SetStoreCredentialPolicy(r.Context(), app.SetStoreCredentialPolicyCommand{
 			StoreID:      r.PathValue("storeId"),
-			ManagerID:    request.ActorID,
+			ManagerID:    managerID,
 			Required:     request.Required,
 			AllowedKinds: request.AllowedKinds,
 		})
@@ -138,7 +143,7 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *
 		Method:              http.MethodPut,
 		Path:                "/v1/stores/{storeId}/actors/{actorId}/credential-policy",
 		OperationID:         "setActorCredentialPolicy",
-		Summary:             "Set actor staff credential policy override",
+		Summary:             "Set actor staff credential policy override. Requires `X-Session-Token` header.",
 		Tags:                []string{"auth"},
 		RequiresIdempotency: true,
 		RequestBody: &httpapi.BodySpec{
@@ -149,11 +154,16 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *
 		Responses: map[string]httpapi.ResponseSpec{
 			"200": {Description: "Actor credential policy", Schema: actorCredentialAcceptedResponseSchema()},
 			"400": {Description: "Invalid credential policy command", Schema: httpapi.ProblemSchema()},
+			"401": {Description: "Session is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
-			"404": {Description: "Actor was not found", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Actor or manager was not found", Schema: httpapi.ProblemSchema()},
 			"409": {Description: "Separation of duties conflict", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
+		managerID, ok := credentialManagerID(w, r, auth)
+		if !ok {
+			return
+		}
 		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
 			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 			return
@@ -165,7 +175,7 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *
 		}
 		result, err := credentials.SetActorCredentialPolicy(r.Context(), app.SetActorCredentialPolicyCommand{
 			TargetActorID:      r.PathValue("actorId"),
-			ManagerID:          request.ActorID,
+			ManagerID:          managerID,
 			InheritStorePolicy: request.InheritStorePolicy,
 			Required:           request.Required,
 			AllowedKinds:       request.AllowedKinds,
@@ -181,7 +191,7 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *
 		Method:              http.MethodPost,
 		Path:                "/v1/stores/{storeId}/actors/{actorId}/credential-bindings",
 		OperationID:         "addActorCredentialBinding",
-		Summary:             "Add actor staff credential binding",
+		Summary:             "Add actor staff credential binding. Requires `X-Session-Token` header.",
 		Tags:                []string{"auth"},
 		RequiresIdempotency: true,
 		RequestBody: &httpapi.BodySpec{
@@ -192,11 +202,16 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *
 		Responses: map[string]httpapi.ResponseSpec{
 			"200": {Description: "Actor credential bindings", Schema: actorCredentialAcceptedResponseSchema()},
 			"400": {Description: "Invalid credential binding command", Schema: httpapi.ProblemSchema()},
+			"401": {Description: "Session is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
-			"404": {Description: "Actor was not found", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Actor or manager was not found", Schema: httpapi.ProblemSchema()},
 			"409": {Description: "Separation of duties conflict", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
+		managerID, ok := credentialManagerID(w, r, auth)
+		if !ok {
+			return
+		}
 		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
 			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 			return
@@ -208,7 +223,7 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *
 		}
 		result, err := credentials.AddCredentialBinding(r.Context(), app.AddCredentialBindingCommand{
 			TargetActorID: r.PathValue("actorId"),
-			ManagerID:     request.ActorID,
+			ManagerID:     managerID,
 			Kind:          request.Kind,
 			Token:         request.Token,
 			MaskedToken:   request.MaskedToken,
@@ -224,7 +239,7 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *
 		Method:              http.MethodPost,
 		Path:                "/v1/stores/{storeId}/actors/{actorId}/credential-bindings/revoke",
 		OperationID:         "revokeActorCredentialBinding",
-		Summary:             "Revoke actor staff credential binding",
+		Summary:             "Revoke actor staff credential binding. Requires `X-Session-Token` header.",
 		Tags:                []string{"auth"},
 		RequiresIdempotency: true,
 		RequestBody: &httpapi.BodySpec{
@@ -235,11 +250,16 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *
 		Responses: map[string]httpapi.ResponseSpec{
 			"200": {Description: "Actor credential bindings", Schema: actorCredentialAcceptedResponseSchema()},
 			"400": {Description: "Invalid credential binding command", Schema: httpapi.ProblemSchema()},
+			"401": {Description: "Session is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
 			"404": {Description: "Actor or binding was not found", Schema: httpapi.ProblemSchema()},
 			"409": {Description: "Separation of duties conflict", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
+		managerID, ok := credentialManagerID(w, r, auth)
+		if !ok {
+			return
+		}
 		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
 			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 			return
@@ -251,7 +271,7 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *
 		}
 		result, err := credentials.RevokeCredentialBinding(r.Context(), app.RevokeCredentialBindingCommand{
 			TargetActorID:    r.PathValue("actorId"),
-			ManagerID:        request.ActorID,
+			ManagerID:        managerID,
 			Kind:             request.Kind,
 			TokenFingerprint: request.TokenFingerprint,
 		})
@@ -261,6 +281,19 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, credentials *
 		}
 		httpapi.WriteJSON(w, http.StatusOK, ActorCredentialAcceptedResponse{Actor: actorCredentialResponse(result)})
 	})
+}
+
+func credentialManagerID(w http.ResponseWriter, r *http.Request, auth *app.AuthService) (string, bool) {
+	session, err := OptionalSessionFromRequest(r, auth)
+	if err != nil {
+		writeAppError(w, err)
+		return "", false
+	}
+	if session == nil {
+		writeAppError(w, app.ErrSessionNotFound)
+		return "", false
+	}
+	return session.ActorID, true
 }
 
 func credentialManagementResponse(result app.CredentialManagementResult) CredentialManagementResponse {
@@ -345,36 +378,32 @@ func credentialBindingResponseSchema() httpapi.Schema {
 
 func setCredentialPolicyRequestSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"actorId":      httpapi.StringSchema(),
 		"required":     {"type": "boolean"},
 		"allowedKinds": httpapi.ArraySchema(credentialKindSchema()),
-	}, "actorId", "required", "allowedKinds")
+	}, "required", "allowedKinds")
 }
 
 func setActorCredentialPolicyRequestSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"actorId":            httpapi.StringSchema(),
 		"inheritStorePolicy": {"type": "boolean"},
 		"required":           {"type": "boolean"},
 		"allowedKinds":       httpapi.ArraySchema(credentialKindSchema()),
-	}, "actorId", "inheritStorePolicy", "required", "allowedKinds")
+	}, "inheritStorePolicy", "required", "allowedKinds")
 }
 
 func addCredentialBindingRequestSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"actorId":     httpapi.StringSchema(),
 		"kind":        credentialKindSchema(),
 		"token":       httpapi.StringSchema(),
 		"maskedToken": httpapi.StringSchema(),
-	}, "actorId", "kind", "token")
+	}, "kind", "token")
 }
 
 func revokeCredentialBindingRequestSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"actorId":          httpapi.StringSchema(),
 		"kind":             credentialKindSchema(),
 		"tokenFingerprint": httpapi.StringSchema(),
-	}, "actorId", "kind", "tokenFingerprint")
+	}, "kind", "tokenFingerprint")
 }
 
 func credentialPolicyAcceptedResponseSchema() httpapi.Schema {

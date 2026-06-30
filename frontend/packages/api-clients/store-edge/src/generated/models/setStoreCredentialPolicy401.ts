@@ -5,9 +5,11 @@
  * Store-local operational API for POS, SCO/KSO, senior cashier, assistant, and store admin clients.
  * OpenAPI spec version: 0.1.0
  */
-import type { RevokeActorCredentialBindingBodyKind } from './revokeActorCredentialBindingBodyKind.ts';
 
-export type RevokeActorCredentialBindingBody = {
-  kind: RevokeActorCredentialBindingBodyKind;
-  tokenFingerprint: string;
+export type SetStoreCredentialPolicy401 = {
+  code: string;
+  detail?: string;
+  status: number;
+  title: string;
+  type: string;
 };

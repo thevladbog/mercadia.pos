@@ -81,6 +81,37 @@ func (s *Store) SaveActor(ctx context.Context, actor domain.Actor) error {
 	return nil
 }
 
+func (s *Store) UpdateActorCredentialPolicy(ctx context.Context, actorID string, policy *domain.CredentialPolicy) (domain.Actor, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	actor, ok := s.actors[actorID]
+	if !ok {
+		return domain.Actor{}, app.ErrActorNotFound
+	}
+	actor.CredentialPolicy = cloneCredentialPolicyPointer(policy)
+	s.actors[actorID] = cloneActor(actor)
+	return cloneActor(actor), nil
+}
+
+func (s *Store) UpdateActorCredentialBindings(ctx context.Context, actorID string, update func([]domain.CredentialBinding) ([]domain.CredentialBinding, error)) (domain.Actor, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	actor, ok := s.actors[actorID]
+	if !ok {
+		return domain.Actor{}, app.ErrActorNotFound
+	}
+	bindings := append([]domain.CredentialBinding(nil), actor.CredentialBindings...)
+	updated, err := update(bindings)
+	if err != nil {
+		return domain.Actor{}, err
+	}
+	actor.CredentialBindings = append([]domain.CredentialBinding(nil), updated...)
+	s.actors[actorID] = cloneActor(actor)
+	return cloneActor(actor), nil
+}
+
 func (s *Store) FindStoreCredentialPolicy(ctx context.Context, storeID string) (domain.CredentialPolicy, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -104,13 +135,18 @@ func (s *Store) SaveStoreCredentialPolicy(ctx context.Context, storeID string, p
 
 func cloneActor(actor domain.Actor) domain.Actor {
 	actor.Roles = append([]domain.Role(nil), actor.Roles...)
-	if actor.CredentialPolicy != nil {
-		policy := *actor.CredentialPolicy
-		policy.AllowedKinds = append([]domain.CredentialKind(nil), policy.AllowedKinds...)
-		actor.CredentialPolicy = &policy
-	}
+	actor.CredentialPolicy = cloneCredentialPolicyPointer(actor.CredentialPolicy)
 	actor.CredentialBindings = append([]domain.CredentialBinding(nil), actor.CredentialBindings...)
 	return actor
+}
+
+func cloneCredentialPolicyPointer(policy *domain.CredentialPolicy) *domain.CredentialPolicy {
+	if policy == nil {
+		return nil
+	}
+	cloned := *policy
+	cloned.AllowedKinds = append([]domain.CredentialKind(nil), policy.AllowedKinds...)
+	return &cloned
 }
 
 func (s *Store) SaveSession(ctx context.Context, session domain.Session) error {

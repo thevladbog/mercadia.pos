@@ -766,7 +766,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	mountRoutes(mux, spec, outbox, config.brokerConnected, operationalDays, checkout, catalog, payments, fiscalization, cash, shifts, terminals)
 	mountMonitoringRoutes(mux, spec, terminalMonitoring)
 	mountDomainRoutes(mux, spec, auth, returns, returnSettlement, fiscalization, discounts, marking, journal)
-	mountCredentialRoutes(mux, spec, credentials)
+	mountCredentialRoutes(mux, spec, auth, credentials)
 	mountCatalogSyncRoute(mux, spec, config.catalogSync)
 	mountTerminalEventsRoute(mux, terminalEvents)
 

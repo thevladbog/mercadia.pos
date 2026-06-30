@@ -19,7 +19,7 @@ func TestCredentialManagementAddsBindingForManagedActor(t *testing.T) {
 		TargetActorID: "cashier-1",
 		ManagerID:     "senior-1",
 		Kind:          domain.CredentialKindBarcodeCard,
-		Token:         "demo-cashier-barcode-2",
+		Token:         " demo-cashier-barcode-2 ",
 		MaskedToken:   "Barcode staff demo ****0002",
 	})
 	if err != nil {

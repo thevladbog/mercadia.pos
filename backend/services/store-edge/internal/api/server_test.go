@@ -148,6 +148,54 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	}
 }
 
+func TestCredentialManagementRequiresSession(t *testing.T) {
+	server := NewServer()
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/credential-management", nil)
+
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("credential management without session status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestCredentialManagementUsesSessionActorForPermission(t *testing.T) {
+	server := NewServer()
+	cashierToken := createAuthSessionForTest(t, server, "cashier-1", "1234")
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/credential-management?actorId=admin-1", nil)
+	request.Header.Set(sessionTokenHeader, cashierToken)
+
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("credential management with spoofed actor status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestCredentialManagementRejectsBodyActorID(t *testing.T) {
+	server := NewServer()
+	adminToken := createAuthSessionForTest(t, server, "admin-1", "9999")
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/credential-policy", bytes.NewBufferString(`{
+		"actorId": "cashier-1",
+		"required": true,
+		"allowedKinds": ["ibutton"]
+	}`))
+	request.Header.Set(sessionTokenHeader, adminToken)
+	request.Header.Set("Idempotency-Key", "credential-policy-ignore-body-actor")
+
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("credential policy with body actor status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
 func TestReceiptWorkflow(t *testing.T) {
 	server := NewServer()
 	openStoreDayAndShift(t, server, "receipt")
@@ -2896,6 +2944,28 @@ func TestScanReceiptWorkflow(t *testing.T) {
 func openStoreDayAndShift(t *testing.T, server http.Handler, keyPrefix string) {
 	t.Helper()
 	openStoreDayAndShiftForDate(t, server, keyPrefix, "2026-06-18")
+}
+
+func createAuthSessionForTest(t *testing.T, server http.Handler, actorID string, pin string) string {
+	t.Helper()
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/v1/auth/sessions", bytes.NewBufferString(fmt.Sprintf(`{
+		"actorId": %q,
+		"pin": %q,
+		"storeId": "store-1"
+	}`, actorID, pin)))
+
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusCreated {
+		t.Fatalf("create auth session status = %d, body = %s", response.Code, response.Body.String())
+	}
+	var accepted SessionAcceptedResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode auth session: %v", err)
+	}
+	return accepted.Session.Token
 }
 
 func openStoreDayAndShiftForDate(t *testing.T, server http.Handler, keyPrefix string, businessDate string) {

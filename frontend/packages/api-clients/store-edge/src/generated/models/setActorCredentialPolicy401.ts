@@ -6,9 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type GetCredentialManagementParams = {
-/**
- * Actor requesting credential management state
- */
-actorId: string;
+export type SetActorCredentialPolicy401 = {
+  code: string;
+  detail?: string;
+  status: number;
+  title: string;
+  type: string;
 };

@@ -13,7 +13,8 @@ var ErrCredentialBindingNotFound = errors.New("credential binding not found")
 type CredentialManagementRepository interface {
 	FindActor(ctx context.Context, actorID string) (domain.Actor, error)
 	ListActors(ctx context.Context) ([]domain.Actor, error)
-	SaveActor(ctx context.Context, actor domain.Actor) error
+	UpdateActorCredentialPolicy(ctx context.Context, actorID string, policy *domain.CredentialPolicy) (domain.Actor, error)
+	UpdateActorCredentialBindings(ctx context.Context, actorID string, update func([]domain.CredentialBinding) ([]domain.CredentialBinding, error)) (domain.Actor, error)
 	FindStoreCredentialPolicy(ctx context.Context, storeID string) (domain.CredentialPolicy, error)
 	SaveStoreCredentialPolicy(ctx context.Context, storeID string, policy domain.CredentialPolicy) error
 }
@@ -135,27 +136,26 @@ func (s *CredentialManagementService) SetActorCredentialPolicy(ctx context.Conte
 	if err := s.ensureCredentialManager(ctx, command.ManagerID); err != nil {
 		return ActorCredentialResult{}, err
 	}
-	actor, err := s.repo.FindActor(ctx, command.TargetActorID)
-	if err != nil {
-		return ActorCredentialResult{}, err
-	}
+	var policy *domain.CredentialPolicy
 	if command.InheritStorePolicy {
-		actor.CredentialPolicy = nil
+		policy = nil
 	} else {
-		policy, err := credentialPolicyFromInput(command.Required, command.AllowedKinds)
+		result, err := credentialPolicyFromInput(command.Required, command.AllowedKinds)
 		if err != nil {
 			return ActorCredentialResult{}, err
 		}
-		actor.CredentialPolicy = &policy
+		policy = &result
 	}
-	if err := s.repo.SaveActor(ctx, actor); err != nil {
+	actor, err := s.repo.UpdateActorCredentialPolicy(ctx, command.TargetActorID, policy)
+	if err != nil {
 		return ActorCredentialResult{}, err
 	}
 	return actorCredentialResult(actor), nil
 }
 
 func (s *CredentialManagementService) AddCredentialBinding(ctx context.Context, command AddCredentialBindingCommand) (ActorCredentialResult, error) {
-	if command.TargetActorID == "" || command.ManagerID == "" || command.Kind == "" || strings.TrimSpace(command.Token) == "" {
+	token := strings.TrimSpace(command.Token)
+	if command.TargetActorID == "" || command.ManagerID == "" || command.Kind == "" || token == "" {
 		return ActorCredentialResult{}, ErrInvalidAuthCommand
 	}
 	if command.TargetActorID == command.ManagerID {
@@ -167,34 +167,33 @@ func (s *CredentialManagementService) AddCredentialBinding(ctx context.Context, 
 	if err := s.ensureCredentialManager(ctx, command.ManagerID); err != nil {
 		return ActorCredentialResult{}, err
 	}
-	actor, err := s.repo.FindActor(ctx, command.TargetActorID)
-	if err != nil {
-		return ActorCredentialResult{}, err
-	}
-	tokenHash := hashCredentialToken(command.Token)
+	tokenHash := hashCredentialToken(token)
 	maskedToken := strings.TrimSpace(command.MaskedToken)
 	if maskedToken == "" {
 		maskedToken = defaultMaskedToken(command.Kind, tokenHash)
 	}
-	updated := false
-	for i := range actor.CredentialBindings {
-		binding := &actor.CredentialBindings[i]
-		if binding.Kind == command.Kind && binding.TokenHash == tokenHash {
-			binding.MaskedToken = maskedToken
-			binding.Active = true
-			updated = true
-			break
+	actor, err := s.repo.UpdateActorCredentialBindings(ctx, command.TargetActorID, func(bindings []domain.CredentialBinding) ([]domain.CredentialBinding, error) {
+		updated := false
+		for i := range bindings {
+			binding := &bindings[i]
+			if binding.Kind == command.Kind && binding.TokenHash == tokenHash {
+				binding.MaskedToken = maskedToken
+				binding.Active = true
+				updated = true
+				break
+			}
 		}
-	}
-	if !updated {
-		actor.CredentialBindings = append(actor.CredentialBindings, domain.CredentialBinding{
-			Kind:        command.Kind,
-			TokenHash:   tokenHash,
-			MaskedToken: maskedToken,
-			Active:      true,
-		})
-	}
-	if err := s.repo.SaveActor(ctx, actor); err != nil {
+		if !updated {
+			bindings = append(bindings, domain.CredentialBinding{
+				Kind:        command.Kind,
+				TokenHash:   tokenHash,
+				MaskedToken: maskedToken,
+				Active:      true,
+			})
+		}
+		return bindings, nil
+	})
+	if err != nil {
 		return ActorCredentialResult{}, err
 	}
 	return actorCredentialResult(actor), nil
@@ -213,23 +212,22 @@ func (s *CredentialManagementService) RevokeCredentialBinding(ctx context.Contex
 	if err := s.ensureCredentialManager(ctx, command.ManagerID); err != nil {
 		return ActorCredentialResult{}, err
 	}
-	actor, err := s.repo.FindActor(ctx, command.TargetActorID)
-	if err != nil {
-		return ActorCredentialResult{}, err
-	}
-	found := false
-	for i := range actor.CredentialBindings {
-		binding := &actor.CredentialBindings[i]
-		if binding.Kind == command.Kind && tokenFingerprint(binding.TokenHash) == command.TokenFingerprint {
-			binding.Active = false
-			found = true
-			break
+	actor, err := s.repo.UpdateActorCredentialBindings(ctx, command.TargetActorID, func(bindings []domain.CredentialBinding) ([]domain.CredentialBinding, error) {
+		found := false
+		for i := range bindings {
+			binding := &bindings[i]
+			if binding.Kind == command.Kind && tokenFingerprint(binding.TokenHash) == command.TokenFingerprint {
+				binding.Active = false
+				found = true
+				break
+			}
 		}
-	}
-	if !found {
-		return ActorCredentialResult{}, ErrCredentialBindingNotFound
-	}
-	if err := s.repo.SaveActor(ctx, actor); err != nil {
+		if !found {
+			return nil, ErrCredentialBindingNotFound
+		}
+		return bindings, nil
+	})
+	if err != nil {
 		return ActorCredentialResult{}, err
 	}
 	return actorCredentialResult(actor), nil
