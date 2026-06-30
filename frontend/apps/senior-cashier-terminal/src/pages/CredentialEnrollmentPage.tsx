@@ -141,6 +141,7 @@ export function CredentialEnrollmentPage() {
           headers: { 'Idempotency-Key': crypto.randomUUID() },
         });
         if (response.status === 200) {
+          setCredentialRead(null);
           await credentialsQuery.refetch();
           setMessage(t('credentials.revokeSuccess', { actorId: selectedActor.id }));
         } else {

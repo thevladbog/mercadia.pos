@@ -104,7 +104,7 @@ damaged physical credential. The enrollment flow is:
 3. Terminal reads the selected credential kind through Hardware Agent (`iButton`, staff MSR card,
    or barcode staff card).
 4. Terminal sends the safe token returned by Hardware Agent to Store Edge once for hashing and
-   binding.
+   binding, with an idempotency key for enrollment.
 5. Store Edge returns only masked labels and token fingerprints.
 
 The revoke/replace flow is:
