@@ -31,6 +31,7 @@ import type {
   SetStoreAuthSettings400,
   SetStoreAuthSettings401,
   SetStoreAuthSettings403,
+  SetStoreAuthSettings409,
   SetStoreAuthSettingsBody
 } from '../models';
 
@@ -195,10 +196,15 @@ export type setStoreAuthSettingsResponse403 = {
   status: 403
 }
 
+export type setStoreAuthSettingsResponse409 = {
+  data: SetStoreAuthSettings409
+  status: 409
+}
+
 export type setStoreAuthSettingsResponseSuccess = (setStoreAuthSettingsResponse200) & {
   headers: Headers;
 };
-export type setStoreAuthSettingsResponseError = (setStoreAuthSettingsResponse400 | setStoreAuthSettingsResponse401 | setStoreAuthSettingsResponse403) & {
+export type setStoreAuthSettingsResponseError = (setStoreAuthSettingsResponse400 | setStoreAuthSettingsResponse401 | setStoreAuthSettingsResponse403 | setStoreAuthSettingsResponse409) & {
   headers: Headers;
 };
 
@@ -230,7 +236,7 @@ export const setStoreAuthSettings = async (storeId: string,
 
 
 
-export const getSetStoreAuthSettingsMutationOptions = <TError = SetStoreAuthSettings400 | SetStoreAuthSettings401 | SetStoreAuthSettings403,
+export const getSetStoreAuthSettingsMutationOptions = <TError = SetStoreAuthSettings400 | SetStoreAuthSettings401 | SetStoreAuthSettings403 | SetStoreAuthSettings409,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setStoreAuthSettings>>, TError,{storeId: string;data: SetStoreAuthSettingsBody}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof setStoreAuthSettings>>, TError,{storeId: string;data: SetStoreAuthSettingsBody}, TContext> => {
 
@@ -259,12 +265,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type SetStoreAuthSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof setStoreAuthSettings>>>
     export type SetStoreAuthSettingsMutationBody = SetStoreAuthSettingsBody
-    export type SetStoreAuthSettingsMutationError = SetStoreAuthSettings400 | SetStoreAuthSettings401 | SetStoreAuthSettings403
+    export type SetStoreAuthSettingsMutationError = SetStoreAuthSettings400 | SetStoreAuthSettings401 | SetStoreAuthSettings403 | SetStoreAuthSettings409
 
     /**
  * @summary Set store authentication hardening settings. Requires `X-Session-Token` header.
  */
-export const useSetStoreAuthSettings = <TError = SetStoreAuthSettings400 | SetStoreAuthSettings401 | SetStoreAuthSettings403,
+export const useSetStoreAuthSettings = <TError = SetStoreAuthSettings400 | SetStoreAuthSettings401 | SetStoreAuthSettings403 | SetStoreAuthSettings409,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setStoreAuthSettings>>, TError,{storeId: string;data: SetStoreAuthSettingsBody}, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof setStoreAuthSettings>>,

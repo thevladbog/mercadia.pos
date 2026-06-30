@@ -13,7 +13,7 @@ import (
 
 func TestCreateSessionWithValidCredentials(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 
 	result, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
 		ActorID: "cashier-1",
@@ -30,7 +30,7 @@ func TestCreateSessionWithValidCredentials(t *testing.T) {
 
 func TestCreateSessionAcceptsSeniorCashierCredentialKinds(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 
 	tests := []struct {
 		name  string
@@ -70,7 +70,7 @@ func TestCreateSessionAcceptsSeniorCashierCredentialKinds(t *testing.T) {
 
 func TestCreateSessionRejectsMissingRequiredCredentialFactor(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 
 	_, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
 		ActorID: "senior-1",
@@ -84,7 +84,7 @@ func TestCreateSessionRejectsMissingRequiredCredentialFactor(t *testing.T) {
 
 func TestCreateSessionRejectsCredentialFactorForAnotherActor(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 
 	_, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
 		ActorID: "senior-1",
@@ -102,7 +102,7 @@ func TestCreateSessionRejectsCredentialFactorForAnotherActor(t *testing.T) {
 
 func TestCreateSessionRejectsInvalidPIN(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 
 	_, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
 		ActorID: "senior-1",
@@ -125,7 +125,7 @@ func TestRBACPermissions(t *testing.T) {
 
 func TestApplyLineDiscountRequiresPermission(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 	discounts := app.NewDiscountService(store, store, auth)
 
 	receipt, err := domain.NewReceipt(domain.NewReceiptInput{
@@ -178,7 +178,7 @@ func TestApplyLineDiscountRequiresPermission(t *testing.T) {
 
 func TestReceiptReturnRequiresFiscalizedReceipt(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 	returns := app.NewReturnsService(store, store, store, auth)
 
 	receipt, err := domain.NewReceipt(domain.NewReceiptInput{
@@ -212,7 +212,7 @@ func TestReceiptReturnRequiresFiscalizedReceipt(t *testing.T) {
 
 func TestNoReceiptReturnRequiresApproval(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 	returns := app.NewReturnsService(store, store, store, auth)
 
 	_, err := returns.CreateNoReceiptReturn(context.Background(), app.CreateNoReceiptReturnCommand{

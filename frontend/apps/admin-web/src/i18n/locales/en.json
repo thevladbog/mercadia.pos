@@ -737,7 +737,7 @@
     "updatedBy": "Last updated by {{actorId}} at {{timestamp}}",
     "save": "Save settings",
     "saved": "Store settings saved.",
-    "invalidNumber": "Enter valid positive numbers for all settings."
+    "invalidNumber": "Enter values within the allowed ranges for all settings."
   },
   "branding": {
     "status": {

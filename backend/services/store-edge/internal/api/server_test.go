@@ -262,6 +262,42 @@ func TestStoreAuthSettingsCanBeReadAndUpdatedByManagerSession(t *testing.T) {
 	if accepted.Settings.FailedAttemptLimit != 3 || accepted.Settings.LockoutDurationSeconds != 600 || accepted.Settings.POSAutoLockSeconds != 120 || accepted.Settings.UpdatedByID != "admin-1" {
 		t.Fatalf("updated auth settings = %+v", accepted.Settings)
 	}
+	if accepted.Settings.UpdatedAt == nil {
+		t.Fatal("updated auth settings missing updatedAt")
+	}
+
+	replay := httptest.NewRecorder()
+	replayRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
+		"failedAttemptLimit": 3,
+		"lockoutDurationSeconds": 600,
+		"posAutoLockSeconds": 120
+	}`))
+	replayRequest.Header.Set(sessionTokenHeader, adminToken)
+	replayRequest.Header.Set("Idempotency-Key", "auth-settings-admin")
+	server.ServeHTTP(replay, replayRequest)
+	if replay.Code != http.StatusOK {
+		t.Fatalf("auth settings replay status = %d, body = %s", replay.Code, replay.Body.String())
+	}
+	var replayed StoreAuthSettingsAcceptedResponse
+	if err := json.Unmarshal(replay.Body.Bytes(), &replayed); err != nil {
+		t.Fatalf("decode replayed auth settings: %v", err)
+	}
+	if replayed.Settings.UpdatedAt == nil || !replayed.Settings.UpdatedAt.Equal(*accepted.Settings.UpdatedAt) {
+		t.Fatalf("replayed updatedAt = %v, want %v", replayed.Settings.UpdatedAt, accepted.Settings.UpdatedAt)
+	}
+
+	reused := httptest.NewRecorder()
+	reusedRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
+		"failedAttemptLimit": 4,
+		"lockoutDurationSeconds": 600,
+		"posAutoLockSeconds": 120
+	}`))
+	reusedRequest.Header.Set(sessionTokenHeader, adminToken)
+	reusedRequest.Header.Set("Idempotency-Key", "auth-settings-admin")
+	server.ServeHTTP(reused, reusedRequest)
+	if reused.Code != http.StatusConflict {
+		t.Fatalf("auth settings reused key status = %d, body = %s", reused.Code, reused.Body.String())
+	}
 }
 
 func TestAuthSessionLocksAfterConfiguredFailedAttempts(t *testing.T) {

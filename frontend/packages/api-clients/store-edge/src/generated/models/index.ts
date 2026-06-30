@@ -329,6 +329,7 @@ export * from './setStoreAuthSettings200Settings.ts';
 export * from './setStoreAuthSettings400.ts';
 export * from './setStoreAuthSettings401.ts';
 export * from './setStoreAuthSettings403.ts';
+export * from './setStoreAuthSettings409.ts';
 export * from './setStoreAuthSettingsBody.ts';
 export * from './setStoreCredentialPolicy200.ts';
 export * from './setStoreCredentialPolicy200Policy.ts';

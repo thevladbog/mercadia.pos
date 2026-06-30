@@ -688,9 +688,9 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	store := config.store
 	outbox := app.NewOutboxService(store)
 	journal := app.NewOperationJournalService(store)
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store, app.WithAuthTransactionRunner(store))
 	credentials := app.NewCredentialManagementService(store)
-	storeAuthSettings := app.NewStoreAuthSettingsService(store)
+	storeAuthSettings := app.NewStoreAuthSettingsService(store, store, app.WithStoreAuthSettingsTransactionRunner(store))
 	terminalEvents := app.NewTerminalEventHub()
 
 	operationalDays := app.NewOperationalDayService(store, store, store, store, store,

@@ -67,13 +67,15 @@ func mountStoreSettingsRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.
 			"400": {Description: "Invalid store auth settings command", Schema: httpapi.ProblemSchema()},
 			"401": {Description: "Session is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Idempotency key was reused for another settings command", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
 		session, ok := storeSettingsSession(w, r, auth)
 		if !ok {
 			return
 		}
-		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+		idempotencyKey, err := httpapi.RequireIdempotencyKey(r)
+		if err != nil {
 			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 			return
 		}
@@ -83,6 +85,7 @@ func mountStoreSettingsRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.
 			return
 		}
 		result, err := settings.SetStoreAuthSettings(r.Context(), app.SetStoreAuthSettingsCommand{
+			IdempotencyKey:         idempotencyKey,
 			StoreID:                r.PathValue("storeId"),
 			ManagerID:              session.ActorID,
 			FailedAttemptLimit:     request.FailedAttemptLimit,

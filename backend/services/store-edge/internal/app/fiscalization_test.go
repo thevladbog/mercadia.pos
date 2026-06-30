@@ -178,7 +178,7 @@ func TestCreateReturnFiscalDocumentBlocksUnsettledReturn(t *testing.T) {
 
 func TestCreateReturnFiscalDocumentBlocksNoReceiptReturn(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 	returns := app.NewReturnsService(store, store, store, auth)
 	fiscalization := app.NewFiscalizationService(store, store, store, store, store)
 

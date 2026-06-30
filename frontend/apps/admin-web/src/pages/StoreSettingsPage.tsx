@@ -1,5 +1,6 @@
 import { useListStores } from '@mercadia/api-clients-central';
 import {
+  clearSessionToken as clearStoreEdgeSessionToken,
   createAuthSession,
   getSessionToken as getStoreEdgeSessionToken,
   setSessionToken as setStoreEdgeSessionToken,
@@ -43,8 +44,14 @@ function draftToBody(draft: SettingsDraft): SetStoreAuthSettingsBody | null {
   const posAutoLockSeconds = parsePositiveInteger(draft.posAutoLockSeconds);
   if (
     failedAttemptLimit === null ||
+    failedAttemptLimit < 1 ||
+    failedAttemptLimit > 20 ||
     lockoutDurationSeconds === null ||
-    posAutoLockSeconds === null
+    lockoutDurationSeconds < 60 ||
+    lockoutDurationSeconds > 86400 ||
+    posAutoLockSeconds === null ||
+    posAutoLockSeconds < 30 ||
+    posAutoLockSeconds > 86400
   ) {
     return null;
   }
@@ -162,6 +169,10 @@ export function StoreSettingsPage() {
             value={activeStoreId}
             onChange={(storeId) => {
               setSelectedStoreId(storeId);
+              setDraft(null);
+              setHasManagerSession(false);
+              setManagerPin('');
+              clearStoreEdgeSessionToken();
               setMessage('');
               setError('');
             }}

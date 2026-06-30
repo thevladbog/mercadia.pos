@@ -50,16 +50,17 @@ type AuthService struct {
 	credentialPolicies StoreCredentialPolicyRepository
 	authSettings       AuthSettingsReader
 	authAttempts       AuthAttemptRepository
+	transactions       TransactionRunner
 	now                func() time.Time
 	newToken           func() string
 	newAttemptID       func(prefix string) string
 }
 
-func NewAuthService(actors ActorRepository, sessions SessionRepository) *AuthService {
+type AuthOption func(*AuthService)
+
+func NewAuthService(actors ActorRepository, sessions SessionRepository, authSettings AuthSettingsReader, authAttempts AuthAttemptRepository, options ...AuthOption) *AuthService {
 	credentialPolicies, _ := actors.(StoreCredentialPolicyRepository)
-	authSettings, _ := actors.(AuthSettingsReader)
-	authAttempts, _ := actors.(AuthAttemptRepository)
-	return &AuthService{
+	service := &AuthService{
 		actors:             actors,
 		sessions:           sessions,
 		credentialPolicies: credentialPolicies,
@@ -70,6 +71,16 @@ func NewAuthService(actors ActorRepository, sessions SessionRepository) *AuthSer
 		},
 		newToken:     newSessionToken,
 		newAttemptID: randomID,
+	}
+	for _, option := range options {
+		option(service)
+	}
+	return service
+}
+
+func WithAuthTransactionRunner(runner TransactionRunner) AuthOption {
+	return func(service *AuthService) {
+		service.transactions = runner
 	}
 }
 
@@ -104,14 +115,16 @@ func (s *AuthService) CreateSession(ctx context.Context, command CreateSessionCo
 		return SessionResult{}, err
 	}
 	if locked {
-		_ = s.recordAuthAttempt(ctx, authAttemptInput{
+		if err := s.recordAuthAttempt(ctx, authAttemptInput{
 			StoreID:          command.StoreID,
 			ActorID:          command.ActorID,
 			TerminalID:       command.TerminalID,
 			CredentialFactor: command.CredentialFactor,
 			FailureReason:    "locked",
 			Now:              now,
-		})
+		}); err != nil {
+			return SessionResult{}, err
+		}
 		return SessionResult{}, ErrAuthLocked
 	}
 
@@ -145,17 +158,19 @@ func (s *AuthService) CreateSession(ctx context.Context, command CreateSessionCo
 	if err != nil {
 		return SessionResult{}, err
 	}
-	if err := s.recordAuthAttempt(ctx, authAttemptInput{
-		StoreID:          command.StoreID,
-		ActorID:          command.ActorID,
-		TerminalID:       command.TerminalID,
-		CredentialFactor: command.CredentialFactor,
-		Successful:       true,
-		Now:              now,
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if err := s.recordAuthAttempt(ctx, authAttemptInput{
+			StoreID:          command.StoreID,
+			ActorID:          command.ActorID,
+			TerminalID:       command.TerminalID,
+			CredentialFactor: command.CredentialFactor,
+			Successful:       true,
+			Now:              now,
+		}); err != nil {
+			return err
+		}
+		return s.sessions.SaveSession(ctx, session)
 	}); err != nil {
-		return SessionResult{}, err
-	}
-	if err := s.sessions.SaveSession(ctx, session); err != nil {
 		return SessionResult{}, err
 	}
 
@@ -169,14 +184,11 @@ func (s *AuthService) CreateSession(ctx context.Context, command CreateSessionCo
 }
 
 func (s *AuthService) storeAuthSettings(ctx context.Context, storeID string) (domain.StoreAuthSettings, error) {
-	if s.authSettings == nil {
-		return domain.DefaultStoreAuthSettings(storeID), nil
-	}
 	return s.authSettings.FindStoreAuthSettings(ctx, storeID)
 }
 
 func (s *AuthService) isAuthLocked(ctx context.Context, settings domain.StoreAuthSettings, actorID string, now time.Time) (bool, error) {
-	if s.authAttempts == nil || settings.FailedAttemptLimit <= 0 || settings.LockoutDurationSeconds <= 0 {
+	if settings.FailedAttemptLimit <= 0 || settings.LockoutDurationSeconds <= 0 {
 		return false, nil
 	}
 	since := now.Add(-time.Duration(settings.LockoutDurationSeconds) * time.Second)
@@ -219,9 +231,6 @@ type authAttemptInput struct {
 }
 
 func (s *AuthService) recordAuthAttempt(ctx context.Context, input authAttemptInput) error {
-	if s.authAttempts == nil {
-		return nil
-	}
 	var kind domain.CredentialKind
 	fingerprint := ""
 	if input.CredentialFactor != nil {

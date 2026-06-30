@@ -166,16 +166,25 @@ func (s *Store) CountFailedAuthAttemptsSinceLastSuccess(ctx context.Context, sto
 	defer s.mu.RUnlock()
 
 	lastSuccessAt := since
+	foundSuccess := false
 	for _, attempt := range s.authAttempts {
-		if attempt.StoreID == storeID && attempt.ActorID == actorID && attempt.Successful && attempt.CreatedAt.After(lastSuccessAt) {
+		if attempt.StoreID == storeID && attempt.ActorID == actorID && attempt.Successful && !attempt.CreatedAt.Before(since) && (!foundSuccess || attempt.CreatedAt.After(lastSuccessAt)) {
 			lastSuccessAt = attempt.CreatedAt
+			foundSuccess = true
 		}
 	}
 	count := 0
 	for _, attempt := range s.authAttempts {
-		if attempt.StoreID == storeID && attempt.ActorID == actorID && !attempt.Successful && attempt.FailureReason != "locked" && !attempt.CreatedAt.Before(lastSuccessAt) {
-			count++
+		if attempt.StoreID != storeID || attempt.ActorID != actorID || attempt.Successful || attempt.FailureReason == "locked" {
+			continue
 		}
+		if foundSuccess && !attempt.CreatedAt.After(lastSuccessAt) {
+			continue
+		}
+		if !foundSuccess && attempt.CreatedAt.Before(lastSuccessAt) {
+			continue
+		}
+		count++
 	}
 	return count, nil
 }

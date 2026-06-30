@@ -441,18 +441,24 @@ func (s *Store) SaveAuthAttempt(ctx context.Context, attempt domain.AuthAttempt)
 
 func (s *Store) CountFailedAuthAttemptsSinceLastSuccess(ctx context.Context, storeID string, actorID string, since time.Time) (int, error) {
 	threshold := since
+	foundSuccess := false
 	if err := s.pool.QueryRow(ctx, `
-		SELECT COALESCE(MAX(created_at), $3) FROM auth_attempts
+		SELECT COALESCE(MAX(created_at), $3), COUNT(*) > 0 FROM auth_attempts
 		WHERE store_id = $1 AND actor_id = $2 AND successful = TRUE AND created_at >= $3
-	`, storeID, actorID, since).Scan(&threshold); err != nil {
+	`, storeID, actorID, since).Scan(&threshold, &foundSuccess); err != nil {
 		return 0, fmt.Errorf("find last successful auth attempt: %w", err)
 	}
+	comparison := ">="
+	if foundSuccess {
+		comparison = ">"
+	}
 	var count int
-	if err := s.pool.QueryRow(ctx, `
+	query := fmt.Sprintf(`
 		SELECT COUNT(*) FROM auth_attempts
 		WHERE store_id = $1 AND actor_id = $2 AND successful = FALSE
-			AND failure_reason <> 'locked' AND created_at >= $3
-	`, storeID, actorID, threshold).Scan(&count); err != nil {
+			AND failure_reason <> 'locked' AND created_at %s $3
+	`, comparison)
+	if err := s.pool.QueryRow(ctx, query, storeID, actorID, threshold).Scan(&count); err != nil {
 		return 0, fmt.Errorf("count failed auth attempts: %w", err)
 	}
 	return count, nil

@@ -33,5 +33,9 @@ export function getStoreId(): string {
 }
 
 export function getTerminalId(): string {
-  return import.meta.env.VITE_POS_TERMINAL_ID ?? 'pos-1';
+  const terminalId = import.meta.env.VITE_POS_TERMINAL_ID;
+  if (!terminalId) {
+    throw new Error('VITE_POS_TERMINAL_ID must be configured');
+  }
+  return terminalId;
 }

@@ -13,7 +13,7 @@ import (
 func TestCredentialManagementAddsBindingForManagedActor(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
 	credentials := app.NewCredentialManagementService(store)
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 
 	actor, err := credentials.AddCredentialBinding(context.Background(), app.AddCredentialBindingCommand{
 		TargetActorID: "cashier-1",
