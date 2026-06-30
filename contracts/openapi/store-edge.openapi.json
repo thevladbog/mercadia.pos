@@ -7714,6 +7714,913 @@
         ]
       }
     },
+    "/v1/stores/{storeId}/actors/{actorId}/credential-bindings": {
+      "post": {
+        "operationId": "addActorCredentialBinding",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "actorId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "enum": [
+                      "ibutton",
+                      "msr_card",
+                      "barcode_card"
+                    ],
+                    "type": "string"
+                  },
+                  "maskedToken": {
+                    "type": "string"
+                  },
+                  "token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "actorId",
+                  "kind",
+                  "token"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Actor credential binding command",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "actor": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "credentialBindings": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "active": {
+                                "type": "boolean"
+                              },
+                              "kind": {
+                                "enum": [
+                                  "ibutton",
+                                  "msr_card",
+                                  "barcode_card"
+                                ],
+                                "type": "string"
+                              },
+                              "maskedToken": {
+                                "type": "string"
+                              },
+                              "tokenFingerprint": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "tokenFingerprint",
+                              "active"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "credentialPolicy": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "allowedKinds": {
+                              "items": {
+                                "enum": [
+                                  "ibutton",
+                                  "msr_card",
+                                  "barcode_card"
+                                ],
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "required": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "required",
+                            "allowedKinds"
+                          ],
+                          "type": "object"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "roles": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "roles",
+                        "credentialBindings"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "actor"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Actor credential bindings"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid credential binding command"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Permission denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Actor was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Separation of duties conflict"
+          }
+        },
+        "summary": "Add actor staff credential binding",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/actors/{actorId}/credential-bindings/revoke": {
+      "post": {
+        "operationId": "revokeActorCredentialBinding",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "actorId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "enum": [
+                      "ibutton",
+                      "msr_card",
+                      "barcode_card"
+                    ],
+                    "type": "string"
+                  },
+                  "tokenFingerprint": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "actorId",
+                  "kind",
+                  "tokenFingerprint"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Actor credential binding revoke command",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "actor": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "credentialBindings": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "active": {
+                                "type": "boolean"
+                              },
+                              "kind": {
+                                "enum": [
+                                  "ibutton",
+                                  "msr_card",
+                                  "barcode_card"
+                                ],
+                                "type": "string"
+                              },
+                              "maskedToken": {
+                                "type": "string"
+                              },
+                              "tokenFingerprint": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "tokenFingerprint",
+                              "active"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "credentialPolicy": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "allowedKinds": {
+                              "items": {
+                                "enum": [
+                                  "ibutton",
+                                  "msr_card",
+                                  "barcode_card"
+                                ],
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "required": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "required",
+                            "allowedKinds"
+                          ],
+                          "type": "object"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "roles": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "roles",
+                        "credentialBindings"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "actor"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Actor credential bindings"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid credential binding command"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Permission denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Actor or binding was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Separation of duties conflict"
+          }
+        },
+        "summary": "Revoke actor staff credential binding",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/actors/{actorId}/credential-policy": {
+      "put": {
+        "operationId": "setActorCredentialPolicy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "actorId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "allowedKinds": {
+                    "items": {
+                      "enum": [
+                        "ibutton",
+                        "msr_card",
+                        "barcode_card"
+                      ],
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "inheritStorePolicy": {
+                    "type": "boolean"
+                  },
+                  "required": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "actorId",
+                  "inheritStorePolicy",
+                  "required",
+                  "allowedKinds"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Actor credential policy command",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "actor": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "credentialBindings": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "active": {
+                                "type": "boolean"
+                              },
+                              "kind": {
+                                "enum": [
+                                  "ibutton",
+                                  "msr_card",
+                                  "barcode_card"
+                                ],
+                                "type": "string"
+                              },
+                              "maskedToken": {
+                                "type": "string"
+                              },
+                              "tokenFingerprint": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "tokenFingerprint",
+                              "active"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "credentialPolicy": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "allowedKinds": {
+                              "items": {
+                                "enum": [
+                                  "ibutton",
+                                  "msr_card",
+                                  "barcode_card"
+                                ],
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "required": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "required",
+                            "allowedKinds"
+                          ],
+                          "type": "object"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "roles": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "roles",
+                        "credentialBindings"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "actor"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Actor credential policy"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid credential policy command"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Permission denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Actor was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Separation of duties conflict"
+          }
+        },
+        "summary": "Set actor staff credential policy override",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/v1/stores/{storeId}/bank-collections": {
       "post": {
         "operationId": "createBankCollection",
@@ -9410,6 +10317,402 @@
         "summary": "Pull catalog changes from central backend",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/credential-management": {
+      "get": {
+        "operationId": "getCredentialManagement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Actor requesting credential management state",
+            "in": "query",
+            "name": "actorId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "actors": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "credentialBindings": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "active": {
+                                  "type": "boolean"
+                                },
+                                "kind": {
+                                  "enum": [
+                                    "ibutton",
+                                    "msr_card",
+                                    "barcode_card"
+                                  ],
+                                  "type": "string"
+                                },
+                                "maskedToken": {
+                                  "type": "string"
+                                },
+                                "tokenFingerprint": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "tokenFingerprint",
+                                "active"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "credentialPolicy": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "allowedKinds": {
+                                "items": {
+                                  "enum": [
+                                    "ibutton",
+                                    "msr_card",
+                                    "barcode_card"
+                                  ],
+                                  "type": "string"
+                                },
+                                "type": "array"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "required",
+                              "allowedKinds"
+                            ],
+                            "type": "object"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "roles": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "roles",
+                          "credentialBindings"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "storeId": {
+                      "type": "string"
+                    },
+                    "storePolicy": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "allowedKinds": {
+                          "items": {
+                            "enum": [
+                              "ibutton",
+                              "msr_card",
+                              "barcode_card"
+                            ],
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "required": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "required",
+                        "allowedKinds"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "storeId",
+                    "storePolicy",
+                    "actors"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Credential management state"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid credential management query"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Permission denied"
+          }
+        },
+        "summary": "Get staff credential policies and bindings",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/credential-policy": {
+      "put": {
+        "operationId": "setStoreCredentialPolicy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "allowedKinds": {
+                    "items": {
+                      "enum": [
+                        "ibutton",
+                        "msr_card",
+                        "barcode_card"
+                      ],
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "required": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "actorId",
+                  "required",
+                  "allowedKinds"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Store credential policy command",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "policy": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "allowedKinds": {
+                          "items": {
+                            "enum": [
+                              "ibutton",
+                              "msr_card",
+                              "barcode_card"
+                            ],
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "required": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "required",
+                        "allowedKinds"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "policy"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store credential policy"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid credential policy command"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Permission denied"
+          }
+        },
+        "summary": "Set store staff credential policy",
+        "tags": [
+          "auth"
         ]
       }
     },

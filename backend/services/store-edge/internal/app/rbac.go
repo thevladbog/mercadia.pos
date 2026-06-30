@@ -9,15 +9,16 @@ import (
 type Permission string
 
 const (
-	PermissionReturnsCreate  Permission = "returns.create"
-	PermissionDiscountApply  Permission = "discount.apply"
-	PermissionRecountApprove Permission = "recount.approve"
+	PermissionReturnsCreate     Permission = "returns.create"
+	PermissionDiscountApply     Permission = "discount.apply"
+	PermissionRecountApprove    Permission = "recount.approve"
+	PermissionCredentialsManage Permission = "credentials.manage"
 )
 
 var rolePermissions = map[domain.Role][]Permission{
 	domain.RoleCashier:       {},
-	domain.RoleSeniorCashier: {PermissionReturnsCreate, PermissionDiscountApply, PermissionRecountApprove},
-	domain.RoleAdmin:         {PermissionReturnsCreate, PermissionDiscountApply, PermissionRecountApprove},
+	domain.RoleSeniorCashier: {PermissionReturnsCreate, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage},
+	domain.RoleAdmin:         {PermissionReturnsCreate, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage},
 }
 
 type ActorRoleLookup interface {

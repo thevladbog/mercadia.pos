@@ -19,7 +19,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '^/v1/stores/[^/]+/(monitoring|terminals|cash-|bank-|business-|operation-journal|operational-days|shifts|returns)':
+      '^/v1/stores/[^/]+/(monitoring|terminals|cash-|bank-|business-|operation-journal|operational-days|shifts|returns|credential-management|credential-policy|actors)':
         {
           target: 'http://127.0.0.1:8081',
           changeOrigin: true,

@@ -50,7 +50,35 @@ func (s *Store) FindActor(ctx context.Context, actorID string) (domain.Actor, er
 	if !ok {
 		return domain.Actor{}, app.ErrActorNotFound
 	}
-	return actor, nil
+	return cloneActor(actor), nil
+}
+
+func (s *Store) ListActors(ctx context.Context) ([]domain.Actor, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ids := make([]string, 0, len(s.actors))
+	for id := range s.actors {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	actors := make([]domain.Actor, 0, len(ids))
+	for _, id := range ids {
+		actors = append(actors, cloneActor(s.actors[id]))
+	}
+	return actors, nil
+}
+
+func (s *Store) SaveActor(ctx context.Context, actor domain.Actor) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.actors[actor.ID]; !ok {
+		return app.ErrActorNotFound
+	}
+	s.actors[actor.ID] = cloneActor(actor)
+	return nil
 }
 
 func (s *Store) FindStoreCredentialPolicy(ctx context.Context, storeID string) (domain.CredentialPolicy, error) {
@@ -63,6 +91,26 @@ func (s *Store) FindStoreCredentialPolicy(ctx context.Context, storeID string) (
 	}
 	policy.AllowedKinds = append([]domain.CredentialKind(nil), policy.AllowedKinds...)
 	return policy, nil
+}
+
+func (s *Store) SaveStoreCredentialPolicy(ctx context.Context, storeID string, policy domain.CredentialPolicy) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	policy.AllowedKinds = append([]domain.CredentialKind(nil), policy.AllowedKinds...)
+	s.credentialPolicies[storeID] = policy
+	return nil
+}
+
+func cloneActor(actor domain.Actor) domain.Actor {
+	actor.Roles = append([]domain.Role(nil), actor.Roles...)
+	if actor.CredentialPolicy != nil {
+		policy := *actor.CredentialPolicy
+		policy.AllowedKinds = append([]domain.CredentialKind(nil), policy.AllowedKinds...)
+		actor.CredentialPolicy = &policy
+	}
+	actor.CredentialBindings = append([]domain.CredentialBinding(nil), actor.CredentialBindings...)
+	return actor
 }
 
 func (s *Store) SaveSession(ctx context.Context, session domain.Session) error {
