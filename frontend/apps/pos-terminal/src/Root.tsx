@@ -11,6 +11,10 @@ import {
   type GetReceipt200,
   GetReceipt200Status,
   getReceipt,
+  listReceiptFiscalDocuments,
+  type ListReceiptFiscalDocuments200DocumentsItem,
+  listReceiptPayments,
+  type ListReceiptPayments200PaymentsItem,
   openOperationalDay,
   openReceipt,
   openShift,
@@ -57,6 +61,11 @@ type FiscalAttempt = CreateReceiptFiscalDocumentBody & {
   idempotencyKey: string;
   receiptId: string;
 };
+
+type ReceiptPayment = CreateReceiptPayment202Payment | ListReceiptPayments200PaymentsItem;
+type ReceiptFiscalDocument =
+  | CreateReceiptFiscalDocument202Document
+  | ListReceiptFiscalDocuments200DocumentsItem;
 
 type StatusMessage = {
   key: string;
@@ -170,6 +179,10 @@ function formatInputAmount(amountMinor: number): string {
   return (amountMinor / 100).toFixed(2);
 }
 
+function isFiscalReceipt(document: ReceiptFiscalDocument): boolean {
+  return document.kind === 'receipt';
+}
+
 function TerminalShell() {
   const { t, i18n: activeI18n } = useTranslation();
   const templateId = useMemo(() => resolveTemplateId(), []);
@@ -184,10 +197,9 @@ function TerminalShell() {
     useState<CreateReceiptPaymentBody['method']>(PAYMENT_METHOD_CASH);
   const [paymentAmountInput, setPaymentAmountInput] = useState('');
   const [receipt, setReceipt] = useState<GetReceipt200 | null>(null);
-  const [payments, setPayments] = useState<CreateReceiptPayment202Payment[]>([]);
+  const [payments, setPayments] = useState<ReceiptPayment[]>([]);
   const [paymentAttempt, setPaymentAttempt] = useState<PaymentAttempt | null>(null);
-  const [fiscalDocument, setFiscalDocument] =
-    useState<CreateReceiptFiscalDocument202Document | null>(null);
+  const [fiscalDocument, setFiscalDocument] = useState<ReceiptFiscalDocument | null>(null);
   const [fiscalAttempt, setFiscalAttempt] = useState<FiscalAttempt | null>(null);
   const [terminalReady, setTerminalReady] = useState(false);
   const [lastHeartbeatAt, setLastHeartbeatAt] = useState<string | null>(null);
@@ -295,11 +307,33 @@ function TerminalShell() {
     : t(statusMessage.key, statusMessage.values);
   const formatAmount = (amountMinor: number) => formatMinorAmount(amountMinor, activeI18n.language);
 
-  async function refreshReceipt(receiptId: string): Promise<void> {
+  async function refreshReceiptState(receiptId: string): Promise<GetReceipt200 | null> {
     const response = await getReceipt(receiptId);
     if (response.status === 200) {
       setReceipt(response.data);
+      try {
+        const paymentsResponse = await listReceiptPayments(receiptId);
+        if (paymentsResponse.status === 200) {
+          setPayments(paymentsResponse.data.payments);
+        } else {
+          setPayments([]);
+        }
+      } catch {
+        setPayments([]);
+      }
+      try {
+        const fiscalResponse = await listReceiptFiscalDocuments(receiptId);
+        if (fiscalResponse.status === 200) {
+          setFiscalDocument(fiscalResponse.data.documents.find(isFiscalReceipt) ?? null);
+        } else {
+          setFiscalDocument(null);
+        }
+      } catch {
+        setFiscalDocument(null);
+      }
+      return response.data;
     }
+    return null;
   }
 
   async function runCommand(actionKey: string, command: () => Promise<void>): Promise<void> {
@@ -312,6 +346,16 @@ function TerminalShell() {
     } finally {
       setBusyActionKey(null);
     }
+  }
+
+  function clearSaleState(): void {
+    setReceipt(null);
+    setPayments([]);
+    setPaymentAttempt(null);
+    setPaymentAmountInput('');
+    setFiscalDocument(null);
+    setFiscalAttempt(null);
+    setBarcode(terminalConfig.demoBarcode);
   }
 
   async function prepareTerminal(): Promise<void> {
@@ -391,11 +435,42 @@ function TerminalShell() {
           key: 'pos.status.receiptOpened',
           values: { receiptId: response.data.receipt.id },
         });
+      } else {
+        setErrorMessage(t('pos.errors.openReceiptFailed'));
       }
     });
   }
 
-  async function scanProduct(): Promise<void> {
+  async function scanProduct(scannedBarcode = barcode): Promise<boolean> {
+    if (!receipt) {
+      setErrorMessage(t('pos.errors.openReceiptBeforeScanning'));
+      return false;
+    }
+    if (!canEditReceipt) {
+      setErrorMessage(t('pos.errors.receiptNotEditable'));
+      return false;
+    }
+    let scanned = false;
+    await runCommand('pos.actions.scanProduct', async () => {
+      const response = await scanReceiptLine(
+        receipt.id,
+        { barcode: scannedBarcode, quantity: 1 },
+        { headers: createIdempotencyHeaders(createIdempotencyKey('scan-product')) },
+      );
+      if (response.status === 202) {
+        const nextRemainingMinor = Math.max(response.data.receipt.totalMinor - paidMinor, 0);
+        setReceipt(response.data.receipt);
+        setPaymentAmountInput(nextRemainingMinor > 0 ? formatInputAmount(nextRemainingMinor) : '');
+        setStatusMessage({ key: 'pos.status.productScanned', values: { barcode: scannedBarcode } });
+        scanned = true;
+      } else {
+        setErrorMessage(t('pos.errors.scanProductFailed'));
+      }
+    });
+    return scanned;
+  }
+
+  async function scanTileProduct(tile: LayoutGridSpec['tiles'][number]): Promise<void> {
     if (!receipt) {
       setErrorMessage(t('pos.errors.openReceiptBeforeScanning'));
       return;
@@ -404,19 +479,9 @@ function TerminalShell() {
       setErrorMessage(t('pos.errors.receiptNotEditable'));
       return;
     }
-    await runCommand('pos.actions.scanProduct', async () => {
-      const response = await scanReceiptLine(
-        receipt.id,
-        { barcode, quantity: 1 },
-        { headers: createIdempotencyHeaders(createIdempotencyKey('scan-product')) },
-      );
-      if (response.status === 202) {
-        const nextRemainingMinor = Math.max(response.data.receipt.totalMinor - paidMinor, 0);
-        setReceipt(response.data.receipt);
-        setPaymentAmountInput(nextRemainingMinor > 0 ? formatInputAmount(nextRemainingMinor) : '');
-        setStatusMessage({ key: 'pos.status.productScanned', values: { barcode } });
-      }
-    });
+    if (await scanProduct()) {
+      setStatusMessage({ key: 'pos.status.tileScanned', values: { product: tile.label, barcode } });
+    }
   }
 
   async function capturePayment(): Promise<void> {
@@ -463,11 +528,12 @@ function TerminalShell() {
         throw error;
       }
       if (response.status === 202) {
-        const nextRemainingMinor = Math.max(remainingMinor - attempt.amountMinor, 0);
-        setPayments((currentPayments) => [...currentPayments, response.data.payment]);
         setPaymentAttempt(null);
+        const refreshedReceipt = await refreshReceiptState(attempt.receiptId);
+        const nextRemainingMinor = refreshedReceipt
+          ? Math.max(refreshedReceipt.totalMinor - paidMinor - attempt.amountMinor, 0)
+          : Math.max(remainingMinor - attempt.amountMinor, 0);
         setPaymentAmountInput(nextRemainingMinor > 0 ? formatInputAmount(nextRemainingMinor) : '');
-        await refreshReceipt(attempt.receiptId);
         setStatusMessage({
           key: 'pos.status.paymentCaptured',
           values: {
@@ -478,6 +544,9 @@ function TerminalShell() {
                 : t('pos.paymentMethods.cash'),
           },
         });
+      } else {
+        setPaymentAttempt(null);
+        setErrorMessage(t('pos.errors.capturePaymentFailed'));
       }
     });
   }
@@ -513,21 +582,25 @@ function TerminalShell() {
       if (response.status === 202) {
         setFiscalDocument(response.data.document);
         setFiscalAttempt(null);
-        await refreshReceipt(attempt.receiptId);
+        await refreshReceiptState(attempt.receiptId);
         setStatusMessage({
           key: 'pos.status.fiscalCreated',
           values: { documentId: response.data.document.id },
         });
+      } else {
+        setErrorMessage(t('pos.errors.fiscalizationFailed'));
       }
     });
   }
 
-  function handleTileClick(): void {
-    if (!receipt) {
-      setErrorMessage(t('pos.errors.openReceiptBeforeScanning'));
-      return;
-    }
-    void scanProduct();
+  function finishSale(): void {
+    clearSaleState();
+    setStatusMessage({ key: 'pos.status.saleFinished' });
+    setErrorMessage(null);
+  }
+
+  function handleTileClick(_index: number, tile: LayoutGridSpec['tiles'][number]): void {
+    void scanTileProduct(tile);
   }
 
   return (
@@ -601,8 +674,20 @@ function TerminalShell() {
             subtitle={receipt ? t('pos.receiptDescription') : t('pos.openReceiptHint')}
           />
           <div className="receipt-toolbar">
-            <Button type="button" disabled={isBusy} onClick={() => void openNewReceipt()}>
+            <Button
+              type="button"
+              disabled={isBusy || !terminalReady || receipt !== null}
+              onClick={() => void openNewReceipt()}
+            >
               {t('pos.actions.startSale')}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isBusy || !receipt || !fiscalDocument}
+              onClick={finishSale}
+            >
+              {t('pos.actions.finishSale')}
             </Button>
             <Badge variant={receipt ? 'accent' : 'outline'}>
               {receipt?.status ?? t('pos.status.noReceipt')}
