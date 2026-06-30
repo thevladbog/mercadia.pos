@@ -7,7 +7,7 @@ import {
   type CreateAuthSessionBodyCredentialFactor,
 } from '@mercadia/api-clients-store-edge';
 
-import { getStoreId } from '@/api-client-config.js';
+import { getStoreId, getTerminalId } from '@/api-client-config.js';
 
 import { canUsePosSession, type SessionResult } from './types.js';
 
@@ -86,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           actorId,
           pin,
           storeId: getStoreId(),
+          terminalId: getTerminalId(),
           credentialFactor,
         });
         if (response.status !== 201) {
@@ -102,6 +103,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
           throw new Error('Invalid credentials', { cause: err });
+        }
+        if (err instanceof ApiError && err.status === 423) {
+          throw new Error('Authentication locked', { cause: err });
         }
         throw err;
       }

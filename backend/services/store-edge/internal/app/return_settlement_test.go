@@ -394,7 +394,7 @@ func TestSettleReturnBlocksAlreadySettled(t *testing.T) {
 
 func TestSettleNoReceiptReturnDisbursesCash(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 	returns := app.NewReturnsService(store, store, store, auth)
 	cash := app.NewCashService(store, store)
 	settlement := app.NewReturnSettlementService(store, store, store, nil, store,
@@ -475,7 +475,7 @@ func TestSettleNoReceiptReturnDisbursesCash(t *testing.T) {
 
 func TestSettleNoReceiptReturnBlocksApproverAsActor(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 	returns := app.NewReturnsService(store, store, store, auth)
 	settlement := app.NewReturnSettlementService(store, store, store, nil, store,
 		app.WithReturnSettlementCashLedger(store),
@@ -506,7 +506,7 @@ func TestSettleNoReceiptReturnBlocksApproverAsActor(t *testing.T) {
 
 func TestSettleNoReceiptReturnRequiresDrawer(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 	returns := app.NewReturnsService(store, store, store, auth)
 	settlement := app.NewReturnSettlementService(store, store, store, nil, store,
 		app.WithReturnSettlementCashLedger(store),
@@ -563,7 +563,7 @@ func newReturnSettlementServices(t *testing.T) (*memory.Store, *app.CheckoutServ
 		app.WithFiscalizationClock(now),
 		app.WithFiscalizationIDGenerator(newID),
 	)
-	auth := app.NewAuthService(store, store)
+	auth := app.NewAuthService(store, store, store, store)
 	returns := app.NewReturnsService(store, store, store, auth)
 	settlement := app.NewReturnSettlementService(store, store, store, payments, store,
 		app.WithReturnSettlementCashLedger(store),

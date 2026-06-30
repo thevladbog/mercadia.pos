@@ -245,7 +245,8 @@ System settings cover store and terminal behavior:
 
 - Store identity and legal data.
 - Operational day rules.
-- Auto-lock timers.
+- POS auto-lock timers.
+- Cashier login failed-attempt limits and lockout duration.
 - Cash drawer limits.
 - Safe limit and bank collection schedule.
 - Receipt retention.
@@ -257,7 +258,11 @@ System settings cover store and terminal behavior:
 - Payment timeout settings.
 - Integration retry policies.
 
-Settings must be versioned. Risky changes should require confirmation and audit.
+The first Store Settings implementation manages authentication hardening values per store:
+failed-attempt limit, login lockout duration, and POS idle auto-lock duration. Settings are saved
+through Store Edge with a manager session and idempotency key; Store Edge enforces permissions and
+uses these values for cashier login lockout. Settings must be versioned. Risky changes should
+require confirmation and audit.
 
 ## POS And SCO Device Management
 

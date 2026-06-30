@@ -10,6 +10,7 @@ export * from './generated/marking/marking.js';
 export * from './generated/monitoring/monitoring.js';
 export * from './generated/returns/returns.js';
 export * from './generated/store-operations/store-operations.js';
+export * from './generated/store-settings/store-settings.js';
 export * from './generated/sync/sync.js';
 export * from './generated/system/system.js';
 export * from './generated/terminals/terminals.js';

@@ -134,6 +134,9 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	if _, ok := paths["/v1/stores/{storeId}/operation-journal"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/operation-journal path")
 	}
+	if _, ok := paths["/v1/stores/{storeId}/auth-settings"]; !ok {
+		t.Fatal("expected /v1/stores/{storeId}/auth-settings path")
+	}
 	if _, ok := paths["/v1/stores/{storeId}/catalog/sync"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/catalog/sync path")
 	}
@@ -193,6 +196,161 @@ func TestCredentialManagementRejectsBodyActorID(t *testing.T) {
 
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("credential policy with body actor status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestStoreAuthSettingsCanBeReadAndUpdatedByManagerSession(t *testing.T) {
+	server := NewServer()
+
+	readDefaults := httptest.NewRecorder()
+	readDefaultsRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/auth-settings", nil)
+	server.ServeHTTP(readDefaults, readDefaultsRequest)
+	if readDefaults.Code != http.StatusOK {
+		t.Fatalf("read default auth settings status = %d, body = %s", readDefaults.Code, readDefaults.Body.String())
+	}
+	var defaults StoreAuthSettingsAcceptedResponse
+	if err := json.Unmarshal(readDefaults.Body.Bytes(), &defaults); err != nil {
+		t.Fatalf("decode default auth settings: %v", err)
+	}
+	if defaults.Settings.FailedAttemptLimit != 5 || defaults.Settings.LockoutDurationSeconds != 900 || defaults.Settings.POSAutoLockSeconds != 300 {
+		t.Fatalf("default auth settings = %+v", defaults.Settings)
+	}
+
+	unauthorized := httptest.NewRecorder()
+	unauthorizedRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
+		"failedAttemptLimit": 3,
+		"lockoutDurationSeconds": 600,
+		"posAutoLockSeconds": 120
+	}`))
+	unauthorizedRequest.Header.Set("Idempotency-Key", "auth-settings-no-session")
+	server.ServeHTTP(unauthorized, unauthorizedRequest)
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("auth settings without session status = %d, body = %s", unauthorized.Code, unauthorized.Body.String())
+	}
+
+	cashierToken := createAuthSessionForTest(t, server, "cashier-1", "1234")
+	forbidden := httptest.NewRecorder()
+	forbiddenRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
+		"failedAttemptLimit": 3,
+		"lockoutDurationSeconds": 600,
+		"posAutoLockSeconds": 120
+	}`))
+	forbiddenRequest.Header.Set(sessionTokenHeader, cashierToken)
+	forbiddenRequest.Header.Set("Idempotency-Key", "auth-settings-cashier")
+	server.ServeHTTP(forbidden, forbiddenRequest)
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("auth settings cashier status = %d, body = %s", forbidden.Code, forbidden.Body.String())
+	}
+
+	adminToken := createAuthSessionForTest(t, server, "admin-1", "9999")
+	updated := httptest.NewRecorder()
+	updatedRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
+		"failedAttemptLimit": 3,
+		"lockoutDurationSeconds": 600,
+		"posAutoLockSeconds": 120
+	}`))
+	updatedRequest.Header.Set(sessionTokenHeader, adminToken)
+	updatedRequest.Header.Set("Idempotency-Key", "auth-settings-admin")
+	server.ServeHTTP(updated, updatedRequest)
+	if updated.Code != http.StatusOK {
+		t.Fatalf("auth settings admin status = %d, body = %s", updated.Code, updated.Body.String())
+	}
+	var accepted StoreAuthSettingsAcceptedResponse
+	if err := json.Unmarshal(updated.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode updated auth settings: %v", err)
+	}
+	if accepted.Settings.FailedAttemptLimit != 3 || accepted.Settings.LockoutDurationSeconds != 600 || accepted.Settings.POSAutoLockSeconds != 120 || accepted.Settings.UpdatedByID != "admin-1" {
+		t.Fatalf("updated auth settings = %+v", accepted.Settings)
+	}
+	if accepted.Settings.UpdatedAt == nil {
+		t.Fatal("updated auth settings missing updatedAt")
+	}
+
+	replay := httptest.NewRecorder()
+	replayRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
+		"failedAttemptLimit": 3,
+		"lockoutDurationSeconds": 600,
+		"posAutoLockSeconds": 120
+	}`))
+	replayRequest.Header.Set(sessionTokenHeader, adminToken)
+	replayRequest.Header.Set("Idempotency-Key", "auth-settings-admin")
+	server.ServeHTTP(replay, replayRequest)
+	if replay.Code != http.StatusOK {
+		t.Fatalf("auth settings replay status = %d, body = %s", replay.Code, replay.Body.String())
+	}
+	var replayed StoreAuthSettingsAcceptedResponse
+	if err := json.Unmarshal(replay.Body.Bytes(), &replayed); err != nil {
+		t.Fatalf("decode replayed auth settings: %v", err)
+	}
+	if replayed.Settings.UpdatedAt == nil || !replayed.Settings.UpdatedAt.Equal(*accepted.Settings.UpdatedAt) {
+		t.Fatalf("replayed updatedAt = %v, want %v", replayed.Settings.UpdatedAt, accepted.Settings.UpdatedAt)
+	}
+
+	reused := httptest.NewRecorder()
+	reusedRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
+		"failedAttemptLimit": 4,
+		"lockoutDurationSeconds": 600,
+		"posAutoLockSeconds": 120
+	}`))
+	reusedRequest.Header.Set(sessionTokenHeader, adminToken)
+	reusedRequest.Header.Set("Idempotency-Key", "auth-settings-admin")
+	server.ServeHTTP(reused, reusedRequest)
+	if reused.Code != http.StatusConflict {
+		t.Fatalf("auth settings reused key status = %d, body = %s", reused.Code, reused.Body.String())
+	}
+}
+
+func TestAuthSessionLocksAfterConfiguredFailedAttempts(t *testing.T) {
+	server := NewServer()
+	adminToken := createAuthSessionForTest(t, server, "admin-1", "9999")
+
+	settingsResponse := httptest.NewRecorder()
+	settingsRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
+		"failedAttemptLimit": 2,
+		"lockoutDurationSeconds": 600,
+		"posAutoLockSeconds": 120
+	}`))
+	settingsRequest.Header.Set(sessionTokenHeader, adminToken)
+	settingsRequest.Header.Set("Idempotency-Key", "auth-settings-lockout")
+	server.ServeHTTP(settingsResponse, settingsRequest)
+	if settingsResponse.Code != http.StatusOK {
+		t.Fatalf("configure auth settings status = %d, body = %s", settingsResponse.Code, settingsResponse.Body.String())
+	}
+
+	first := httptest.NewRecorder()
+	firstRequest := httptest.NewRequest(http.MethodPost, "/v1/auth/sessions", bytes.NewBufferString(`{
+		"actorId": "cashier-1",
+		"pin": "bad-pin",
+		"storeId": "store-1",
+		"terminalId": "pos-1"
+	}`))
+	server.ServeHTTP(first, firstRequest)
+	if first.Code != http.StatusUnauthorized {
+		t.Fatalf("first invalid login status = %d, body = %s", first.Code, first.Body.String())
+	}
+
+	second := httptest.NewRecorder()
+	secondRequest := httptest.NewRequest(http.MethodPost, "/v1/auth/sessions", bytes.NewBufferString(`{
+		"actorId": "cashier-1",
+		"pin": "bad-pin",
+		"storeId": "store-1",
+		"terminalId": "pos-1"
+	}`))
+	server.ServeHTTP(second, secondRequest)
+	if second.Code != http.StatusLocked {
+		t.Fatalf("second invalid login status = %d, body = %s", second.Code, second.Body.String())
+	}
+
+	correctWhileLocked := httptest.NewRecorder()
+	correctWhileLockedRequest := httptest.NewRequest(http.MethodPost, "/v1/auth/sessions", bytes.NewBufferString(`{
+		"actorId": "cashier-1",
+		"pin": "1234",
+		"storeId": "store-1",
+		"terminalId": "pos-1"
+	}`))
+	server.ServeHTTP(correctWhileLocked, correctWhileLockedRequest)
+	if correctWhileLocked.Code != http.StatusLocked {
+		t.Fatalf("correct login while locked status = %d, body = %s", correctWhileLocked.Code, correctWhileLocked.Body.String())
 	}
 }
 

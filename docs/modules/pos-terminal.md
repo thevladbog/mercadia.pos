@@ -29,6 +29,8 @@ PIN, and a local Hardware Agent staff credential read (`iButton`, staff MSR card
 card). The terminal stores the POS session separately from other apps, uses the session actor as the
 cashier for shift and receipt commands, and clears sale state on logout. POS access is limited in
 the UI to cashier, senior cashier, or admin roles; server-side permissions remain authoritative.
+Store-level authentication hardening settings are managed in admin-web Store Settings and exposed by
+Store Edge for terminals. These settings control failed-attempt lockout and POS idle auto-lock.
 
 The terminal must show:
 

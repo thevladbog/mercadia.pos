@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"sort"
+	"time"
 
 	"mercadia.dev/pos/services/store-edge/internal/app"
 	"mercadia.dev/pos/services/store-edge/internal/domain"
@@ -131,6 +132,61 @@ func (s *Store) SaveStoreCredentialPolicy(ctx context.Context, storeID string, p
 	policy.AllowedKinds = append([]domain.CredentialKind(nil), policy.AllowedKinds...)
 	s.credentialPolicies[storeID] = policy
 	return nil
+}
+
+func (s *Store) FindStoreAuthSettings(ctx context.Context, storeID string) (domain.StoreAuthSettings, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	settings, ok := s.authSettings[storeID]
+	if !ok {
+		return domain.DefaultStoreAuthSettings(storeID), nil
+	}
+	return settings, nil
+}
+
+func (s *Store) SaveStoreAuthSettings(ctx context.Context, settings domain.StoreAuthSettings) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.authSettings[settings.StoreID] = settings
+	return nil
+}
+
+func (s *Store) SaveAuthAttempt(ctx context.Context, attempt domain.AuthAttempt) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.authAttempts = append(s.authAttempts, attempt)
+	return nil
+}
+
+func (s *Store) CountFailedAuthAttemptsSinceLastSuccess(ctx context.Context, storeID string, actorID string, since time.Time) (int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	lastSuccessAt := since
+	foundSuccess := false
+	for _, attempt := range s.authAttempts {
+		if attempt.StoreID == storeID && attempt.ActorID == actorID && attempt.Successful && !attempt.CreatedAt.Before(since) && (!foundSuccess || attempt.CreatedAt.After(lastSuccessAt)) {
+			lastSuccessAt = attempt.CreatedAt
+			foundSuccess = true
+		}
+	}
+	count := 0
+	for _, attempt := range s.authAttempts {
+		if attempt.StoreID != storeID || attempt.ActorID != actorID || attempt.Successful || attempt.FailureReason == "locked" {
+			continue
+		}
+		if foundSuccess && !attempt.CreatedAt.After(lastSuccessAt) {
+			continue
+		}
+		if !foundSuccess && attempt.CreatedAt.Before(lastSuccessAt) {
+			continue
+		}
+		count++
+	}
+	return count, nil
 }
 
 func cloneActor(actor domain.Actor) domain.Actor {

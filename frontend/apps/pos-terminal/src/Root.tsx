@@ -11,6 +11,7 @@ import {
   type GetReceipt200,
   GetReceipt200Status,
   getReceipt,
+  useGetStoreAuthSettings,
   listReceiptFiscalDocuments,
   type ListReceiptFiscalDocuments200DocumentsItem,
   listReceiptPayments,
@@ -51,7 +52,7 @@ import {
   type StaffCredentialRead,
 } from '@/auth/credential.js';
 import type { SessionResult } from '@/auth/types.js';
-import { getStoreId } from '@/api-client-config.js';
+import { getStoreId, getTerminalId } from '@/api-client-config.js';
 import { changeAppLocale, i18n, type AppLocale } from '@/i18n/config.js';
 import { queryClient } from '@/query-client.js';
 
@@ -60,7 +61,8 @@ const PAYMENT_METHOD_CARD_MOCK = 'card_mock' satisfies CreateReceiptPaymentBody[
 const PAYMENT_METHOD_CASH = 'cash' satisfies CreateReceiptPaymentBody['method'];
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const CREDENTIAL_KINDS: StaffCredentialKind[] = ['ibutton', 'msr_card', 'barcode_card'];
-const MAX_LOGIN_ATTEMPTS = 5;
+const DEFAULT_LOGIN_ATTEMPT_LIMIT = 5;
+const DEFAULT_POS_AUTO_LOCK_SECONDS = 300;
 const LOGIN_ATTEMPTS_KEY = 'mercadia.pos-terminal.login-attempts';
 
 type PaymentAttempt = CreateReceiptPaymentBody & {
@@ -113,7 +115,7 @@ function clearLoginAttempts(): void {
 
 const terminalConfig = {
   storeId: getStoreId(),
-  terminalId: envValue('VITE_POS_TERMINAL_ID', 'pos-1'),
+  terminalId: getTerminalId(),
   drawerId: envValue('VITE_POS_DRAWER_ID', 'drawer-1'),
   openedById: envValue('VITE_POS_OPENED_BY_ID', 'admin-1'),
   fiscalDeviceId: envValue('VITE_POS_FISCAL_DEVICE_ID', 'fiscal-1'),
@@ -243,7 +245,9 @@ function LoginScreen() {
   const [authError, setAuthError] = useState('');
   const [credentialError, setCredentialError] = useState('');
   const readAbortControllerRef = useRef<AbortController | null>(null);
-  const isBlocked = attempts >= MAX_LOGIN_ATTEMPTS;
+  const settingsQuery = useGetStoreAuthSettings(terminalConfig.storeId);
+  const authSettings = settingsQuery.data?.status === 200 ? settingsQuery.data.data.settings : null;
+  const attemptLimit = authSettings?.failedAttemptLimit ?? DEFAULT_LOGIN_ATTEMPT_LIMIT;
 
   useEffect(() => {
     return () => {
@@ -287,7 +291,7 @@ function LoginScreen() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (isSubmitting || isBlocked) return;
+    if (isSubmitting) return;
     if (!personnelId || !pin) {
       setAuthError(t('auth.invalidCredentials'));
       return;
@@ -308,6 +312,12 @@ function LoginScreen() {
       if (error instanceof Error && error.message === 'Role not allowed') {
         logout();
         setAuthError(t('auth.roleNotAllowed'));
+        return;
+      }
+      if (error instanceof Error && error.message === 'Authentication locked') {
+        saveLoginAttempts(attemptLimit);
+        setAttempts(attemptLimit);
+        setAuthError(t('auth.locked'));
         return;
       }
       if (error instanceof Error && error.message === 'Invalid credentials') {
@@ -408,19 +418,15 @@ function LoginScreen() {
             </Select>
           </Field>
 
-          {isBlocked && <p className="error">{t('auth.blocked')}</p>}
-          {!isBlocked && authError && <p className="error">{authError}</p>}
+          {authError && <p className="error">{authError}</p>}
           {credentialError && <p className="error">{credentialError}</p>}
-          {attempts > 0 && !isBlocked && (
+          {attempts > 0 && attempts < attemptLimit && (
             <p className="error">
-              {t('auth.attemptsRemaining', { count: MAX_LOGIN_ATTEMPTS - attempts })}
+              {t('auth.attemptsRemaining', { count: attemptLimit - attempts })}
             </p>
           )}
 
-          <Button
-            type="submit"
-            disabled={isBlocked || isSubmitting || !personnelId || !pin || !credentialRead}
-          >
+          <Button type="submit" disabled={isSubmitting || !personnelId || !pin || !credentialRead}>
             {isSubmitting ? t('auth.signingIn') : t('auth.signIn')}
           </Button>
         </form>
@@ -429,7 +435,15 @@ function LoginScreen() {
   );
 }
 
-function TerminalShell({ session, logout }: { session: SessionResult; logout: () => void }) {
+function TerminalShell({
+  session,
+  logout,
+  posAutoLockSeconds,
+}: {
+  session: SessionResult;
+  logout: () => void;
+  posAutoLockSeconds: number;
+}) {
   const { t, i18n: activeI18n } = useTranslation();
   const templateId = useMemo(() => resolveTemplateId(), []);
   const templateQuery = useGetLayoutTemplate(templateId, {
@@ -449,6 +463,7 @@ function TerminalShell({ session, logout }: { session: SessionResult; logout: ()
   const [fiscalAttempt, setFiscalAttempt] = useState<FiscalAttempt | null>(null);
   const [terminalReady, setTerminalReady] = useState(false);
   const [lastHeartbeatAt, setLastHeartbeatAt] = useState<string | null>(null);
+  const [autoLockRemainingSeconds, setAutoLockRemainingSeconds] = useState(posAutoLockSeconds);
   const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<StatusMessage>({
     key: 'pos.status.notPrepared',
@@ -634,6 +649,51 @@ function TerminalShell({ session, logout }: { session: SessionResult; logout: ()
     setErrorMessage(null);
     logout();
   }
+
+  useEffect(() => {
+    const timeoutMs = Math.max(posAutoLockSeconds, 30) * 1000;
+    let deadline = Date.now() + timeoutMs;
+
+    function updateRemaining(): void {
+      setAutoLockRemainingSeconds(Math.max(Math.ceil((deadline - Date.now()) / 1000), 0));
+    }
+
+    function resetDeadline(): void {
+      deadline = Date.now() + timeoutMs;
+      updateRemaining();
+    }
+
+    function autoLock(): void {
+      setReceipt(null);
+      setPayments([]);
+      setPaymentAttempt(null);
+      setPaymentAmountInput('');
+      setFiscalDocument(null);
+      setFiscalAttempt(null);
+      setBarcode(terminalConfig.demoBarcode);
+      setTerminalReady(false);
+      setStatusMessage({ key: 'pos.status.notPrepared' });
+      setErrorMessage(null);
+      logout();
+    }
+
+    resetDeadline();
+    const events: Array<keyof WindowEventMap> = ['pointerdown', 'keydown', 'touchstart'];
+    events.forEach((eventName) =>
+      window.addEventListener(eventName, resetDeadline, { passive: true }),
+    );
+    const intervalId = window.setInterval(() => {
+      updateRemaining();
+      if (Date.now() >= deadline) {
+        autoLock();
+      }
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+      events.forEach((eventName) => window.removeEventListener(eventName, resetDeadline));
+    };
+  }, [logout, posAutoLockSeconds]);
 
   async function prepareTerminal(): Promise<void> {
     await runCommand('pos.actions.prepareTerminal', async () => {
@@ -926,6 +986,10 @@ function TerminalShell({ session, logout }: { session: SessionResult; logout: ()
           <span>{t('pos.heartbeat')}</span>
           <strong>{lastHeartbeatAt ? t('pos.heartbeatOnline') : t('pos.heartbeatPending')}</strong>
         </div>
+        <div>
+          <span>{t('pos.autoLock')}</span>
+          <strong>{t('pos.autoLockIn', { count: autoLockRemainingSeconds })}</strong>
+        </div>
       </section>
 
       <section
@@ -1143,12 +1207,17 @@ function TerminalShell({ session, logout }: { session: SessionResult; logout: ()
 
 function App() {
   const { session, logout } = useAuth();
+  const settingsQuery = useGetStoreAuthSettings(terminalConfig.storeId);
+  const authSettings = settingsQuery.data?.status === 200 ? settingsQuery.data.data.settings : null;
+  const posAutoLockSeconds = authSettings?.posAutoLockSeconds ?? DEFAULT_POS_AUTO_LOCK_SECONDS;
 
   if (!session) {
     return <LoginScreen />;
   }
 
-  return <TerminalShell session={session} logout={logout} />;
+  return (
+    <TerminalShell session={session} logout={logout} posAutoLockSeconds={posAutoLockSeconds} />
+  );
 }
 
 export function Root() {

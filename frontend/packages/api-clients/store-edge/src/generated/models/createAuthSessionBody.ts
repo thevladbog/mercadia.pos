@@ -12,4 +12,5 @@ export type CreateAuthSessionBody = {
   credentialFactor?: CreateAuthSessionBodyCredentialFactor;
   pin: string;
   storeId: string;
+  terminalId?: string;
 };

@@ -31,3 +31,11 @@ export function getStoreId(): string {
   }
   return storeId;
 }
+
+export function getTerminalId(): string {
+  const terminalId = import.meta.env.VITE_POS_TERMINAL_ID;
+  if (!terminalId) {
+    throw new Error('VITE_POS_TERMINAL_ID must be configured');
+  }
+  return terminalId;
+}

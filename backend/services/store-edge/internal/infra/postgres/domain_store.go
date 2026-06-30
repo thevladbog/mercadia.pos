@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -379,6 +380,88 @@ func (s *Store) FindSessionByToken(ctx context.Context, token string) (domain.Se
 		}
 	}
 	return session, nil
+}
+
+func (s *Store) FindStoreAuthSettings(ctx context.Context, storeID string) (domain.StoreAuthSettings, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT store_id, failed_attempt_limit, lockout_duration_seconds, pos_auto_lock_seconds,
+			updated_by_id, updated_at
+		FROM store_auth_settings WHERE store_id = $1
+	`, storeID)
+	var settings domain.StoreAuthSettings
+	if err := row.Scan(
+		&settings.StoreID,
+		&settings.FailedAttemptLimit,
+		&settings.LockoutDurationSeconds,
+		&settings.POSAutoLockSeconds,
+		&settings.UpdatedByID,
+		&settings.UpdatedAt,
+	); err != nil {
+		if err == pgx.ErrNoRows {
+			return domain.DefaultStoreAuthSettings(storeID), nil
+		}
+		return domain.StoreAuthSettings{}, fmt.Errorf("find store auth settings: %w", err)
+	}
+	return settings, nil
+}
+
+func (s *Store) SaveStoreAuthSettings(ctx context.Context, settings domain.StoreAuthSettings) error {
+	_, err := s.conn(ctx).Exec(ctx, `
+		INSERT INTO store_auth_settings (
+			store_id, failed_attempt_limit, lockout_duration_seconds, pos_auto_lock_seconds,
+			updated_by_id, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (store_id) DO UPDATE SET
+			failed_attempt_limit = EXCLUDED.failed_attempt_limit,
+			lockout_duration_seconds = EXCLUDED.lockout_duration_seconds,
+			pos_auto_lock_seconds = EXCLUDED.pos_auto_lock_seconds,
+			updated_by_id = EXCLUDED.updated_by_id,
+			updated_at = EXCLUDED.updated_at
+	`, settings.StoreID, settings.FailedAttemptLimit, settings.LockoutDurationSeconds,
+		settings.POSAutoLockSeconds, settings.UpdatedByID, settings.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("save store auth settings: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) SaveAuthAttempt(ctx context.Context, attempt domain.AuthAttempt) error {
+	_, err := s.conn(ctx).Exec(ctx, `
+		INSERT INTO auth_attempts (
+			id, store_id, actor_id, terminal_id, credential_kind, credential_fingerprint,
+			successful, failure_reason, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`, attempt.ID, attempt.StoreID, attempt.ActorID, attempt.TerminalID, attempt.CredentialKind,
+		attempt.CredentialFingerprint, attempt.Successful, attempt.FailureReason, attempt.CreatedAt)
+	if err != nil {
+		return fmt.Errorf("save auth attempt: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) CountFailedAuthAttemptsSinceLastSuccess(ctx context.Context, storeID string, actorID string, since time.Time) (int, error) {
+	threshold := since
+	foundSuccess := false
+	if err := s.pool.QueryRow(ctx, `
+		SELECT COALESCE(MAX(created_at), $3), COUNT(*) > 0 FROM auth_attempts
+		WHERE store_id = $1 AND actor_id = $2 AND successful = TRUE AND created_at >= $3
+	`, storeID, actorID, since).Scan(&threshold, &foundSuccess); err != nil {
+		return 0, fmt.Errorf("find last successful auth attempt: %w", err)
+	}
+	comparison := ">="
+	if foundSuccess {
+		comparison = ">"
+	}
+	var count int
+	query := fmt.Sprintf(`
+		SELECT COUNT(*) FROM auth_attempts
+		WHERE store_id = $1 AND actor_id = $2 AND successful = FALSE
+			AND failure_reason <> 'locked' AND created_at %s $3
+	`, comparison)
+	if err := s.pool.QueryRow(ctx, query, storeID, actorID, threshold).Scan(&count); err != nil {
+		return 0, fmt.Errorf("count failed auth attempts: %w", err)
+	}
+	return count, nil
 }
 
 func (s *Store) SaveReturn(ctx context.Context, ret domain.Return) error {

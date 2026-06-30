@@ -18,6 +18,7 @@
     "safe": "Safe",
     "eod": "EoD",
     "credentials": "Credentials",
+    "settings": "Settings",
     "seniorCashierDashboard": "Dashboard",
     "seniorCashierChangeFund": "Issue change fund",
     "seniorCashierReceiveCash": "Receive cash",
@@ -715,6 +716,28 @@
       "msr_card": "MSR card",
       "barcode_card": "Barcode card"
     }
+  },
+  "settings": {
+    "title": "Store Settings",
+    "subtitle": "Configure store-level authentication hardening and terminal auto-lock behavior.",
+    "managerActorId": "Manager actor ID",
+    "managerActorPlaceholder": "admin-1 or senior-1",
+    "managerPin": "Manager PIN",
+    "managerPinPlaceholder": "Store Edge PIN",
+    "managerLogin": "Start manager session",
+    "managerLoggedIn": "Manager session started.",
+    "managerSessionReady": "Store Edge session active",
+    "managerLoginHint": "Saving store settings uses an authenticated Store Edge session; permissions are enforced server-side.",
+    "authPolicy": "Authentication policy",
+    "authPolicyHint": "These values apply to cashier login lockout and POS terminal idle auto-lock.",
+    "failedAttemptLimit": "Failed attempt limit",
+    "lockoutDurationSeconds": "Lockout duration, seconds",
+    "posAutoLockSeconds": "POS auto-lock, seconds",
+    "rangeHint": "Allowed ranges: attempts 1–20, durations 60–86400 seconds, POS auto-lock 30–86400 seconds.",
+    "updatedBy": "Last updated by {{actorId}} at {{timestamp}}",
+    "save": "Save settings",
+    "saved": "Store settings saved.",
+    "invalidNumber": "Enter values within the allowed ranges for all settings."
   },
   "branding": {
     "status": {

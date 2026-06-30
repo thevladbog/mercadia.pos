@@ -32,6 +32,7 @@
     "signIn": "Войти",
     "signingIn": "Вход...",
     "invalidCredentials": "Неверный табельный номер, ПИН или удостоверение.",
+    "locked": "Вход временно заблокирован политикой магазина.",
     "roleNotAllowed": "Этой учётной записи нельзя работать на POS-терминале.",
     "attemptsRemaining": "Осталось попыток: {{count}}",
     "blocked": "Доступ заблокирован. Обратитесь к старшему кассиру или администратору."
@@ -51,6 +52,8 @@
     "heartbeat": "Пульс",
     "heartbeatOnline": "онлайн",
     "heartbeatPending": "ожидание",
+    "autoLock": "Авто-блокировка",
+    "autoLockIn": "{{count}} с",
     "checkoutTitle": "Продажа",
     "checkoutDescription": "Сценарий Store Edge: операционный день, смена, чек, сканирование, mock-оплата, mock-фискализация.",
     "receipt": "Чек {{id}}",
