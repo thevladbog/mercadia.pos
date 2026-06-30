@@ -92,6 +92,177 @@ func (s *Store) FindActor(ctx context.Context, actorID string) (domain.Actor, er
 		SELECT id, pin, roles, credential_policy, credential_bindings FROM store_actors WHERE id = $1
 	`, actorID)
 
+	actor, err := scanActor(row)
+	if err != nil {
+		return domain.Actor{}, err
+	}
+	return actor, nil
+}
+
+func (s *Store) ListActors(ctx context.Context) ([]domain.Actor, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, pin, roles, credential_policy, credential_bindings FROM store_actors ORDER BY id
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list actors: %w", err)
+	}
+	defer rows.Close()
+
+	actors := make([]domain.Actor, 0)
+	for rows.Next() {
+		actor, err := scanActor(rows)
+		if err != nil {
+			return nil, err
+		}
+		actors = append(actors, actor)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list actors: %w", err)
+	}
+	return actors, nil
+}
+
+func (s *Store) SaveActor(ctx context.Context, actor domain.Actor) error {
+	roles, err := json.Marshal(actor.Roles)
+	if err != nil {
+		return fmt.Errorf("marshal actor roles: %w", err)
+	}
+	var credentialPolicy []byte
+	if actor.CredentialPolicy != nil {
+		credentialPolicy, err = json.Marshal(actor.CredentialPolicy)
+		if err != nil {
+			return fmt.Errorf("marshal actor credential policy: %w", err)
+		}
+	}
+	bindings := actor.CredentialBindings
+	if bindings == nil {
+		bindings = []domain.CredentialBinding{}
+	}
+	credentialBindings, err := json.Marshal(bindings)
+	if err != nil {
+		return fmt.Errorf("marshal actor credential bindings: %w", err)
+	}
+	commandTag, err := s.conn(ctx).Exec(ctx, `
+		UPDATE store_actors
+		SET pin = $2, roles = $3, credential_policy = $4, credential_bindings = $5
+		WHERE id = $1
+	`, actor.ID, actor.PIN, roles, credentialPolicy, credentialBindings)
+	if err != nil {
+		return fmt.Errorf("save actor: %w", err)
+	}
+	if commandTag.RowsAffected() == 0 {
+		return app.ErrActorNotFound
+	}
+	return nil
+}
+
+func (s *Store) UpdateActorCredentialPolicy(ctx context.Context, actorID string, policy *domain.CredentialPolicy) (domain.Actor, error) {
+	var actor domain.Actor
+	err := s.Run(ctx, func(ctx context.Context) error {
+		lockedActor, err := s.findActorForCredentialUpdate(ctx, actorID)
+		if err != nil {
+			return err
+		}
+		policyJSON, err := marshalCredentialPolicy(policy)
+		if err != nil {
+			return err
+		}
+		commandTag, err := s.conn(ctx).Exec(ctx, `
+			UPDATE store_actors SET credential_policy = $2 WHERE id = $1
+		`, actorID, policyJSON)
+		if err != nil {
+			return fmt.Errorf("update actor credential policy: %w", err)
+		}
+		if commandTag.RowsAffected() == 0 {
+			return app.ErrActorNotFound
+		}
+		lockedActor.CredentialPolicy = cloneCredentialPolicyPointer(policy)
+		actor = lockedActor
+		return nil
+	})
+	if err != nil {
+		return domain.Actor{}, err
+	}
+	return actor, nil
+}
+
+func (s *Store) UpdateActorCredentialBindings(ctx context.Context, actorID string, update func([]domain.CredentialBinding) ([]domain.CredentialBinding, error)) (domain.Actor, error) {
+	var actor domain.Actor
+	err := s.Run(ctx, func(ctx context.Context) error {
+		lockedActor, err := s.findActorForCredentialUpdate(ctx, actorID)
+		if err != nil {
+			return err
+		}
+		bindings := append([]domain.CredentialBinding(nil), lockedActor.CredentialBindings...)
+		updatedBindings, err := update(bindings)
+		if err != nil {
+			return err
+		}
+		bindingsJSON, err := marshalCredentialBindings(updatedBindings)
+		if err != nil {
+			return err
+		}
+		commandTag, err := s.conn(ctx).Exec(ctx, `
+			UPDATE store_actors SET credential_bindings = $2 WHERE id = $1
+		`, actorID, bindingsJSON)
+		if err != nil {
+			return fmt.Errorf("update actor credential bindings: %w", err)
+		}
+		if commandTag.RowsAffected() == 0 {
+			return app.ErrActorNotFound
+		}
+		lockedActor.CredentialBindings = append([]domain.CredentialBinding(nil), updatedBindings...)
+		actor = lockedActor
+		return nil
+	})
+	if err != nil {
+		return domain.Actor{}, err
+	}
+	return actor, nil
+}
+
+func (s *Store) findActorForCredentialUpdate(ctx context.Context, actorID string) (domain.Actor, error) {
+	row := s.conn(ctx).QueryRow(ctx, `
+		SELECT id, pin, roles, credential_policy, credential_bindings
+		FROM store_actors
+		WHERE id = $1
+		FOR UPDATE
+	`, actorID)
+	return scanActor(row)
+}
+
+func marshalCredentialPolicy(policy *domain.CredentialPolicy) ([]byte, error) {
+	if policy == nil {
+		return nil, nil
+	}
+	policyJSON, err := json.Marshal(policy)
+	if err != nil {
+		return nil, fmt.Errorf("marshal actor credential policy: %w", err)
+	}
+	return policyJSON, nil
+}
+
+func marshalCredentialBindings(bindings []domain.CredentialBinding) ([]byte, error) {
+	if bindings == nil {
+		bindings = []domain.CredentialBinding{}
+	}
+	bindingsJSON, err := json.Marshal(bindings)
+	if err != nil {
+		return nil, fmt.Errorf("marshal actor credential bindings: %w", err)
+	}
+	return bindingsJSON, nil
+}
+
+func cloneCredentialPolicyPointer(policy *domain.CredentialPolicy) *domain.CredentialPolicy {
+	if policy == nil {
+		return nil
+	}
+	cloned := *policy
+	cloned.AllowedKinds = append([]domain.CredentialKind(nil), policy.AllowedKinds...)
+	return &cloned
+}
+
+func scanActor(row pgx.Row) (domain.Actor, error) {
 	var actor domain.Actor
 	var rolesJSON []byte
 	var credentialPolicyJSON []byte
@@ -100,7 +271,7 @@ func (s *Store) FindActor(ctx context.Context, actorID string) (domain.Actor, er
 		if err == pgx.ErrNoRows {
 			return domain.Actor{}, app.ErrActorNotFound
 		}
-		return domain.Actor{}, fmt.Errorf("find actor: %w", err)
+		return domain.Actor{}, fmt.Errorf("scan actor: %w", err)
 	}
 	if err := json.Unmarshal(rolesJSON, &actor.Roles); err != nil {
 		return domain.Actor{}, fmt.Errorf("decode actor roles: %w", err)
@@ -137,6 +308,22 @@ func (s *Store) FindStoreCredentialPolicy(ctx context.Context, storeID string) (
 		return domain.CredentialPolicy{}, fmt.Errorf("decode store credential policy: %w", err)
 	}
 	return policy, nil
+}
+
+func (s *Store) SaveStoreCredentialPolicy(ctx context.Context, storeID string, policy domain.CredentialPolicy) error {
+	policyJSON, err := json.Marshal(policy)
+	if err != nil {
+		return fmt.Errorf("marshal store credential policy: %w", err)
+	}
+	_, err = s.conn(ctx).Exec(ctx, `
+		INSERT INTO store_credential_policies (store_id, policy)
+		VALUES ($1, $2)
+		ON CONFLICT (store_id) DO UPDATE SET policy = EXCLUDED.policy
+	`, storeID, policyJSON)
+	if err != nil {
+		return fmt.Errorf("save store credential policy: %w", err)
+	}
+	return nil
 }
 
 func (s *Store) SaveSession(ctx context.Context, session domain.Session) error {

@@ -1,4 +1,4 @@
-const SESSION_TOKEN_KEY = 'mercadia.central.sessionToken';
+const SESSION_TOKEN_KEY = 'mercadia.storeEdge.sessionToken';
 
 export function getSessionToken(): string | null {
   return sessionStorage.getItem(SESSION_TOKEN_KEY);

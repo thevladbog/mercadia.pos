@@ -136,14 +136,18 @@ func (s *AuthService) validateCredentialFactor(ctx context.Context, actor domain
 	if !policy.Required && factor == nil {
 		return nil, nil
 	}
-	if factor == nil || factor.Kind == "" || strings.TrimSpace(factor.Token) == "" {
+	token := ""
+	if factor != nil {
+		token = strings.TrimSpace(factor.Token)
+	}
+	if factor == nil || factor.Kind == "" || token == "" {
 		return nil, ErrInvalidCredentials
 	}
 	if !credentialKindAllowed(policy, factor.Kind) {
 		return nil, ErrInvalidCredentials
 	}
 
-	tokenHash := hashCredentialToken(factor.Token)
+	tokenHash := hashCredentialToken(token)
 	for _, binding := range actor.CredentialBindings {
 		if binding.Active && binding.Kind == factor.Kind && binding.TokenHash == tokenHash {
 			return &domain.SessionCredentialFactor{

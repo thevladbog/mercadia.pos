@@ -16,11 +16,14 @@ func TestOpenAPIIncludesOperationAndIdempotencyHeader(t *testing.T) {
 	})
 
 	spec.operations = append(spec.operations, Operation{
-		Method:              http.MethodPost,
-		Path:                "/v1/things/{thingId}/commands",
-		OperationID:         "runThingCommand",
-		Summary:             "Run command",
-		Tags:                []string{"things"},
+		Method:      http.MethodPost,
+		Path:        "/v1/things/{thingId}/commands",
+		OperationID: "runThingCommand",
+		Summary:     "Run command",
+		Tags:        []string{"things"},
+		HeaderParameters: []HeaderParamSpec{
+			{Name: "X-Session-Token", Description: "Authenticated session token.", Required: true, Schema: StringSchema()},
+		},
 		RequiresIdempotency: true,
 		Responses: map[string]ResponseSpec{
 			"202": {Description: "Accepted"},
@@ -47,17 +50,20 @@ func TestOpenAPIIncludesOperationAndIdempotencyHeader(t *testing.T) {
 	}
 
 	parameters := post["parameters"].([]any)
-	names := map[string]bool{}
+	names := map[string]string{}
 	for _, parameter := range parameters {
 		item := parameter.(map[string]any)
-		names[item["name"].(string)] = true
+		names[item["name"].(string)] = item["in"].(string)
 	}
 
-	if !names["thingId"] {
+	if names["thingId"] != "path" {
 		t.Fatal("expected path parameter thingId")
 	}
-	if !names["Idempotency-Key"] {
+	if names["Idempotency-Key"] != "header" {
 		t.Fatal("expected Idempotency-Key header parameter")
+	}
+	if names["X-Session-Token"] != "header" {
+		t.Fatal("expected X-Session-Token header parameter")
 	}
 }
 

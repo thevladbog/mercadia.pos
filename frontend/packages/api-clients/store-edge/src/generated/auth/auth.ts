@@ -6,20 +6,61 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
-  useMutation
+  useMutation,
+  useQuery
 } from '@tanstack/react-query';
 import type {
+  DataTag,
+  DefinedInitialDataOptions,
+  DefinedUseQueryResult,
   MutationFunction,
   QueryClient,
+  QueryFunction,
+  QueryKey,
+  UndefinedInitialDataOptions,
   UseMutationOptions,
-  UseMutationResult
+  UseMutationResult,
+  UseQueryOptions,
+  UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
+  AddActorCredentialBinding200,
+  AddActorCredentialBinding400,
+  AddActorCredentialBinding401,
+  AddActorCredentialBinding403,
+  AddActorCredentialBinding404,
+  AddActorCredentialBinding409,
+  AddActorCredentialBindingBody,
   CreateAuthSession201,
   CreateAuthSession400,
   CreateAuthSession401,
-  CreateAuthSessionBody
+  CreateAuthSessionBody,
+  GetCredentialManagement200,
+  GetCredentialManagement400,
+  GetCredentialManagement401,
+  GetCredentialManagement403,
+  GetCredentialManagement404,
+  RevokeActorCredentialBinding200,
+  RevokeActorCredentialBinding400,
+  RevokeActorCredentialBinding401,
+  RevokeActorCredentialBinding403,
+  RevokeActorCredentialBinding404,
+  RevokeActorCredentialBinding409,
+  RevokeActorCredentialBindingBody,
+  SetActorCredentialPolicy200,
+  SetActorCredentialPolicy400,
+  SetActorCredentialPolicy401,
+  SetActorCredentialPolicy403,
+  SetActorCredentialPolicy404,
+  SetActorCredentialPolicy409,
+  SetActorCredentialPolicyBody,
+  SetStoreCredentialPolicy200,
+  SetStoreCredentialPolicy400,
+  SetStoreCredentialPolicy401,
+  SetStoreCredentialPolicy403,
+  SetStoreCredentialPolicy404,
+  SetStoreCredentialPolicyBody
 } from '../models';
 
 import { customFetch } from '../../mutator.ts';
@@ -28,6 +69,21 @@ import { customFetch } from '../../mutator.ts';
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
+
+const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
+  const result = { queryKey } as T & { queryKey: K };
+  for (const key of Object.keys(query)) {
+    // The explicit queryKey always wins, matching the previous
+    // `{ ...query, queryKey }` spread where it was set last.
+    if (key === 'queryKey') continue;
+    Object.defineProperty(result, key, {
+      enumerable: true,
+      configurable: true,
+      get: () => (query as Record<string, unknown>)[key],
+    });
+  }
+  return result;
+};
 
 export type createAuthSessionResponse201 = {
   data: CreateAuthSession201
@@ -121,4 +177,575 @@ export const useCreateAuthSession = <TError = CreateAuthSession400 | CreateAuthS
         TContext
       > => {
       return useMutation(getCreateAuthSessionMutationOptions(options), queryClient);
+    }
+    export type addActorCredentialBindingResponse200 = {
+  data: AddActorCredentialBinding200
+  status: 200
+}
+
+export type addActorCredentialBindingResponse400 = {
+  data: AddActorCredentialBinding400
+  status: 400
+}
+
+export type addActorCredentialBindingResponse401 = {
+  data: AddActorCredentialBinding401
+  status: 401
+}
+
+export type addActorCredentialBindingResponse403 = {
+  data: AddActorCredentialBinding403
+  status: 403
+}
+
+export type addActorCredentialBindingResponse404 = {
+  data: AddActorCredentialBinding404
+  status: 404
+}
+
+export type addActorCredentialBindingResponse409 = {
+  data: AddActorCredentialBinding409
+  status: 409
+}
+
+export type addActorCredentialBindingResponseSuccess = (addActorCredentialBindingResponse200) & {
+  headers: Headers;
+};
+export type addActorCredentialBindingResponseError = (addActorCredentialBindingResponse400 | addActorCredentialBindingResponse401 | addActorCredentialBindingResponse403 | addActorCredentialBindingResponse404 | addActorCredentialBindingResponse409) & {
+  headers: Headers;
+};
+
+export type addActorCredentialBindingResponse = (addActorCredentialBindingResponseSuccess | addActorCredentialBindingResponseError)
+
+export const getAddActorCredentialBindingUrl = (storeId: string,
+    actorId: string,) => {
+
+
+
+
+  return `/v1/stores/${storeId}/actors/${actorId}/credential-bindings`
+}
+
+/**
+ * @summary Add actor staff credential binding. Requires `X-Session-Token` header.
+ */
+export const addActorCredentialBinding = async (storeId: string,
+    actorId: string,
+    addActorCredentialBindingBody: AddActorCredentialBindingBody, options?: RequestInit): Promise<addActorCredentialBindingResponse> => {
+
+  return customFetch<addActorCredentialBindingResponse>(getAddActorCredentialBindingUrl(storeId,actorId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(addActorCredentialBindingBody)
+  }
+);}
+
+
+
+
+export const getAddActorCredentialBindingMutationOptions = <TError = AddActorCredentialBinding400 | AddActorCredentialBinding401 | AddActorCredentialBinding403 | AddActorCredentialBinding404 | AddActorCredentialBinding409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addActorCredentialBinding>>, TError,{storeId: string;actorId: string;data: AddActorCredentialBindingBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addActorCredentialBinding>>, TError,{storeId: string;actorId: string;data: AddActorCredentialBindingBody}, TContext> => {
+
+const mutationKey = ['addActorCredentialBinding'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addActorCredentialBinding>>, {storeId: string;actorId: string;data: AddActorCredentialBindingBody}> = (props) => {
+          const {storeId,actorId,data} = props ?? {};
+
+          return  addActorCredentialBinding(storeId,actorId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddActorCredentialBindingMutationResult = NonNullable<Awaited<ReturnType<typeof addActorCredentialBinding>>>
+    export type AddActorCredentialBindingMutationBody = AddActorCredentialBindingBody
+    export type AddActorCredentialBindingMutationError = AddActorCredentialBinding400 | AddActorCredentialBinding401 | AddActorCredentialBinding403 | AddActorCredentialBinding404 | AddActorCredentialBinding409
+
+    /**
+ * @summary Add actor staff credential binding. Requires `X-Session-Token` header.
+ */
+export const useAddActorCredentialBinding = <TError = AddActorCredentialBinding400 | AddActorCredentialBinding401 | AddActorCredentialBinding403 | AddActorCredentialBinding404 | AddActorCredentialBinding409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addActorCredentialBinding>>, TError,{storeId: string;actorId: string;data: AddActorCredentialBindingBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addActorCredentialBinding>>,
+        TError,
+        {storeId: string;actorId: string;data: AddActorCredentialBindingBody},
+        TContext
+      > => {
+      return useMutation(getAddActorCredentialBindingMutationOptions(options), queryClient);
+    }
+    export type revokeActorCredentialBindingResponse200 = {
+  data: RevokeActorCredentialBinding200
+  status: 200
+}
+
+export type revokeActorCredentialBindingResponse400 = {
+  data: RevokeActorCredentialBinding400
+  status: 400
+}
+
+export type revokeActorCredentialBindingResponse401 = {
+  data: RevokeActorCredentialBinding401
+  status: 401
+}
+
+export type revokeActorCredentialBindingResponse403 = {
+  data: RevokeActorCredentialBinding403
+  status: 403
+}
+
+export type revokeActorCredentialBindingResponse404 = {
+  data: RevokeActorCredentialBinding404
+  status: 404
+}
+
+export type revokeActorCredentialBindingResponse409 = {
+  data: RevokeActorCredentialBinding409
+  status: 409
+}
+
+export type revokeActorCredentialBindingResponseSuccess = (revokeActorCredentialBindingResponse200) & {
+  headers: Headers;
+};
+export type revokeActorCredentialBindingResponseError = (revokeActorCredentialBindingResponse400 | revokeActorCredentialBindingResponse401 | revokeActorCredentialBindingResponse403 | revokeActorCredentialBindingResponse404 | revokeActorCredentialBindingResponse409) & {
+  headers: Headers;
+};
+
+export type revokeActorCredentialBindingResponse = (revokeActorCredentialBindingResponseSuccess | revokeActorCredentialBindingResponseError)
+
+export const getRevokeActorCredentialBindingUrl = (storeId: string,
+    actorId: string,) => {
+
+
+
+
+  return `/v1/stores/${storeId}/actors/${actorId}/credential-bindings/revoke`
+}
+
+/**
+ * @summary Revoke actor staff credential binding. Requires `X-Session-Token` header.
+ */
+export const revokeActorCredentialBinding = async (storeId: string,
+    actorId: string,
+    revokeActorCredentialBindingBody: RevokeActorCredentialBindingBody, options?: RequestInit): Promise<revokeActorCredentialBindingResponse> => {
+
+  return customFetch<revokeActorCredentialBindingResponse>(getRevokeActorCredentialBindingUrl(storeId,actorId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(revokeActorCredentialBindingBody)
+  }
+);}
+
+
+
+
+export const getRevokeActorCredentialBindingMutationOptions = <TError = RevokeActorCredentialBinding400 | RevokeActorCredentialBinding401 | RevokeActorCredentialBinding403 | RevokeActorCredentialBinding404 | RevokeActorCredentialBinding409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeActorCredentialBinding>>, TError,{storeId: string;actorId: string;data: RevokeActorCredentialBindingBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeActorCredentialBinding>>, TError,{storeId: string;actorId: string;data: RevokeActorCredentialBindingBody}, TContext> => {
+
+const mutationKey = ['revokeActorCredentialBinding'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeActorCredentialBinding>>, {storeId: string;actorId: string;data: RevokeActorCredentialBindingBody}> = (props) => {
+          const {storeId,actorId,data} = props ?? {};
+
+          return  revokeActorCredentialBinding(storeId,actorId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeActorCredentialBindingMutationResult = NonNullable<Awaited<ReturnType<typeof revokeActorCredentialBinding>>>
+    export type RevokeActorCredentialBindingMutationBody = RevokeActorCredentialBindingBody
+    export type RevokeActorCredentialBindingMutationError = RevokeActorCredentialBinding400 | RevokeActorCredentialBinding401 | RevokeActorCredentialBinding403 | RevokeActorCredentialBinding404 | RevokeActorCredentialBinding409
+
+    /**
+ * @summary Revoke actor staff credential binding. Requires `X-Session-Token` header.
+ */
+export const useRevokeActorCredentialBinding = <TError = RevokeActorCredentialBinding400 | RevokeActorCredentialBinding401 | RevokeActorCredentialBinding403 | RevokeActorCredentialBinding404 | RevokeActorCredentialBinding409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeActorCredentialBinding>>, TError,{storeId: string;actorId: string;data: RevokeActorCredentialBindingBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof revokeActorCredentialBinding>>,
+        TError,
+        {storeId: string;actorId: string;data: RevokeActorCredentialBindingBody},
+        TContext
+      > => {
+      return useMutation(getRevokeActorCredentialBindingMutationOptions(options), queryClient);
+    }
+    export type setActorCredentialPolicyResponse200 = {
+  data: SetActorCredentialPolicy200
+  status: 200
+}
+
+export type setActorCredentialPolicyResponse400 = {
+  data: SetActorCredentialPolicy400
+  status: 400
+}
+
+export type setActorCredentialPolicyResponse401 = {
+  data: SetActorCredentialPolicy401
+  status: 401
+}
+
+export type setActorCredentialPolicyResponse403 = {
+  data: SetActorCredentialPolicy403
+  status: 403
+}
+
+export type setActorCredentialPolicyResponse404 = {
+  data: SetActorCredentialPolicy404
+  status: 404
+}
+
+export type setActorCredentialPolicyResponse409 = {
+  data: SetActorCredentialPolicy409
+  status: 409
+}
+
+export type setActorCredentialPolicyResponseSuccess = (setActorCredentialPolicyResponse200) & {
+  headers: Headers;
+};
+export type setActorCredentialPolicyResponseError = (setActorCredentialPolicyResponse400 | setActorCredentialPolicyResponse401 | setActorCredentialPolicyResponse403 | setActorCredentialPolicyResponse404 | setActorCredentialPolicyResponse409) & {
+  headers: Headers;
+};
+
+export type setActorCredentialPolicyResponse = (setActorCredentialPolicyResponseSuccess | setActorCredentialPolicyResponseError)
+
+export const getSetActorCredentialPolicyUrl = (storeId: string,
+    actorId: string,) => {
+
+
+
+
+  return `/v1/stores/${storeId}/actors/${actorId}/credential-policy`
+}
+
+/**
+ * @summary Set actor staff credential policy override. Requires `X-Session-Token` header.
+ */
+export const setActorCredentialPolicy = async (storeId: string,
+    actorId: string,
+    setActorCredentialPolicyBody: SetActorCredentialPolicyBody, options?: RequestInit): Promise<setActorCredentialPolicyResponse> => {
+
+  return customFetch<setActorCredentialPolicyResponse>(getSetActorCredentialPolicyUrl(storeId,actorId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setActorCredentialPolicyBody)
+  }
+);}
+
+
+
+
+export const getSetActorCredentialPolicyMutationOptions = <TError = SetActorCredentialPolicy400 | SetActorCredentialPolicy401 | SetActorCredentialPolicy403 | SetActorCredentialPolicy404 | SetActorCredentialPolicy409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setActorCredentialPolicy>>, TError,{storeId: string;actorId: string;data: SetActorCredentialPolicyBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setActorCredentialPolicy>>, TError,{storeId: string;actorId: string;data: SetActorCredentialPolicyBody}, TContext> => {
+
+const mutationKey = ['setActorCredentialPolicy'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setActorCredentialPolicy>>, {storeId: string;actorId: string;data: SetActorCredentialPolicyBody}> = (props) => {
+          const {storeId,actorId,data} = props ?? {};
+
+          return  setActorCredentialPolicy(storeId,actorId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetActorCredentialPolicyMutationResult = NonNullable<Awaited<ReturnType<typeof setActorCredentialPolicy>>>
+    export type SetActorCredentialPolicyMutationBody = SetActorCredentialPolicyBody
+    export type SetActorCredentialPolicyMutationError = SetActorCredentialPolicy400 | SetActorCredentialPolicy401 | SetActorCredentialPolicy403 | SetActorCredentialPolicy404 | SetActorCredentialPolicy409
+
+    /**
+ * @summary Set actor staff credential policy override. Requires `X-Session-Token` header.
+ */
+export const useSetActorCredentialPolicy = <TError = SetActorCredentialPolicy400 | SetActorCredentialPolicy401 | SetActorCredentialPolicy403 | SetActorCredentialPolicy404 | SetActorCredentialPolicy409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setActorCredentialPolicy>>, TError,{storeId: string;actorId: string;data: SetActorCredentialPolicyBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setActorCredentialPolicy>>,
+        TError,
+        {storeId: string;actorId: string;data: SetActorCredentialPolicyBody},
+        TContext
+      > => {
+      return useMutation(getSetActorCredentialPolicyMutationOptions(options), queryClient);
+    }
+    export type getCredentialManagementResponse200 = {
+  data: GetCredentialManagement200
+  status: 200
+}
+
+export type getCredentialManagementResponse400 = {
+  data: GetCredentialManagement400
+  status: 400
+}
+
+export type getCredentialManagementResponse401 = {
+  data: GetCredentialManagement401
+  status: 401
+}
+
+export type getCredentialManagementResponse403 = {
+  data: GetCredentialManagement403
+  status: 403
+}
+
+export type getCredentialManagementResponse404 = {
+  data: GetCredentialManagement404
+  status: 404
+}
+
+export type getCredentialManagementResponseSuccess = (getCredentialManagementResponse200) & {
+  headers: Headers;
+};
+export type getCredentialManagementResponseError = (getCredentialManagementResponse400 | getCredentialManagementResponse401 | getCredentialManagementResponse403 | getCredentialManagementResponse404) & {
+  headers: Headers;
+};
+
+export type getCredentialManagementResponse = (getCredentialManagementResponseSuccess | getCredentialManagementResponseError)
+
+export const getGetCredentialManagementUrl = (storeId: string,) => {
+
+
+
+
+  return `/v1/stores/${storeId}/credential-management`
+}
+
+/**
+ * @summary Get staff credential policies and bindings. Requires `X-Session-Token` header.
+ */
+export const getCredentialManagement = async (storeId: string, options?: RequestInit): Promise<getCredentialManagementResponse> => {
+
+  return customFetch<getCredentialManagementResponse>(getGetCredentialManagementUrl(storeId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCredentialManagementQueryKey = (storeId: string,) => {
+    return [
+    `/v1/stores/${storeId}/credential-management`
+    ] as const;
+    }
+
+
+export const getGetCredentialManagementQueryOptions = <TData = Awaited<ReturnType<typeof getCredentialManagement>>, TError = GetCredentialManagement400 | GetCredentialManagement401 | GetCredentialManagement403 | GetCredentialManagement404>(storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCredentialManagement>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCredentialManagementQueryKey(storeId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCredentialManagement>>> = ({ signal }) => getCredentialManagement(storeId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: storeId !== null && storeId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCredentialManagement>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCredentialManagementQueryResult = NonNullable<Awaited<ReturnType<typeof getCredentialManagement>>>
+export type GetCredentialManagementQueryError = GetCredentialManagement400 | GetCredentialManagement401 | GetCredentialManagement403 | GetCredentialManagement404
+
+
+export function useGetCredentialManagement<TData = Awaited<ReturnType<typeof getCredentialManagement>>, TError = GetCredentialManagement400 | GetCredentialManagement401 | GetCredentialManagement403 | GetCredentialManagement404>(
+ storeId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCredentialManagement>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCredentialManagement>>,
+          TError,
+          Awaited<ReturnType<typeof getCredentialManagement>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCredentialManagement<TData = Awaited<ReturnType<typeof getCredentialManagement>>, TError = GetCredentialManagement400 | GetCredentialManagement401 | GetCredentialManagement403 | GetCredentialManagement404>(
+ storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCredentialManagement>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCredentialManagement>>,
+          TError,
+          Awaited<ReturnType<typeof getCredentialManagement>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCredentialManagement<TData = Awaited<ReturnType<typeof getCredentialManagement>>, TError = GetCredentialManagement400 | GetCredentialManagement401 | GetCredentialManagement403 | GetCredentialManagement404>(
+ storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCredentialManagement>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get staff credential policies and bindings. Requires `X-Session-Token` header.
+ */
+
+export function useGetCredentialManagement<TData = Awaited<ReturnType<typeof getCredentialManagement>>, TError = GetCredentialManagement400 | GetCredentialManagement401 | GetCredentialManagement403 | GetCredentialManagement404>(
+ storeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCredentialManagement>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCredentialManagementQueryOptions(storeId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type setStoreCredentialPolicyResponse200 = {
+  data: SetStoreCredentialPolicy200
+  status: 200
+}
+
+export type setStoreCredentialPolicyResponse400 = {
+  data: SetStoreCredentialPolicy400
+  status: 400
+}
+
+export type setStoreCredentialPolicyResponse401 = {
+  data: SetStoreCredentialPolicy401
+  status: 401
+}
+
+export type setStoreCredentialPolicyResponse403 = {
+  data: SetStoreCredentialPolicy403
+  status: 403
+}
+
+export type setStoreCredentialPolicyResponse404 = {
+  data: SetStoreCredentialPolicy404
+  status: 404
+}
+
+export type setStoreCredentialPolicyResponseSuccess = (setStoreCredentialPolicyResponse200) & {
+  headers: Headers;
+};
+export type setStoreCredentialPolicyResponseError = (setStoreCredentialPolicyResponse400 | setStoreCredentialPolicyResponse401 | setStoreCredentialPolicyResponse403 | setStoreCredentialPolicyResponse404) & {
+  headers: Headers;
+};
+
+export type setStoreCredentialPolicyResponse = (setStoreCredentialPolicyResponseSuccess | setStoreCredentialPolicyResponseError)
+
+export const getSetStoreCredentialPolicyUrl = (storeId: string,) => {
+
+
+
+
+  return `/v1/stores/${storeId}/credential-policy`
+}
+
+/**
+ * @summary Set store staff credential policy. Requires `X-Session-Token` header.
+ */
+export const setStoreCredentialPolicy = async (storeId: string,
+    setStoreCredentialPolicyBody: SetStoreCredentialPolicyBody, options?: RequestInit): Promise<setStoreCredentialPolicyResponse> => {
+
+  return customFetch<setStoreCredentialPolicyResponse>(getSetStoreCredentialPolicyUrl(storeId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setStoreCredentialPolicyBody)
+  }
+);}
+
+
+
+
+export const getSetStoreCredentialPolicyMutationOptions = <TError = SetStoreCredentialPolicy400 | SetStoreCredentialPolicy401 | SetStoreCredentialPolicy403 | SetStoreCredentialPolicy404,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setStoreCredentialPolicy>>, TError,{storeId: string;data: SetStoreCredentialPolicyBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setStoreCredentialPolicy>>, TError,{storeId: string;data: SetStoreCredentialPolicyBody}, TContext> => {
+
+const mutationKey = ['setStoreCredentialPolicy'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setStoreCredentialPolicy>>, {storeId: string;data: SetStoreCredentialPolicyBody}> = (props) => {
+          const {storeId,data} = props ?? {};
+
+          return  setStoreCredentialPolicy(storeId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetStoreCredentialPolicyMutationResult = NonNullable<Awaited<ReturnType<typeof setStoreCredentialPolicy>>>
+    export type SetStoreCredentialPolicyMutationBody = SetStoreCredentialPolicyBody
+    export type SetStoreCredentialPolicyMutationError = SetStoreCredentialPolicy400 | SetStoreCredentialPolicy401 | SetStoreCredentialPolicy403 | SetStoreCredentialPolicy404
+
+    /**
+ * @summary Set store staff credential policy. Requires `X-Session-Token` header.
+ */
+export const useSetStoreCredentialPolicy = <TError = SetStoreCredentialPolicy400 | SetStoreCredentialPolicy401 | SetStoreCredentialPolicy403 | SetStoreCredentialPolicy404,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setStoreCredentialPolicy>>, TError,{storeId: string;data: SetStoreCredentialPolicyBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setStoreCredentialPolicy>>,
+        TError,
+        {storeId: string;data: SetStoreCredentialPolicyBody},
+        TContext
+      > => {
+      return useMutation(getSetStoreCredentialPolicyMutationOptions(options), queryClient);
     }

@@ -667,6 +667,7 @@ type storeRepositories interface {
 	app.OutboxRepository
 	app.ActorRepository
 	app.SessionRepository
+	app.CredentialManagementRepository
 	app.ReturnRepository
 	app.OperationJournalRepository
 }
@@ -686,6 +687,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	outbox := app.NewOutboxService(store)
 	journal := app.NewOperationJournalService(store)
 	auth := app.NewAuthService(store, store)
+	credentials := app.NewCredentialManagementService(store)
 	terminalEvents := app.NewTerminalEventHub()
 
 	operationalDays := app.NewOperationalDayService(store, store, store, store, store,
@@ -764,6 +766,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	mountRoutes(mux, spec, outbox, config.brokerConnected, operationalDays, checkout, catalog, payments, fiscalization, cash, shifts, terminals)
 	mountMonitoringRoutes(mux, spec, terminalMonitoring)
 	mountDomainRoutes(mux, spec, auth, returns, returnSettlement, fiscalization, discounts, marking, journal)
+	mountCredentialRoutes(mux, spec, auth, credentials)
 	mountCatalogSyncRoute(mux, spec, config.catalogSync)
 	mountTerminalEventsRoute(mux, terminalEvents)
 
@@ -2145,6 +2148,10 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusNotFound, "cash_recount_not_found", "Cash recount was not found", err.Error())
 	case errors.Is(err, app.ErrOperationalDayNotFound):
 		httpapi.WriteProblem(w, http.StatusNotFound, "operational_day_not_found", "Operational day was not found", err.Error())
+	case errors.Is(err, app.ErrActorNotFound):
+		httpapi.WriteProblem(w, http.StatusNotFound, "actor_not_found", "Actor was not found", err.Error())
+	case errors.Is(err, app.ErrCredentialBindingNotFound):
+		httpapi.WriteProblem(w, http.StatusNotFound, "credential_binding_not_found", "Credential binding was not found", err.Error())
 	case errors.Is(err, app.ErrIdempotencyKeyRequired):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 	case errors.Is(err, app.ErrIdempotencyKeyReused):
