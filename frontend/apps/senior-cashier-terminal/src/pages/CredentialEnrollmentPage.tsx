@@ -4,8 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Field, Label, Select } from '@mercadia/ui';
 import {
   addActorCredentialBinding,
+  revokeActorCredentialBinding,
   useGetCredentialManagement,
   type GetCredentialManagement200ActorsItem,
+  type GetCredentialManagement200ActorsItemCredentialBindingsItem,
+  type RevokeActorCredentialBindingBody,
 } from '@mercadia/api-clients-store-edge';
 
 import { useAuth } from '@/auth/AuthProvider.js';
@@ -35,9 +38,11 @@ export function CredentialEnrollmentPage() {
   const [credentialRead, setCredentialRead] = useState<StaffCredentialRead | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [revokingBinding, setRevokingBinding] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const readAbortControllerRef = useRef<AbortController | null>(null);
+  const isRevoking = Boolean(revokingBinding);
 
   const credentialsQuery = useGetCredentialManagement(storeId);
   const credentials = credentialsQuery.data?.status === 200 ? credentialsQuery.data.data : null;
@@ -109,6 +114,8 @@ export function CredentialEnrollmentPage() {
         setCredentialRead(null);
         await credentialsQuery.refetch();
         setMessage(t('credentials.enrollSuccess', { actorId: selectedActor.id }));
+      } else {
+        setError(t('credentials.enrollError'));
       }
     } catch {
       setError(t('credentials.enrollError'));
@@ -116,6 +123,37 @@ export function CredentialEnrollmentPage() {
       setIsSubmitting(false);
     }
   }, [credentialRead, credentialsQuery, isSelfTarget, selectedActor, storeId, t]);
+
+  const revokeBinding = useCallback(
+    async (binding: GetCredentialManagement200ActorsItemCredentialBindingsItem) => {
+      if (!selectedActor || isSelfTarget || isRevoking) return;
+      if (!window.confirm(t('credentials.revokeConfirm'))) return;
+
+      setRevokingBinding(binding.tokenFingerprint);
+      setMessage('');
+      setError('');
+      try {
+        const body: RevokeActorCredentialBindingBody = {
+          kind: binding.kind,
+          tokenFingerprint: binding.tokenFingerprint,
+        };
+        const response = await revokeActorCredentialBinding(storeId, selectedActor.id, body, {
+          headers: { 'Idempotency-Key': crypto.randomUUID() },
+        });
+        if (response.status === 200) {
+          await credentialsQuery.refetch();
+          setMessage(t('credentials.revokeSuccess', { actorId: selectedActor.id }));
+        } else {
+          setError(t('credentials.revokeError'));
+        }
+      } catch {
+        setError(t('credentials.revokeError'));
+      } finally {
+        setRevokingBinding('');
+      }
+    },
+    [credentialsQuery, isRevoking, isSelfTarget, selectedActor, storeId, t],
+  );
 
   const formatRemaining = (ms: number) => {
     const totalSec = Math.floor(ms / 1000);
@@ -151,7 +189,7 @@ export function CredentialEnrollmentPage() {
                   setMessage('');
                   setError('');
                 }}
-                disabled={isReading || isSubmitting || actors.length === 0}
+                disabled={isReading || isSubmitting || isRevoking || actors.length === 0}
               >
                 {actors.map((actor) => (
                   <option key={actor.id} value={actor.id}>
@@ -179,7 +217,7 @@ export function CredentialEnrollmentPage() {
                       setMessage('');
                       setError('');
                     }}
-                    disabled={isReading || isSubmitting}
+                    disabled={isReading || isSubmitting || isRevoking}
                     aria-pressed={credentialKind === kind}
                   >
                     {t(`auth.credentialKinds.${kind}`)}
@@ -201,7 +239,7 @@ export function CredentialEnrollmentPage() {
                 type="button"
                 variant="secondary"
                 onClick={() => void readCredential()}
-                disabled={isReading || isSubmitting || !selectedActor}
+                disabled={isReading || isSubmitting || isRevoking || !selectedActor}
               >
                 {isReading
                   ? t('credentials.reading')
@@ -230,7 +268,12 @@ export function CredentialEnrollmentPage() {
                 type="button"
                 onClick={() => void submitEnrollment()}
                 disabled={
-                  isSubmitting || isReading || !credentialRead || !selectedActor || isSelfTarget
+                  isSubmitting ||
+                  isReading ||
+                  isRevoking ||
+                  !credentialRead ||
+                  !selectedActor ||
+                  isSelfTarget
                 }
               >
                 {isSubmitting ? t('common.submitting') : t('credentials.enroll')}
@@ -242,6 +285,7 @@ export function CredentialEnrollmentPage() {
         {selectedActor && (
           <div className="sr-panel sr-stack" style={{ marginTop: '1rem' }}>
             <h2 className="sr-panel-title">{t('credentials.currentBindings')}</h2>
+            <p className="muted">{t('credentials.replaceHint')}</p>
             {selectedActor.credentialBindings.length === 0 ? (
               <p className="muted">{t('credentials.noBindings')}</p>
             ) : (
@@ -255,9 +299,29 @@ export function CredentialEnrollmentPage() {
                       <strong>{t(`auth.credentialKinds.${binding.kind}`)}</strong>
                       <div className="muted">{binding.maskedToken || binding.tokenFingerprint}</div>
                     </div>
-                    <span className={binding.active ? 'success-text' : 'muted'}>
-                      {binding.active ? t('credentials.active') : t('credentials.revoked')}
-                    </span>
+                    <div className="sr-binding-actions">
+                      <span className={binding.active ? 'success-text' : 'muted'}>
+                        {binding.active ? t('credentials.active') : t('credentials.revoked')}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={
+                          isSelfTarget ||
+                          isReading ||
+                          isSubmitting ||
+                          isRevoking ||
+                          !binding.active ||
+                          revokingBinding === binding.tokenFingerprint
+                        }
+                        onClick={() => void revokeBinding(binding)}
+                      >
+                        {revokingBinding === binding.tokenFingerprint
+                          ? t('credentials.revoking')
+                          : t('credentials.revoke')}
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

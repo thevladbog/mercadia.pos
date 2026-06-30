@@ -96,7 +96,8 @@ was used, and which Hardware Agent/device reported the factor.
 ## Staff Credential Enrollment
 
 The senior cashier touch terminal can issue employee physical credentials because it has local
-Hardware Agent access. The flow is:
+Hardware Agent access. It can also revoke active credential bindings and replace a lost or
+damaged physical credential. The enrollment flow is:
 
 1. Senior cashier signs in with a Store Edge session that has credential-management permission.
 2. Senior cashier selects the target employee.
@@ -105,6 +106,14 @@ Hardware Agent access. The flow is:
 4. Terminal sends the safe token returned by Hardware Agent to Store Edge once for hashing and
    binding.
 5. Store Edge returns only masked labels and token fingerprints.
+
+The revoke/replace flow is:
+
+1. Senior cashier selects the target employee and reviews current masked credential bindings.
+2. Senior cashier explicitly confirms revocation of an active binding.
+3. Terminal sends the credential kind and token fingerprint to Store Edge with an idempotency key.
+4. To replace a credential, senior cashier reads the replacement through Hardware Agent and binds it
+   as a new credential after revocation.
 
 Senior cashiers cannot manage their own credential bindings from the same session; Store Edge
 enforces this separation-of-duties rule server-side.
