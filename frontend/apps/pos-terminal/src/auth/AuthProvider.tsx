@@ -9,7 +9,7 @@ import {
 
 import { getStoreId } from '@/api-client-config.js';
 
-import type { SessionResult } from './types.js';
+import { canUsePosSession, type SessionResult } from './types.js';
 
 interface AuthContextValue {
   session: SessionResult | null;
@@ -47,6 +47,10 @@ function loadSession(): SessionResult | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
     if (!isSessionResult(parsed)) {
+      clearSession();
+      return null;
+    }
+    if (!canUsePosSession(parsed)) {
       clearSession();
       return null;
     }
@@ -89,6 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const nextSession = response.data.session;
+        if (!canUsePosSession(nextSession)) {
+          throw new Error('Role not allowed');
+        }
         saveSession(nextSession);
         setSession(nextSession);
         return nextSession;

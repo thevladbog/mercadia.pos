@@ -51,6 +51,7 @@ import {
   type StaffCredentialRead,
 } from '@/auth/credential.js';
 import type { SessionResult } from '@/auth/types.js';
+import { getStoreId } from '@/api-client-config.js';
 import { changeAppLocale, i18n, type AppLocale } from '@/i18n/config.js';
 import { queryClient } from '@/query-client.js';
 
@@ -111,7 +112,7 @@ function clearLoginAttempts(): void {
 }
 
 const terminalConfig = {
-  storeId: envValue('VITE_POS_STORE_ID', 'store-1'),
+  storeId: getStoreId(),
   terminalId: envValue('VITE_POS_TERMINAL_ID', 'pos-1'),
   drawerId: envValue('VITE_POS_DRAWER_ID', 'drawer-1'),
   openedById: envValue('VITE_POS_OPENED_BY_ID', 'admin-1'),
@@ -227,12 +228,6 @@ function settledPaymentAmountMinor(payment: ReceiptPayment): number {
   }
 }
 
-function canUsePosSession(session: SessionResult): boolean {
-  return session.roles.some(
-    (role) => role === 'cashier' || role === 'senior_cashier' || role === 'admin',
-  );
-}
-
 function LoginScreen() {
   const { t, i18n: activeI18n } = useTranslation();
   const { login, logout } = useAuth();
@@ -306,15 +301,15 @@ function LoginScreen() {
     setAuthError('');
     setCredentialError('');
     try {
-      const session = await login(personnelId, pin, credentialRead.factor);
-      if (!canUsePosSession(session)) {
+      await login(personnelId, pin, credentialRead.factor);
+      clearLoginAttempts();
+      setAttempts(0);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Role not allowed') {
         logout();
         setAuthError(t('auth.roleNotAllowed'));
         return;
       }
-      clearLoginAttempts();
-      setAttempts(0);
-    } catch (error) {
       if (error instanceof Error && error.message === 'Invalid credentials') {
         const nextAttempts = attempts + 1;
         setAttempts(nextAttempts);
@@ -386,10 +381,7 @@ function LoginScreen() {
             <span className="muted">
               {credentialStatus === 'idle' && t('auth.credentialPrompt')}
               {credentialStatus === 'waiting' && t('auth.credentialWaiting')}
-              {credentialStatus === 'detected' &&
-                t('auth.credentialDetected', {
-                  value: credentialRead?.maskedToken ?? t(`auth.credentialKinds.${credentialKind}`),
-                })}
+              {credentialStatus === 'detected' && t('auth.credentialDetected')}
               {credentialStatus === 'error' && t('auth.credentialError')}
             </span>
             <Button

@@ -24,7 +24,7 @@
     },
     "credentialPrompt": "Read staff credential with the local reader.",
     "credentialWaiting": "Waiting for credential...",
-    "credentialDetected": "Credential read: {{value}}",
+    "credentialDetected": "Credential read successfully.",
     "credentialError": "Credential reader failed or returned no staff token.",
     "credentialRequired": "Read staff credential before signing in.",
     "readCredential": "Read credential",

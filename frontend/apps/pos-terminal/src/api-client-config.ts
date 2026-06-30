@@ -25,5 +25,9 @@ export function configureApiClients(): void {
 }
 
 export function getStoreId(): string {
-  return import.meta.env.VITE_POS_STORE_ID ?? 'store-1';
+  const storeId = import.meta.env.VITE_POS_STORE_ID;
+  if (!storeId) {
+    throw new Error('VITE_POS_STORE_ID must be configured');
+  }
+  return storeId;
 }
