@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button, Field, Label, Select } from '@mercadia/ui';
@@ -37,6 +37,7 @@ export function CredentialEnrollmentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const readAbortControllerRef = useRef<AbortController | null>(null);
 
   const credentialsQuery = useGetCredentialManagement(storeId);
   const credentials = credentialsQuery.data?.status === 200 ? credentialsQuery.data.data : null;
@@ -45,12 +46,23 @@ export function CredentialEnrollmentPage() {
   const targetActorId = selectedActor?.id ?? '';
   const isSelfTarget = Boolean(session?.actorId && targetActorId === session.actorId);
 
+  useEffect(() => {
+    return () => {
+      readAbortControllerRef.current?.abort();
+      readAbortControllerRef.current = null;
+    };
+  }, []);
+
   const readCredential = useCallback(async () => {
+    readAbortControllerRef.current?.abort();
+    const abortController = new AbortController();
+    readAbortControllerRef.current = abortController;
     setIsReading(true);
     setMessage('');
     setError('');
     try {
-      const nextRead = await readStaffCredential(credentialKind);
+      const nextRead = await readStaffCredential(credentialKind, abortController.signal);
+      if (abortController.signal.aborted) return;
       setCredentialRead(nextRead);
       setMessage(
         t('credentials.readSuccess', {
@@ -58,12 +70,23 @@ export function CredentialEnrollmentPage() {
         }),
       );
     } catch {
+      if (abortController.signal.aborted) return;
       setCredentialRead(null);
       setError(t('credentials.readError'));
     } finally {
-      setIsReading(false);
+      if (readAbortControllerRef.current === abortController) {
+        readAbortControllerRef.current = null;
+        if (!abortController.signal.aborted) {
+          setIsReading(false);
+        }
+      }
     }
   }, [credentialKind, t]);
+
+  const handleBack = useCallback(() => {
+    readAbortControllerRef.current?.abort();
+    navigate('/dashboard');
+  }, [navigate]);
 
   const submitEnrollment = useCallback(async () => {
     if (!selectedActor || !credentialRead || isSelfTarget) return;
@@ -77,7 +100,7 @@ export function CredentialEnrollmentPage() {
         selectedActor.id,
         {
           kind: credentialRead.factor.kind,
-          token: credentialRead.factor.token.trim(),
+          token: credentialRead.factor.token,
           maskedToken: credentialRead.maskedToken,
         },
         { headers: { 'Idempotency-Key': crypto.randomUUID() } },
@@ -142,7 +165,7 @@ export function CredentialEnrollmentPage() {
               <Label>{t('credentials.kind')}</Label>
               <div
                 className="sr-credential-options"
-                role="radiogroup"
+                role="group"
                 aria-label={t('credentials.kind')}
               >
                 {CREDENTIAL_KINDS.map((kind) => (
@@ -200,7 +223,7 @@ export function CredentialEnrollmentPage() {
             {error && <p className="sr-field-error">{error}</p>}
 
             <div className="sr-button-row">
-              <Button type="button" variant="secondary" onClick={() => navigate('/dashboard')}>
+              <Button type="button" variant="secondary" onClick={handleBack}>
                 {t('common.back')}
               </Button>
               <Button
