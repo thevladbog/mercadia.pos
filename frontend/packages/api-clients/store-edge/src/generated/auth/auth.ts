@@ -35,6 +35,7 @@ import type {
   CreateAuthSession201,
   CreateAuthSession400,
   CreateAuthSession401,
+  CreateAuthSession423,
   CreateAuthSessionBody,
   GetCredentialManagement200,
   GetCredentialManagement400,
@@ -100,10 +101,15 @@ export type createAuthSessionResponse401 = {
   status: 401
 }
 
+export type createAuthSessionResponse423 = {
+  data: CreateAuthSession423
+  status: 423
+}
+
 export type createAuthSessionResponseSuccess = (createAuthSessionResponse201) & {
   headers: Headers;
 };
-export type createAuthSessionResponseError = (createAuthSessionResponse400 | createAuthSessionResponse401) & {
+export type createAuthSessionResponseError = (createAuthSessionResponse400 | createAuthSessionResponse401 | createAuthSessionResponse423) & {
   headers: Headers;
 };
 
@@ -134,7 +140,7 @@ export const createAuthSession = async (createAuthSessionBody: CreateAuthSession
 
 
 
-export const getCreateAuthSessionMutationOptions = <TError = CreateAuthSession400 | CreateAuthSession401,
+export const getCreateAuthSessionMutationOptions = <TError = CreateAuthSession400 | CreateAuthSession401 | CreateAuthSession423,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAuthSession>>, TError,{data: CreateAuthSessionBody}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createAuthSession>>, TError,{data: CreateAuthSessionBody}, TContext> => {
 
@@ -163,12 +169,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateAuthSessionMutationResult = NonNullable<Awaited<ReturnType<typeof createAuthSession>>>
     export type CreateAuthSessionMutationBody = CreateAuthSessionBody
-    export type CreateAuthSessionMutationError = CreateAuthSession400 | CreateAuthSession401
+    export type CreateAuthSessionMutationError = CreateAuthSession400 | CreateAuthSession401 | CreateAuthSession423
 
     /**
  * @summary Create cashier session
  */
-export const useCreateAuthSession = <TError = CreateAuthSession400 | CreateAuthSession401,
+export const useCreateAuthSession = <TError = CreateAuthSession400 | CreateAuthSession401 | CreateAuthSession423,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAuthSession>>, TError,{data: CreateAuthSessionBody}, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createAuthSession>>,

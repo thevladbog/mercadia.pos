@@ -39,6 +39,7 @@ type CreateSessionRequest struct {
 	ActorID          string                   `json:"actorId"`
 	PIN              string                   `json:"pin"`
 	StoreID          string                   `json:"storeId"`
+	TerminalID       string                   `json:"terminalId,omitempty"`
 	CredentialFactor *CredentialFactorRequest `json:"credentialFactor,omitempty"`
 }
 
@@ -218,6 +219,7 @@ func mountDomainRoutes(
 			"201": {Description: "Session created", Schema: sessionAcceptedResponseSchema()},
 			"400": {Description: "Invalid session command", Schema: httpapi.ProblemSchema()},
 			"401": {Description: "Invalid credentials", Schema: httpapi.ProblemSchema()},
+			"423": {Description: "Authentication is locked by store policy", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
 		var request CreateSessionRequest
@@ -229,6 +231,7 @@ func mountDomainRoutes(
 			ActorID:          request.ActorID,
 			PIN:              request.PIN,
 			StoreID:          request.StoreID,
+			TerminalID:       request.TerminalID,
 			CredentialFactor: submittedCredentialFactor(request.CredentialFactor),
 		})
 		if err != nil {
@@ -715,6 +718,7 @@ func createSessionRequestSchema() httpapi.Schema {
 		"actorId":          httpapi.StringSchema(),
 		"pin":              httpapi.StringSchema(),
 		"storeId":          httpapi.StringSchema(),
+		"terminalId":       httpapi.StringSchema(),
 		"credentialFactor": credentialFactorRequestSchema(),
 	}, "actorId", "pin", "storeId")
 }

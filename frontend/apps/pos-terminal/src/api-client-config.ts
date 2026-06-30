@@ -31,3 +31,7 @@ export function getStoreId(): string {
   }
   return storeId;
 }
+
+export function getTerminalId(): string {
+  return import.meta.env.VITE_POS_TERMINAL_ID ?? 'pos-1';
+}

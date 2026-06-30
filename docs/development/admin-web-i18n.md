@@ -18,12 +18,12 @@ Defaults:
 ## Usage pattern
 
 ```tsx
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 
 export function ExamplePage() {
   const { t } = useTranslation();
 
-  return <h2>{t('monitoring.title')}</h2>;
+  return <h2>{t("monitoring.title")}</h2>;
 }
 ```
 
@@ -49,10 +49,10 @@ When calling store-edge **command** endpoints from admin-web:
 Store-edge paths must be proxied to `:8081` **before** the central catch-all `/v1` rule in [`vite.config.ts`](../../frontend/apps/admin-web/vite.config.ts):
 
 ```typescript
-'^/v1/stores/[^/]+/(monitoring|terminals|cash-|bank-|business-|operation-journal|operational-days|shifts)'
+"^/v1/stores/[^/]+/(monitoring|terminals|cash-|bank-|business-|operation-journal|operational-days|shifts|returns|credential-management|credential-policy|actors|auth-settings)";
 ```
 
-Also proxy `/v1/operational-days`, `/v1/shifts`, `/v1/receipts`, `/v1/terminals`.
+Also proxy `/v1/operational-days`, `/v1/shifts`, `/v1/receipts`, `/v1/returns`, `/v1/terminals`.
 
 Optional env override: `VITE_STORE_EDGE_URL`.
 
@@ -70,9 +70,11 @@ Import hooks/functions from [`@mercadia/api-clients-store-edge`](../../frontend/
 All store-edge command endpoints require an `Idempotency-Key` header. Use:
 
 ```typescript
-import { createIdempotencyHeaders } from '@/pages/cash-mutation-utils.js';
+import { createIdempotencyHeaders } from "@/pages/cash-mutation-utils.js";
 
-await createCashMovement(storeId, body, { headers: createIdempotencyHeaders() });
+await createCashMovement(storeId, body, {
+  headers: createIdempotencyHeaders(),
+});
 ```
 
 Pattern reference: [`RegisterStorePage.tsx`](../../frontend/apps/admin-web/src/pages/RegisterStorePage.tsx).
@@ -91,15 +93,15 @@ After a successful `202`, invalidate affected React Query keys (see `invalidateS
 Close operational day from [`StoreEodPage.tsx`](../../frontend/apps/admin-web/src/pages/StoreEodPage.tsx) via `closeOperationalDay()`:
 
 ```typescript
-import { createIdempotencyHeaders } from '@/pages/cash-mutation-utils.js';
-import { invalidateEodQueries } from '@/pages/eod-mutation-utils.js';
+import { createIdempotencyHeaders } from "@/pages/cash-mutation-utils.js";
+import { invalidateEodQueries } from "@/pages/eod-mutation-utils.js";
 
 await closeOperationalDay(
   operationalDayId,
   {
     closedById: userId,
     overrideNoSales: true,
-    overrideActorId: 'admin-1',
+    overrideActorId: "admin-1",
   },
   { headers: createIdempotencyHeaders() },
 );
@@ -114,8 +116,11 @@ When the only blocker is `no_sales_receipts` (`requires_admin_override`), send `
 Open operational day from the no-open-day empty state via `openOperationalDay()`:
 
 ```typescript
-import { createIdempotencyHeaders } from '@/pages/cash-mutation-utils.js';
-import { invalidateEodAfterOpen, todayBusinessDate } from '@/pages/eod-mutation-utils.js';
+import { createIdempotencyHeaders } from "@/pages/cash-mutation-utils.js";
+import {
+  invalidateEodAfterOpen,
+  todayBusinessDate,
+} from "@/pages/eod-mutation-utils.js";
 
 const response = await openOperationalDay(
   {
@@ -127,7 +132,11 @@ const response = await openOperationalDay(
 );
 
 if (response.status === 202) {
-  await invalidateEodAfterOpen(queryClient, storeId, response.data.operationalDay.id);
+  await invalidateEodAfterOpen(
+    queryClient,
+    storeId,
+    response.data.operationalDay.id,
+  );
 }
 ```
 
@@ -138,8 +147,8 @@ Returns **409** if the store already has an open day.
 Close cashier shift from the Open Shifts tab via `closeShift()`:
 
 ```typescript
-import { createIdempotencyHeaders } from '@/pages/cash-mutation-utils.js';
-import { invalidateShiftCloseQueries } from '@/pages/shift-mutation-utils.js';
+import { createIdempotencyHeaders } from "@/pages/cash-mutation-utils.js";
+import { invalidateShiftCloseQueries } from "@/pages/shift-mutation-utils.js";
 
 await closeShift(
   shiftId,

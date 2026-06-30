@@ -64,6 +64,7 @@ export function AppSidebar() {
         { to: '/store/safe', labelKey: 'nav.safe' },
         { to: '/store/eod', labelKey: 'nav.eod' },
         { to: '/store/credentials', labelKey: 'nav.credentials' },
+        { to: '/store/settings', labelKey: 'nav.settings' },
       ],
     },
   ];

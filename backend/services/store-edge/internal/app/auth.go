@@ -16,6 +16,7 @@ import (
 var (
 	ErrInvalidAuthCommand = errors.New("invalid auth command")
 	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrAuthLocked         = errors.New("auth locked")
 	ErrSessionNotFound    = errors.New("session not found")
 	ErrSessionExpired     = errors.New("session expired")
 	ErrPermissionDenied   = errors.New("permission denied")
@@ -34,24 +35,41 @@ type StoreCredentialPolicyRepository interface {
 	FindStoreCredentialPolicy(ctx context.Context, storeID string) (domain.CredentialPolicy, error)
 }
 
+type AuthSettingsReader interface {
+	FindStoreAuthSettings(ctx context.Context, storeID string) (domain.StoreAuthSettings, error)
+}
+
+type AuthAttemptRepository interface {
+	SaveAuthAttempt(ctx context.Context, attempt domain.AuthAttempt) error
+	CountFailedAuthAttemptsSinceLastSuccess(ctx context.Context, storeID string, actorID string, since time.Time) (int, error)
+}
+
 type AuthService struct {
 	actors             ActorRepository
 	sessions           SessionRepository
 	credentialPolicies StoreCredentialPolicyRepository
+	authSettings       AuthSettingsReader
+	authAttempts       AuthAttemptRepository
 	now                func() time.Time
 	newToken           func() string
+	newAttemptID       func(prefix string) string
 }
 
 func NewAuthService(actors ActorRepository, sessions SessionRepository) *AuthService {
 	credentialPolicies, _ := actors.(StoreCredentialPolicyRepository)
+	authSettings, _ := actors.(AuthSettingsReader)
+	authAttempts, _ := actors.(AuthAttemptRepository)
 	return &AuthService{
 		actors:             actors,
 		sessions:           sessions,
 		credentialPolicies: credentialPolicies,
+		authSettings:       authSettings,
+		authAttempts:       authAttempts,
 		now: func() time.Time {
 			return time.Now().UTC()
 		},
-		newToken: newSessionToken,
+		newToken:     newSessionToken,
+		newAttemptID: randomID,
 	}
 }
 
@@ -59,6 +77,7 @@ type CreateSessionCommand struct {
 	ActorID          string
 	PIN              string
 	StoreID          string
+	TerminalID       string
 	CredentialFactor *domain.SubmittedCredentialFactor
 }
 
@@ -75,24 +94,65 @@ func (s *AuthService) CreateSession(ctx context.Context, command CreateSessionCo
 		return SessionResult{}, ErrInvalidAuthCommand
 	}
 
+	now := s.now()
+	settings, err := s.storeAuthSettings(ctx, command.StoreID)
+	if err != nil {
+		return SessionResult{}, err
+	}
+	locked, err := s.isAuthLocked(ctx, settings, command.ActorID, now)
+	if err != nil {
+		return SessionResult{}, err
+	}
+	if locked {
+		_ = s.recordAuthAttempt(ctx, authAttemptInput{
+			StoreID:          command.StoreID,
+			ActorID:          command.ActorID,
+			TerminalID:       command.TerminalID,
+			CredentialFactor: command.CredentialFactor,
+			FailureReason:    "locked",
+			Now:              now,
+		})
+		return SessionResult{}, ErrAuthLocked
+	}
+
 	actor, err := s.actors.FindActor(ctx, command.ActorID)
 	if err != nil {
 		if errors.Is(err, ErrActorNotFound) {
+			if err := s.recordFailedAuthAttempt(ctx, settings, command, now, "actor_not_found"); err != nil {
+				return SessionResult{}, err
+			}
 			return SessionResult{}, ErrInvalidCredentials
 		}
 		return SessionResult{}, err
 	}
 	if actor.PIN != command.PIN {
+		if err := s.recordFailedAuthAttempt(ctx, settings, command, now, "invalid_pin"); err != nil {
+			return SessionResult{}, err
+		}
 		return SessionResult{}, ErrInvalidCredentials
 	}
 	credentialFactor, err := s.validateCredentialFactor(ctx, actor, command.StoreID, command.CredentialFactor)
 	if err != nil {
+		if errors.Is(err, ErrInvalidCredentials) {
+			if recordErr := s.recordFailedAuthAttempt(ctx, settings, command, now, "invalid_credential"); recordErr != nil {
+				return SessionResult{}, recordErr
+			}
+		}
 		return SessionResult{}, err
 	}
 
-	now := s.now()
 	session, err := domain.NewSession(actor, s.newToken(), now, 12*time.Hour, credentialFactor)
 	if err != nil {
+		return SessionResult{}, err
+	}
+	if err := s.recordAuthAttempt(ctx, authAttemptInput{
+		StoreID:          command.StoreID,
+		ActorID:          command.ActorID,
+		TerminalID:       command.TerminalID,
+		CredentialFactor: command.CredentialFactor,
+		Successful:       true,
+		Now:              now,
+	}); err != nil {
 		return SessionResult{}, err
 	}
 	if err := s.sessions.SaveSession(ctx, session); err != nil {
@@ -106,6 +166,85 @@ func (s *AuthService) CreateSession(ctx context.Context, command CreateSessionCo
 		CredentialFactor: cloneSessionCredentialFactor(session.CredentialFactor),
 		ExpiresAt:        session.ExpiresAt,
 	}, nil
+}
+
+func (s *AuthService) storeAuthSettings(ctx context.Context, storeID string) (domain.StoreAuthSettings, error) {
+	if s.authSettings == nil {
+		return domain.DefaultStoreAuthSettings(storeID), nil
+	}
+	return s.authSettings.FindStoreAuthSettings(ctx, storeID)
+}
+
+func (s *AuthService) isAuthLocked(ctx context.Context, settings domain.StoreAuthSettings, actorID string, now time.Time) (bool, error) {
+	if s.authAttempts == nil || settings.FailedAttemptLimit <= 0 || settings.LockoutDurationSeconds <= 0 {
+		return false, nil
+	}
+	since := now.Add(-time.Duration(settings.LockoutDurationSeconds) * time.Second)
+	failedCount, err := s.authAttempts.CountFailedAuthAttemptsSinceLastSuccess(ctx, settings.StoreID, actorID, since)
+	if err != nil {
+		return false, err
+	}
+	return failedCount >= settings.FailedAttemptLimit, nil
+}
+
+func (s *AuthService) recordFailedAuthAttempt(ctx context.Context, settings domain.StoreAuthSettings, command CreateSessionCommand, now time.Time, reason string) error {
+	if err := s.recordAuthAttempt(ctx, authAttemptInput{
+		StoreID:          command.StoreID,
+		ActorID:          command.ActorID,
+		TerminalID:       command.TerminalID,
+		CredentialFactor: command.CredentialFactor,
+		FailureReason:    reason,
+		Now:              now,
+	}); err != nil {
+		return err
+	}
+	locked, err := s.isAuthLocked(ctx, settings, command.ActorID, now)
+	if err != nil {
+		return err
+	}
+	if locked {
+		return ErrAuthLocked
+	}
+	return nil
+}
+
+type authAttemptInput struct {
+	StoreID          string
+	ActorID          string
+	TerminalID       string
+	CredentialFactor *domain.SubmittedCredentialFactor
+	Successful       bool
+	FailureReason    string
+	Now              time.Time
+}
+
+func (s *AuthService) recordAuthAttempt(ctx context.Context, input authAttemptInput) error {
+	if s.authAttempts == nil {
+		return nil
+	}
+	var kind domain.CredentialKind
+	fingerprint := ""
+	if input.CredentialFactor != nil {
+		kind = input.CredentialFactor.Kind
+		if input.CredentialFactor.Token != "" {
+			fingerprint = tokenFingerprint(hashCredentialToken(input.CredentialFactor.Token))
+		}
+	}
+	attempt, err := domain.NewAuthAttempt(domain.CreateAuthAttemptInput{
+		ID:                    s.newAttemptID("auth_attempt"),
+		StoreID:               input.StoreID,
+		ActorID:               input.ActorID,
+		TerminalID:            input.TerminalID,
+		CredentialKind:        kind,
+		CredentialFingerprint: fingerprint,
+		Successful:            input.Successful,
+		FailureReason:         input.FailureReason,
+		Now:                   input.Now,
+	})
+	if err != nil {
+		return err
+	}
+	return s.authAttempts.SaveAuthAttempt(ctx, attempt)
 }
 
 func (s *AuthService) ResolveSession(ctx context.Context, token string) (SessionResult, error) {

@@ -34,6 +34,8 @@ type Store struct {
 	outboxEvents       map[string]domain.OutboxEvent
 	actors             map[string]domain.Actor
 	credentialPolicies map[string]domain.CredentialPolicy
+	authSettings       map[string]domain.StoreAuthSettings
+	authAttempts       []domain.AuthAttempt
 	sessions           map[string]domain.Session
 	returns            map[string]domain.Return
 	returnsByStore     map[string][]string
@@ -67,6 +69,8 @@ func NewStore(options ...StoreOption) *Store {
 		outboxEvents:       map[string]domain.OutboxEvent{},
 		actors:             map[string]domain.Actor{},
 		credentialPolicies: map[string]domain.CredentialPolicy{},
+		authSettings:       map[string]domain.StoreAuthSettings{},
+		authAttempts:       []domain.AuthAttempt{},
 		sessions:           map[string]domain.Session{},
 		returns:            map[string]domain.Return{},
 		returnsByStore:     map[string][]string{},

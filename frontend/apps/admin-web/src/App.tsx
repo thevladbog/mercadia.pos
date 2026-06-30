@@ -36,6 +36,7 @@ import { StoreMonitoringPage } from '@/pages/StoreMonitoringPage.js';
 import { StoreSafePage } from '@/pages/StoreSafePage.js';
 import { StoreEodPage } from '@/pages/StoreEodPage.js';
 import { StoreCredentialManagementPage } from '@/pages/StoreCredentialManagementPage.js';
+import { StoreSettingsPage } from '@/pages/StoreSettingsPage.js';
 import { TerminalMonitoringDetailPage } from '@/pages/TerminalMonitoringDetailPage.js';
 import { StoreReportingPage } from '@/pages/StoreReportingPage.js';
 import { SeniorCashierDashboardPage } from '@/pages/SeniorCashierDashboardPage.js';
@@ -97,6 +98,7 @@ export function App() {
             <Route element={<StoreSafePage />} path="/store/safe" />
             <Route element={<StoreEodPage />} path="/store/eod" />
             <Route element={<StoreCredentialManagementPage />} path="/store/credentials" />
+            <Route element={<StoreSettingsPage />} path="/store/settings" />
             <Route
               element={<TerminalMonitoringDetailPage />}
               path="/store/monitoring/stores/:storeId/terminals/:terminalId"

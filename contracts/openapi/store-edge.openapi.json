@@ -167,6 +167,9 @@
                   },
                   "storeId": {
                     "type": "string"
+                  },
+                  "terminalId": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -323,6 +326,40 @@
               }
             },
             "description": "Invalid credentials"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authentication is locked by store policy"
           }
         },
         "summary": "Create cashier session",
@@ -8735,6 +8772,339 @@
         "summary": "Set actor staff credential policy override. Requires `X-Session-Token` header.",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/auth-settings": {
+      "get": {
+        "operationId": "getStoreAuthSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "settings": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "failedAttemptLimit": {
+                          "maximum": 20,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "lockoutDurationSeconds": {
+                          "maximum": 86400,
+                          "minimum": 60,
+                          "type": "integer"
+                        },
+                        "posAutoLockSeconds": {
+                          "maximum": 86400,
+                          "minimum": 30,
+                          "type": "integer"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "updatedById": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "storeId",
+                        "failedAttemptLimit",
+                        "lockoutDurationSeconds",
+                        "posAutoLockSeconds"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "settings"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store authentication settings"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid store auth settings query"
+          }
+        },
+        "summary": "Get terminal-safe store authentication settings",
+        "tags": [
+          "store-settings"
+        ]
+      },
+      "put": {
+        "operationId": "setStoreAuthSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Store Edge session token for the credential manager.",
+            "in": "header",
+            "name": "X-Session-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "failedAttemptLimit": {
+                    "maximum": 20,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "lockoutDurationSeconds": {
+                    "maximum": 86400,
+                    "minimum": 60,
+                    "type": "integer"
+                  },
+                  "posAutoLockSeconds": {
+                    "maximum": 86400,
+                    "minimum": 30,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "failedAttemptLimit",
+                  "lockoutDurationSeconds",
+                  "posAutoLockSeconds"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Store authentication settings command",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "settings": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "failedAttemptLimit": {
+                          "maximum": 20,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "lockoutDurationSeconds": {
+                          "maximum": 86400,
+                          "minimum": 60,
+                          "type": "integer"
+                        },
+                        "posAutoLockSeconds": {
+                          "maximum": 86400,
+                          "minimum": 30,
+                          "type": "integer"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "updatedById": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "storeId",
+                        "failedAttemptLimit",
+                        "lockoutDurationSeconds",
+                        "posAutoLockSeconds"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "settings"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Store authentication settings"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid store auth settings command"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Session is missing or invalid"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Permission denied"
+          }
+        },
+        "summary": "Set store authentication hardening settings. Requires `X-Session-Token` header.",
+        "tags": [
+          "store-settings"
         ]
       }
     },

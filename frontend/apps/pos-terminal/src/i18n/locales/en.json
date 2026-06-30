@@ -32,6 +32,7 @@
     "signIn": "Sign in",
     "signingIn": "Signing in...",
     "invalidCredentials": "Invalid personnel ID, PIN, or credential.",
+    "locked": "Authentication is temporarily locked by store policy.",
     "roleNotAllowed": "This account is not allowed to operate the POS terminal.",
     "attemptsRemaining": "Attempts remaining: {{count}}",
     "blocked": "Access blocked. Contact a senior cashier or admin."
@@ -51,6 +52,8 @@
     "heartbeat": "Heartbeat",
     "heartbeatOnline": "online",
     "heartbeatPending": "pending",
+    "autoLock": "Auto-lock",
+    "autoLockIn": "{{count}}s",
     "checkoutTitle": "Checkout",
     "checkoutDescription": "Store Edge flow: operational day, shift, receipt, scan, mock payment, mock fiscal document.",
     "receipt": "Receipt {{id}}",

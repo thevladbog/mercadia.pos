@@ -18,6 +18,7 @@
     "safe": "Сейф",
     "eod": "Закрытие дня",
     "credentials": "Удостоверения",
+    "settings": "Настройки",
     "seniorCashierDashboard": "Дашборд",
     "seniorCashierChangeFund": "Выдача размена",
     "seniorCashierReceiveCash": "Приём денег",
@@ -715,6 +716,28 @@
       "msr_card": "MSR-карта",
       "barcode_card": "Карта со штрихкодом"
     }
+  },
+  "settings": {
+    "title": "Настройки магазина",
+    "subtitle": "Настройка усиления авторизации и авто-блокировки терминалов на уровне магазина.",
+    "managerActorId": "ID управляющего сотрудника",
+    "managerActorPlaceholder": "admin-1 или senior-1",
+    "managerPin": "PIN управляющего сотрудника",
+    "managerPinPlaceholder": "PIN Store Edge",
+    "managerLogin": "Открыть сессию управляющего",
+    "managerLoggedIn": "Сессия управляющего открыта.",
+    "managerSessionReady": "Сессия Store Edge активна",
+    "managerLoginHint": "Сохранение настроек магазина использует аутентифицированную сессию Store Edge; права проверяются на сервере.",
+    "authPolicy": "Политика авторизации",
+    "authPolicyHint": "Эти значения применяются к блокировке входа кассира и авто-блокировке POS-терминала при простое.",
+    "failedAttemptLimit": "Лимит неудачных попыток",
+    "lockoutDurationSeconds": "Длительность блокировки, секунд",
+    "posAutoLockSeconds": "Авто-блокировка POS, секунд",
+    "rangeHint": "Допустимые диапазоны: попытки 1–20, длительности 60–86400 секунд, авто-блокировка POS 30–86400 секунд.",
+    "updatedBy": "Последнее изменение: {{actorId}}, {{timestamp}}",
+    "save": "Сохранить настройки",
+    "saved": "Настройки магазина сохранены.",
+    "invalidNumber": "Введите положительные числа для всех настроек."
   },
   "branding": {
     "status": {

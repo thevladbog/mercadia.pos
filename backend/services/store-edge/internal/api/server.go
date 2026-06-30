@@ -668,6 +668,8 @@ type storeRepositories interface {
 	app.ActorRepository
 	app.SessionRepository
 	app.CredentialManagementRepository
+	app.StoreAuthSettingsRepository
+	app.AuthAttemptRepository
 	app.ReturnRepository
 	app.OperationJournalRepository
 }
@@ -688,6 +690,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	journal := app.NewOperationJournalService(store)
 	auth := app.NewAuthService(store, store)
 	credentials := app.NewCredentialManagementService(store)
+	storeAuthSettings := app.NewStoreAuthSettingsService(store)
 	terminalEvents := app.NewTerminalEventHub()
 
 	operationalDays := app.NewOperationalDayService(store, store, store, store, store,
@@ -767,6 +770,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	mountMonitoringRoutes(mux, spec, terminalMonitoring)
 	mountDomainRoutes(mux, spec, auth, returns, returnSettlement, fiscalization, discounts, marking, journal)
 	mountCredentialRoutes(mux, spec, auth, credentials)
+	mountStoreSettingsRoutes(mux, spec, auth, storeAuthSettings)
 	mountCatalogSyncRoute(mux, spec, config.catalogSync)
 	mountTerminalEventsRoute(mux, terminalEvents)
 
@@ -2232,7 +2236,9 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_operational_day_command", "Invalid operational day command", err.Error())
 	case errors.Is(err, app.ErrInvalidCredentials):
 		httpapi.WriteProblem(w, http.StatusUnauthorized, "invalid_credentials", "Invalid credentials", err.Error())
-	case errors.Is(err, app.ErrInvalidAuthCommand):
+	case errors.Is(err, app.ErrAuthLocked):
+		httpapi.WriteProblem(w, http.StatusLocked, "auth_locked", "Authentication is locked", err.Error())
+	case errors.Is(err, app.ErrInvalidAuthCommand), errors.Is(err, domain.ErrInvalidStoreAuthSettingsInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_auth_command", "Invalid auth command", err.Error())
 	case errors.Is(err, app.ErrSessionNotFound), errors.Is(err, app.ErrSessionExpired):
 		httpapi.WriteProblem(w, http.StatusUnauthorized, "session_invalid", "Session is invalid or expired", err.Error())
