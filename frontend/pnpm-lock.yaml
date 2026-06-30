@@ -93,6 +93,9 @@ importers:
       '@mercadia/api-clients-central':
         specifier: workspace:*
         version: link:../../packages/api-clients/central
+      '@mercadia/api-clients-hardware-agent':
+        specifier: workspace:*
+        version: link:../../packages/api-clients/hardware-agent
       '@mercadia/api-clients-store-edge':
         specifier: workspace:*
         version: link:../../packages/api-clients/store-edge

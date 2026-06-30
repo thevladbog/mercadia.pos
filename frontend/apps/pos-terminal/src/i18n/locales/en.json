@@ -8,6 +8,34 @@
     "ru": "Russian",
     "en": "English"
   },
+  "auth": {
+    "eyebrow": "Cashier authorization",
+    "loginTitle": "Sign in to POS",
+    "subtitle": "Use your personnel ID, PIN, and staff credential before opening a sale.",
+    "personnelId": "Personnel ID",
+    "personnelIdPlaceholder": "Enter personnel ID",
+    "pin": "PIN code",
+    "pinPlaceholder": "Enter PIN",
+    "credentialKind": "Credential type",
+    "credentialKinds": {
+      "ibutton": "iButton",
+      "msr_card": "MSR card",
+      "barcode_card": "Barcode card"
+    },
+    "credentialPrompt": "Read staff credential with the local reader.",
+    "credentialWaiting": "Waiting for credential...",
+    "credentialDetected": "Credential read successfully.",
+    "credentialError": "Credential reader failed or returned no staff token.",
+    "credentialRequired": "Read staff credential before signing in.",
+    "readCredential": "Read credential",
+    "rereadCredential": "Read again",
+    "signIn": "Sign in",
+    "signingIn": "Signing in...",
+    "invalidCredentials": "Invalid personnel ID, PIN, or credential.",
+    "roleNotAllowed": "This account is not allowed to operate the POS terminal.",
+    "attemptsRemaining": "Attempts remaining: {{count}}",
+    "blocked": "Access blocked. Contact a senior cashier or admin."
+  },
   "pos": {
     "eyebrow": "Checkout cockpit",
     "titleFallback": "POS Terminal",
@@ -68,7 +96,8 @@
       "capturePayment": "Capture payment",
       "fiscalize": "Fiscalize",
       "startSale": "Start sale",
-      "finishSale": "Finish sale"
+      "finishSale": "Finish sale",
+      "logout": "Logout"
     },
     "status": {
       "notPrepared": "Store Edge is not prepared yet.",
