@@ -51,6 +51,12 @@ The POS must support both scanner-driven and manual flows. Scanning a barcode sh
 the matching product line or increment the existing line according to configured behavior.
 Manual entry should allow barcode/SKU/search-based item selection.
 
+The first Store Edge-backed POS sale slice supports terminal preparation, operational day and
+cashier shift readiness, opening a receipt, scanning catalog products by barcode, capturing cash
+or mock card payments, creating a fiscal document through Store Edge, and finishing the sale so the
+next receipt starts from a clean terminal state. Payment history and fiscal document state are
+reloaded from Store Edge when receipt state is refreshed.
+
 ## Receipt Line Behavior
 
 For each line the POS must track:

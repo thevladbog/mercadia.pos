@@ -67,7 +67,8 @@
       "scanProduct": "Scan product",
       "capturePayment": "Capture payment",
       "fiscalize": "Fiscalize",
-      "startSale": "Start sale"
+      "startSale": "Start sale",
+      "finishSale": "Finish sale"
     },
     "status": {
       "notPrepared": "Store Edge is not prepared yet.",
@@ -77,20 +78,26 @@
       "alreadyOpen": "already open",
       "receiptOpened": "Receipt {{receiptId}} opened.",
       "productScanned": "Scanned barcode {{barcode}}.",
+      "tileScanned": "{{product}} tile scanned configured barcode {{barcode}}.",
       "paymentCaptured": "{{method}} payment captured: {{amount}}.",
-      "fiscalCreated": "Fiscal document {{documentId}} created."
+      "fiscalCreated": "Fiscal document {{documentId}} created.",
+      "saleFinished": "Sale finished. Start the next receipt when ready."
     },
     "errors": {
+      "openReceiptFailed": "Receipt was not opened. Check terminal readiness and Store Edge state.",
       "openReceiptBeforeScanning": "Open a receipt before scanning.",
       "receiptNotEditable": "Receipt lines can be changed only before payment starts.",
+      "scanProductFailed": "Product scan was rejected. Check the barcode and catalog state.",
       "openReceiptBeforePayment": "Open a receipt before payment.",
       "positiveReceiptTotalRequired": "Receipt total must be greater than zero.",
       "invalidPaymentAmount": "Enter a positive payment amount.",
       "paymentAmountTooHigh": "Payment amount cannot exceed the remaining amount.",
+      "capturePaymentFailed": "Payment was not captured. Check the payment state and try again.",
       "openReceiptBeforeFiscalization": "Open a receipt before fiscalization.",
       "paidReceiptRequired": "Capture full payment before fiscalization.",
       "paymentAlreadySubmitted": "Payment was already submitted for this receipt.",
-      "fiscalAlreadySubmitted": "Fiscalization was already submitted for this receipt."
+      "fiscalAlreadySubmitted": "Fiscalization was already submitted for this receipt.",
+      "fiscalizationFailed": "Fiscalization was rejected. Check receipt payment and device state."
     }
   }
 }

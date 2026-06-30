@@ -67,7 +67,8 @@
       "scanProduct": "Сканировать товар",
       "capturePayment": "Принять оплату",
       "fiscalize": "Фискализировать",
-      "startSale": "Начать продажу"
+      "startSale": "Начать продажу",
+      "finishSale": "Завершить продажу"
     },
     "status": {
       "notPrepared": "Store Edge еще не подготовлен.",
@@ -77,20 +78,26 @@
       "alreadyOpen": "уже открыт",
       "receiptOpened": "Чек {{receiptId}} открыт.",
       "productScanned": "Штрихкод {{barcode}} добавлен.",
+      "tileScanned": "Плитка {{product}} отправила настроенный штрихкод {{barcode}}.",
       "paymentCaptured": "Оплата {{method}} принята: {{amount}}.",
-      "fiscalCreated": "Фискальный документ {{documentId}} создан."
+      "fiscalCreated": "Фискальный документ {{documentId}} создан.",
+      "saleFinished": "Продажа завершена. Можно начинать следующий чек."
     },
     "errors": {
+      "openReceiptFailed": "Чек не открыт. Проверьте готовность терминала и состояние Store Edge.",
       "openReceiptBeforeScanning": "Откройте чек перед сканированием.",
       "receiptNotEditable": "Строки чека можно менять только до начала оплаты.",
+      "scanProductFailed": "Сканирование товара отклонено. Проверьте штрихкод и состояние каталога.",
       "openReceiptBeforePayment": "Откройте чек перед оплатой.",
       "positiveReceiptTotalRequired": "Сумма чека должна быть больше нуля.",
       "invalidPaymentAmount": "Введите положительную сумму оплаты.",
       "paymentAmountTooHigh": "Сумма оплаты не может превышать остаток.",
+      "capturePaymentFailed": "Оплата не принята. Проверьте состояние оплаты и повторите попытку.",
       "openReceiptBeforeFiscalization": "Откройте чек перед фискализацией.",
       "paidReceiptRequired": "Полностью оплатите чек перед фискализацией.",
       "paymentAlreadySubmitted": "Оплата по этому чеку уже отправлена.",
-      "fiscalAlreadySubmitted": "Фискализация по этому чеку уже отправлена."
+      "fiscalAlreadySubmitted": "Фискализация по этому чеку уже отправлена.",
+      "fiscalizationFailed": "Фискализация отклонена. Проверьте оплату чека и состояние устройства."
     }
   }
 }
