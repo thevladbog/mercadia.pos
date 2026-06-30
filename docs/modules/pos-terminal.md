@@ -24,6 +24,12 @@ Authentication must create a signed cashier session. Failed login attempts must 
 After a configurable number of failures, the terminal or user factor can be locked pending
 supervisor/admin action.
 
+The Store Edge-backed POS terminal login slice creates a Store Edge auth session from personnel ID,
+PIN, and a local Hardware Agent staff credential read (`iButton`, staff MSR card, or barcode staff
+card). The terminal stores the POS session separately from other apps, uses the session actor as the
+cashier for shift and receipt commands, and clears sale state on logout. POS access is limited in
+the UI to cashier, senior cashier, or admin roles; server-side permissions remain authoritative.
+
 The terminal must show:
 
 - Store and terminal identity.

@@ -8,6 +8,34 @@
     "ru": "Русский",
     "en": "English"
   },
+  "auth": {
+    "eyebrow": "Авторизация кассира",
+    "loginTitle": "Вход на POS",
+    "subtitle": "Введите табельный номер, ПИН и считайте удостоверение сотрудника перед продажей.",
+    "personnelId": "Табельный номер",
+    "personnelIdPlaceholder": "Введите табельный номер",
+    "pin": "ПИН-код",
+    "pinPlaceholder": "Введите ПИН",
+    "credentialKind": "Тип удостоверения",
+    "credentialKinds": {
+      "ibutton": "iButton",
+      "msr_card": "MSR-карта",
+      "barcode_card": "Карта со штрихкодом"
+    },
+    "credentialPrompt": "Считайте удостоверение сотрудника локальным считывателем.",
+    "credentialWaiting": "Ожидание удостоверения...",
+    "credentialDetected": "Удостоверение считано: {{value}}",
+    "credentialError": "Считыватель не сработал или не вернул staff token.",
+    "credentialRequired": "Считайте удостоверение сотрудника перед входом.",
+    "readCredential": "Считать удостоверение",
+    "rereadCredential": "Считать снова",
+    "signIn": "Войти",
+    "signingIn": "Вход...",
+    "invalidCredentials": "Неверный табельный номер, ПИН или удостоверение.",
+    "roleNotAllowed": "Этой учётной записи нельзя работать на POS-терминале.",
+    "attemptsRemaining": "Осталось попыток: {{count}}",
+    "blocked": "Доступ заблокирован. Обратитесь к старшему кассиру или администратору."
+  },
   "pos": {
     "eyebrow": "Рабочее место кассира",
     "titleFallback": "POS-терминал",
@@ -68,7 +96,8 @@
       "capturePayment": "Принять оплату",
       "fiscalize": "Фискализировать",
       "startSale": "Начать продажу",
-      "finishSale": "Завершить продажу"
+      "finishSale": "Завершить продажу",
+      "logout": "Выйти"
     },
     "status": {
       "notPrepared": "Store Edge еще не подготовлен.",

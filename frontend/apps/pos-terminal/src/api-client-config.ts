@@ -2,6 +2,7 @@ import {
   setApiBaseUrl as setCentralApiBaseUrl,
   setSessionToken as setCentralSessionToken,
 } from '@mercadia/api-clients-central';
+import { setApiBaseUrl as setHardwareAgentApiBaseUrl } from '@mercadia/api-clients-hardware-agent';
 import {
   setApiBaseUrl as setStoreEdgeApiBaseUrl,
   setSessionToken as setStoreEdgeSessionToken,
@@ -10,6 +11,7 @@ import {
 export function configureApiClients(): void {
   setCentralApiBaseUrl(import.meta.env.VITE_CENTRAL_BACKEND_URL ?? '');
   setStoreEdgeApiBaseUrl(import.meta.env.VITE_STORE_EDGE_URL ?? '');
+  setHardwareAgentApiBaseUrl(import.meta.env.VITE_HARDWARE_AGENT_URL ?? '');
 
   const centralToken = import.meta.env.VITE_CENTRAL_SESSION_TOKEN;
   if (centralToken) {
@@ -20,4 +22,8 @@ export function configureApiClients(): void {
   if (storeEdgeToken) {
     setStoreEdgeSessionToken(storeEdgeToken);
   }
+}
+
+export function getStoreId(): string {
+  return import.meta.env.VITE_POS_STORE_ID ?? 'store-1';
 }

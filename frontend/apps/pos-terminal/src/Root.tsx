@@ -41,9 +41,16 @@ import {
   type LayoutGridSpec,
 } from '@mercadia/ui';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 
+import { AuthProvider, useAuth } from '@/auth/AuthProvider.js';
+import {
+  readStaffCredential,
+  type StaffCredentialKind,
+  type StaffCredentialRead,
+} from '@/auth/credential.js';
+import type { SessionResult } from '@/auth/types.js';
 import { changeAppLocale, i18n, type AppLocale } from '@/i18n/config.js';
 import { queryClient } from '@/query-client.js';
 
@@ -51,6 +58,9 @@ const ALL_CATEGORIES = '__all__';
 const PAYMENT_METHOD_CARD_MOCK = 'card_mock' satisfies CreateReceiptPaymentBody['method'];
 const PAYMENT_METHOD_CASH = 'cash' satisfies CreateReceiptPaymentBody['method'];
 const HEARTBEAT_INTERVAL_MS = 30_000;
+const CREDENTIAL_KINDS: StaffCredentialKind[] = ['ibutton', 'msr_card', 'barcode_card'];
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_ATTEMPTS_KEY = 'mercadia.pos-terminal.login-attempts';
 
 type PaymentAttempt = CreateReceiptPaymentBody & {
   idempotencyKey: string;
@@ -76,10 +86,33 @@ function envValue(name: string, fallback: string): string {
   return (import.meta.env[name] as string | undefined) ?? fallback;
 }
 
+function loadLoginAttempts(): number {
+  try {
+    return parseInt(sessionStorage.getItem(LOGIN_ATTEMPTS_KEY) ?? '0', 10) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveLoginAttempts(attempts: number): void {
+  try {
+    sessionStorage.setItem(LOGIN_ATTEMPTS_KEY, String(attempts));
+  } catch {
+    /* noop */
+  }
+}
+
+function clearLoginAttempts(): void {
+  try {
+    sessionStorage.removeItem(LOGIN_ATTEMPTS_KEY);
+  } catch {
+    /* noop */
+  }
+}
+
 const terminalConfig = {
   storeId: envValue('VITE_POS_STORE_ID', 'store-1'),
   terminalId: envValue('VITE_POS_TERMINAL_ID', 'pos-1'),
-  cashierId: envValue('VITE_POS_CASHIER_ID', 'cashier-1'),
   drawerId: envValue('VITE_POS_DRAWER_ID', 'drawer-1'),
   openedById: envValue('VITE_POS_OPENED_BY_ID', 'admin-1'),
   fiscalDeviceId: envValue('VITE_POS_FISCAL_DEVICE_ID', 'fiscal-1'),
@@ -194,7 +227,217 @@ function settledPaymentAmountMinor(payment: ReceiptPayment): number {
   }
 }
 
-function TerminalShell() {
+function canUsePosSession(session: SessionResult): boolean {
+  return session.roles.some(
+    (role) => role === 'cashier' || role === 'senior_cashier' || role === 'admin',
+  );
+}
+
+function LoginScreen() {
+  const { t, i18n: activeI18n } = useTranslation();
+  const { login, logout } = useAuth();
+  const [personnelId, setPersonnelId] = useState('');
+  const [pin, setPin] = useState('');
+  const [credentialKind, setCredentialKind] = useState<StaffCredentialKind>('ibutton');
+  const [credentialRead, setCredentialRead] = useState<StaffCredentialRead | null>(null);
+  const [credentialStatus, setCredentialStatus] = useState<
+    'idle' | 'waiting' | 'detected' | 'error'
+  >('idle');
+  const [attempts, setAttempts] = useState(loadLoginAttempts);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [credentialError, setCredentialError] = useState('');
+  const readAbortControllerRef = useRef<AbortController | null>(null);
+  const isBlocked = attempts >= MAX_LOGIN_ATTEMPTS;
+
+  useEffect(() => {
+    return () => {
+      readAbortControllerRef.current?.abort();
+      readAbortControllerRef.current = null;
+    };
+  }, []);
+
+  function selectCredentialKind(kind: StaffCredentialKind): void {
+    readAbortControllerRef.current?.abort();
+    setCredentialKind(kind);
+    setCredentialRead(null);
+    setCredentialStatus('idle');
+    setCredentialError('');
+    setAuthError('');
+  }
+
+  async function handleCredentialRead(): Promise<void> {
+    readAbortControllerRef.current?.abort();
+    const abortController = new AbortController();
+    readAbortControllerRef.current = abortController;
+    setCredentialStatus('waiting');
+    setCredentialError('');
+    setAuthError('');
+    try {
+      const nextCredentialRead = await readStaffCredential(credentialKind, abortController.signal);
+      if (abortController.signal.aborted) return;
+      setCredentialRead(nextCredentialRead);
+      setCredentialStatus('detected');
+    } catch {
+      if (abortController.signal.aborted) return;
+      setCredentialRead(null);
+      setCredentialStatus('error');
+      setCredentialError(t('auth.credentialError'));
+    } finally {
+      if (readAbortControllerRef.current === abortController) {
+        readAbortControllerRef.current = null;
+      }
+    }
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (isSubmitting || isBlocked) return;
+    if (!personnelId || !pin) {
+      setAuthError(t('auth.invalidCredentials'));
+      return;
+    }
+    if (!credentialRead || credentialRead.factor.kind !== credentialKind) {
+      setAuthError(t('auth.credentialRequired'));
+      return;
+    }
+
+    setIsSubmitting(true);
+    setAuthError('');
+    setCredentialError('');
+    try {
+      const session = await login(personnelId, pin, credentialRead.factor);
+      if (!canUsePosSession(session)) {
+        logout();
+        setAuthError(t('auth.roleNotAllowed'));
+        return;
+      }
+      clearLoginAttempts();
+      setAttempts(0);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Invalid credentials') {
+        const nextAttempts = attempts + 1;
+        setAttempts(nextAttempts);
+        saveLoginAttempts(nextAttempts);
+      }
+      setAuthError(t('auth.invalidCredentials'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <main className="pos-login-shell">
+      <section className="pos-login-card" aria-labelledby="pos-login-title">
+        <div className="pos-login-header">
+          <p className="eyebrow">{t('auth.eyebrow')}</p>
+          <h1 id="pos-login-title">{t('auth.loginTitle')}</h1>
+          <p className="muted">{t('auth.subtitle')}</p>
+        </div>
+
+        <form className="pos-login-form" onSubmit={handleSubmit}>
+          <Field>
+            <Label htmlFor="pos-personnel-id-input">{t('auth.personnelId')}</Label>
+            <Input
+              autoFocus
+              disabled={isSubmitting}
+              id="pos-personnel-id-input"
+              onChange={(event) => setPersonnelId(event.target.value)}
+              placeholder={t('auth.personnelIdPlaceholder')}
+              value={personnelId}
+            />
+          </Field>
+
+          <Field>
+            <Label htmlFor="pos-pin-input">{t('auth.pin')}</Label>
+            <Input
+              disabled={isSubmitting}
+              id="pos-pin-input"
+              onChange={(event) => setPin(event.target.value)}
+              placeholder={t('auth.pinPlaceholder')}
+              type="password"
+              value={pin}
+            />
+          </Field>
+
+          <Field>
+            <Label>{t('auth.credentialKind')}</Label>
+            <div
+              className="credential-kind-grid"
+              role="group"
+              aria-label={t('auth.credentialKind')}
+            >
+              {CREDENTIAL_KINDS.map((kind) => (
+                <Button
+                  key={kind}
+                  type="button"
+                  variant={credentialKind === kind ? 'primary' : 'secondary'}
+                  disabled={isSubmitting || credentialStatus === 'waiting'}
+                  aria-pressed={credentialKind === kind}
+                  onClick={() => selectCredentialKind(kind)}
+                >
+                  {t(`auth.credentialKinds.${kind}`)}
+                </Button>
+              ))}
+            </div>
+          </Field>
+
+          <div className="credential-read-row">
+            <span className="muted">
+              {credentialStatus === 'idle' && t('auth.credentialPrompt')}
+              {credentialStatus === 'waiting' && t('auth.credentialWaiting')}
+              {credentialStatus === 'detected' &&
+                t('auth.credentialDetected', {
+                  value: credentialRead?.maskedToken ?? t(`auth.credentialKinds.${credentialKind}`),
+                })}
+              {credentialStatus === 'error' && t('auth.credentialError')}
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isSubmitting || credentialStatus === 'waiting'}
+              onClick={() => void handleCredentialRead()}
+            >
+              {credentialStatus === 'detected'
+                ? t('auth.rereadCredential')
+                : t('auth.readCredential')}
+            </Button>
+          </div>
+
+          <Field>
+            <Label htmlFor="pos-login-language-select">{t('language.label')}</Label>
+            <Select
+              id="pos-login-language-select"
+              value={activeI18n.language}
+              onChange={(event) => changeAppLocale(event.target.value as AppLocale)}
+            >
+              <option value="ru">{t('language.ru')}</option>
+              <option value="en">{t('language.en')}</option>
+            </Select>
+          </Field>
+
+          {isBlocked && <p className="error">{t('auth.blocked')}</p>}
+          {!isBlocked && authError && <p className="error">{authError}</p>}
+          {credentialError && <p className="error">{credentialError}</p>}
+          {attempts > 0 && !isBlocked && (
+            <p className="error">
+              {t('auth.attemptsRemaining', { count: MAX_LOGIN_ATTEMPTS - attempts })}
+            </p>
+          )}
+
+          <Button
+            type="submit"
+            disabled={isBlocked || isSubmitting || !personnelId || !pin || !credentialRead}
+          >
+            {isSubmitting ? t('auth.signingIn') : t('auth.signIn')}
+          </Button>
+        </form>
+      </section>
+    </main>
+  );
+}
+
+function TerminalShell({ session, logout }: { session: SessionResult; logout: () => void }) {
   const { t, i18n: activeI18n } = useTranslation();
   const templateId = useMemo(() => resolveTemplateId(), []);
   const templateQuery = useGetLayoutTemplate(templateId, {
@@ -261,6 +504,26 @@ function TerminalShell() {
       window.clearInterval(intervalId);
     };
   }, []);
+
+  useEffect(() => {
+    const expiresAt = new Date(session.expiresAt).getTime();
+    if (!Number.isFinite(expiresAt)) return;
+    const delayMs = Math.max(expiresAt - Date.now(), 0);
+    const timeoutId = window.setTimeout(() => {
+      setReceipt(null);
+      setPayments([]);
+      setPaymentAttempt(null);
+      setPaymentAmountInput('');
+      setFiscalDocument(null);
+      setFiscalAttempt(null);
+      setBarcode(terminalConfig.demoBarcode);
+      setTerminalReady(false);
+      setStatusMessage({ key: 'pos.status.notPrepared' });
+      setErrorMessage(null);
+      logout();
+    }, delayMs);
+    return () => window.clearTimeout(timeoutId);
+  }, [logout, session.expiresAt]);
 
   const grid: LayoutGridSpec = useMemo(
     () =>
@@ -372,6 +635,14 @@ function TerminalShell() {
     setBarcode(terminalConfig.demoBarcode);
   }
 
+  function handleLogout(): void {
+    clearSaleState();
+    setTerminalReady(false);
+    setStatusMessage({ key: 'pos.status.notPrepared' });
+    setErrorMessage(null);
+    logout();
+  }
+
   async function prepareTerminal(): Promise<void> {
     await runCommand('pos.actions.prepareTerminal', async () => {
       let operationalDayId = '';
@@ -403,7 +674,7 @@ function TerminalShell() {
       try {
         await openShift(
           {
-            cashierId: terminalConfig.cashierId,
+            cashierId: session.actorId,
             drawerId: terminalConfig.drawerId,
             openingCashMinor: 0,
             storeId: terminalConfig.storeId,
@@ -431,7 +702,7 @@ function TerminalShell() {
     await runCommand('pos.actions.openReceipt', async () => {
       const response = await openReceipt(
         {
-          cashierId: terminalConfig.cashierId,
+          cashierId: session.actorId,
           channel: 'pos',
           storeId: terminalConfig.storeId,
           terminalId: terminalConfig.terminalId,
@@ -636,6 +907,9 @@ function TerminalShell() {
           <Button type="button" disabled={isBusy} onClick={() => void prepareTerminal()}>
             {terminalReady ? t('pos.actions.refreshReadiness') : t('pos.actions.prepareTerminal')}
           </Button>
+          <Button type="button" variant="secondary" disabled={isBusy} onClick={handleLogout}>
+            {t('pos.actions.logout')}
+          </Button>
         </div>
       </header>
 
@@ -650,7 +924,7 @@ function TerminalShell() {
         </div>
         <div>
           <span>{t('pos.cashier')}</span>
-          <strong>{terminalConfig.cashierId}</strong>
+          <strong>{session.actorId}</strong>
         </div>
         <div>
           <span>{t('pos.drawer')}</span>
@@ -875,12 +1149,24 @@ function TerminalShell() {
   );
 }
 
+function App() {
+  const { session, logout } = useAuth();
+
+  if (!session) {
+    return <LoginScreen />;
+  }
+
+  return <TerminalShell session={session} logout={logout} />;
+}
+
 export function Root() {
   return (
     <ThemeProvider defaultTheme={{ surface: 'terminal', colorMode: 'light', accentPreset: 'sale' }}>
       <I18nextProvider i18n={i18n}>
         <QueryClientProvider client={queryClient}>
-          <TerminalShell />
+          <AuthProvider>
+            <App />
+          </AuthProvider>
         </QueryClientProvider>
       </I18nextProvider>
     </ThemeProvider>
