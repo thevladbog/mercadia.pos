@@ -137,6 +137,12 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	if _, ok := paths["/v1/stores/{storeId}/auth-settings"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/auth-settings path")
 	}
+	if _, ok := paths["/v1/stores/{storeId}/auth-attempts"]; !ok {
+		t.Fatal("expected /v1/stores/{storeId}/auth-attempts path")
+	}
+	if _, ok := paths["/v1/stores/{storeId}/auth-lockouts/{actorId}/reset"]; !ok {
+		t.Fatal("expected /v1/stores/{storeId}/auth-lockouts/{actorId}/reset path")
+	}
 	if _, ok := paths["/v1/stores/{storeId}/catalog/sync"]; !ok {
 		t.Fatal("expected /v1/stores/{storeId}/catalog/sync path")
 	}
@@ -351,6 +357,104 @@ func TestAuthSessionLocksAfterConfiguredFailedAttempts(t *testing.T) {
 	server.ServeHTTP(correctWhileLocked, correctWhileLockedRequest)
 	if correctWhileLocked.Code != http.StatusLocked {
 		t.Fatalf("correct login while locked status = %d, body = %s", correctWhileLocked.Code, correctWhileLocked.Body.String())
+	}
+
+	audit := httptest.NewRecorder()
+	auditRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/auth-attempts?actorId=cashier-1&limit=10", nil)
+	auditRequest.Header.Set(sessionTokenHeader, adminToken)
+	server.ServeHTTP(audit, auditRequest)
+	if audit.Code != http.StatusOK {
+		t.Fatalf("auth attempts status = %d, body = %s", audit.Code, audit.Body.String())
+	}
+	var auditResponse AuthAttemptsResponse
+	if err := json.Unmarshal(audit.Body.Bytes(), &auditResponse); err != nil {
+		t.Fatalf("decode auth attempts: %v", err)
+	}
+	if auditResponse.TotalCount < 3 || len(auditResponse.Items) == 0 {
+		t.Fatalf("auth attempts response = %+v", auditResponse)
+	}
+	for _, item := range auditResponse.Items {
+		if item.ActorID != "cashier-1" || item.StoreID != "store-1" {
+			t.Fatalf("unexpected auth attempt item = %+v", item)
+		}
+	}
+
+	reset := httptest.NewRecorder()
+	resetRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/auth-lockouts/cashier-1/reset", bytes.NewBufferString(`{"reason":"manager verified cashier"}`))
+	resetRequest.Header.Set(sessionTokenHeader, adminToken)
+	resetRequest.Header.Set("Idempotency-Key", "auth-lockout-reset-cashier")
+	server.ServeHTTP(reset, resetRequest)
+	if reset.Code != http.StatusOK {
+		t.Fatalf("reset auth lockout status = %d, body = %s", reset.Code, reset.Body.String())
+	}
+
+	resetReplay := httptest.NewRecorder()
+	resetReplayRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/auth-lockouts/cashier-1/reset", bytes.NewBufferString(`{"reason":"manager verified cashier"}`))
+	resetReplayRequest.Header.Set(sessionTokenHeader, adminToken)
+	resetReplayRequest.Header.Set("Idempotency-Key", "auth-lockout-reset-cashier")
+	server.ServeHTTP(resetReplay, resetReplayRequest)
+	if resetReplay.Code != http.StatusOK {
+		t.Fatalf("reset auth lockout replay status = %d, body = %s", resetReplay.Code, resetReplay.Body.String())
+	}
+	if resetReplay.Body.String() != reset.Body.String() {
+		t.Fatalf("reset auth lockout replay body = %s, want %s", resetReplay.Body.String(), reset.Body.String())
+	}
+
+	correctAfterReset := httptest.NewRecorder()
+	correctAfterResetRequest := httptest.NewRequest(http.MethodPost, "/v1/auth/sessions", bytes.NewBufferString(`{
+		"actorId": "cashier-1",
+		"pin": "1234",
+		"storeId": "store-1",
+		"terminalId": "pos-1"
+	}`))
+	server.ServeHTTP(correctAfterReset, correctAfterResetRequest)
+	if correctAfterReset.Code != http.StatusCreated {
+		t.Fatalf("correct login after reset status = %d, body = %s", correctAfterReset.Code, correctAfterReset.Body.String())
+	}
+}
+
+func TestAuthAttemptsAuditRequiresPermissionAndDoesNotExposeRawCredential(t *testing.T) {
+	server := NewServer()
+
+	failed := httptest.NewRecorder()
+	failedRequest := httptest.NewRequest(http.MethodPost, "/v1/auth/sessions", bytes.NewBufferString(`{
+		"actorId": "cashier-1",
+		"pin": "1234",
+		"storeId": "store-1",
+		"terminalId": "pos-1",
+		"credentialFactor": {"kind": "barcode_card", "token": "raw-secret-token"}
+	}`))
+	server.ServeHTTP(failed, failedRequest)
+	if failed.Code != http.StatusUnauthorized {
+		t.Fatalf("failed credential login status = %d, body = %s", failed.Code, failed.Body.String())
+	}
+
+	cashierToken := createAuthSessionForTest(t, server, "cashier-1", "1234")
+	forbidden := httptest.NewRecorder()
+	forbiddenRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/auth-attempts", nil)
+	forbiddenRequest.Header.Set(sessionTokenHeader, cashierToken)
+	server.ServeHTTP(forbidden, forbiddenRequest)
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("auth attempts cashier status = %d, body = %s", forbidden.Code, forbidden.Body.String())
+	}
+
+	adminToken := createAuthSessionForTest(t, server, "admin-1", "9999")
+	audit := httptest.NewRecorder()
+	auditRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/auth-attempts?actorId=cashier-1&successful=false", nil)
+	auditRequest.Header.Set(sessionTokenHeader, adminToken)
+	server.ServeHTTP(audit, auditRequest)
+	if audit.Code != http.StatusOK {
+		t.Fatalf("auth attempts admin status = %d, body = %s", audit.Code, audit.Body.String())
+	}
+	if bytes.Contains(audit.Body.Bytes(), []byte("raw-secret-token")) {
+		t.Fatalf("auth attempt audit exposed raw credential: %s", audit.Body.String())
+	}
+	var response AuthAttemptsResponse
+	if err := json.Unmarshal(audit.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode auth attempts: %v", err)
+	}
+	if response.TotalCount == 0 || response.Items[0].CredentialFingerprint == "" || response.Items[0].CredentialKind != "barcode_card" {
+		t.Fatalf("auth attempts response = %+v", response)
 	}
 }
 

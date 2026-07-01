@@ -737,7 +737,25 @@
     "updatedBy": "Last updated by {{actorId}} at {{timestamp}}",
     "save": "Save settings",
     "saved": "Store settings saved.",
-    "invalidNumber": "Enter values within the allowed ranges for all settings."
+    "invalidNumber": "Enter values within the allowed ranges for all settings.",
+    "authAudit": "Authentication audit",
+    "authAuditHint": "Review recent login attempts and reset a cashier lockout after manager verification.",
+    "authAuditActorId": "Actor filter",
+    "authAuditActorPlaceholder": "cashier-1",
+    "authAuditActorRequired": "Enter an actor ID to reset lockout.",
+    "authAuditLoginRequired": "Start a manager session to view auth audit and reset lockouts.",
+    "authAuditEmpty": "No authentication attempts found.",
+    "authAuditTime": "Time",
+    "authAuditActor": "Actor",
+    "authAuditTerminal": "Terminal",
+    "authAuditStatus": "Status",
+    "authAuditReason": "Reason",
+    "authAuditCredential": "Credential",
+    "authAuditSuccess": "Success",
+    "authAuditFailure": "Failure",
+    "authResetLockout": "Reset lockout",
+    "authResetReason": "Manager reset from Store Settings",
+    "authLockoutReset": "Authentication lockout reset."
   },
   "branding": {
     "status": {

@@ -834,6 +834,31 @@ func (s *Store) Find(ctx context.Context, operation string, key string) (app.Ide
 	return record, true, nil
 }
 
+func (s *Store) Claim(ctx context.Context, record app.IdempotencyRecord) (bool, error) {
+	resultJSON, err := json.Marshal(record.Result)
+	if err != nil {
+		return false, fmt.Errorf("marshal idempotency result: %w", err)
+	}
+
+	tag, err := s.conn(ctx).Exec(ctx, `
+		INSERT INTO idempotency_records (
+			operation, key, target_id, fingerprint, result, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (operation, key) DO NOTHING
+	`,
+		record.Operation,
+		record.Key,
+		record.TargetID,
+		record.Fingerprint,
+		resultJSON,
+		record.CreatedAt,
+	)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
 func (s *Store) Save(ctx context.Context, record app.IdempotencyRecord) error {
 	resultJSON, err := json.Marshal(record.Result)
 	if err != nil {
@@ -946,8 +971,14 @@ func decodeIdempotencyResult(operation string, data []byte) (any, error) {
 			return nil, err
 		}
 		return result, nil
-	case strings.HasPrefix(operation, "store_settings."):
+	case operation == "store_settings.set_auth_settings":
 		var result app.StoreAuthSettingsResult
+		if err := json.Unmarshal(data, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
+	case operation == "store_settings.reset_auth_lockout":
+		var result app.AuthLockoutResetResult
 		if err := json.Unmarshal(data, &result); err != nil {
 			return nil, err
 		}

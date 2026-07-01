@@ -27,6 +27,18 @@ import type {
 import type {
   GetStoreAuthSettings200,
   GetStoreAuthSettings400,
+  ListStoreAuthAttempts200,
+  ListStoreAuthAttempts400,
+  ListStoreAuthAttempts401,
+  ListStoreAuthAttempts403,
+  ListStoreAuthAttemptsParams,
+  ResetStoreAuthLockout200,
+  ResetStoreAuthLockout400,
+  ResetStoreAuthLockout401,
+  ResetStoreAuthLockout403,
+  ResetStoreAuthLockout404,
+  ResetStoreAuthLockout409,
+  ResetStoreAuthLockoutBody,
   SetStoreAuthSettings200,
   SetStoreAuthSettings400,
   SetStoreAuthSettings401,
@@ -57,7 +69,262 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type getStoreAuthSettingsResponse200 = {
+export type listStoreAuthAttemptsResponse200 = {
+  data: ListStoreAuthAttempts200
+  status: 200
+}
+
+export type listStoreAuthAttemptsResponse400 = {
+  data: ListStoreAuthAttempts400
+  status: 400
+}
+
+export type listStoreAuthAttemptsResponse401 = {
+  data: ListStoreAuthAttempts401
+  status: 401
+}
+
+export type listStoreAuthAttemptsResponse403 = {
+  data: ListStoreAuthAttempts403
+  status: 403
+}
+
+export type listStoreAuthAttemptsResponseSuccess = (listStoreAuthAttemptsResponse200) & {
+  headers: Headers;
+};
+export type listStoreAuthAttemptsResponseError = (listStoreAuthAttemptsResponse400 | listStoreAuthAttemptsResponse401 | listStoreAuthAttemptsResponse403) & {
+  headers: Headers;
+};
+
+export type listStoreAuthAttemptsResponse = (listStoreAuthAttemptsResponseSuccess | listStoreAuthAttemptsResponseError)
+
+export const getListStoreAuthAttemptsUrl = (storeId: string,
+    params?: ListStoreAuthAttemptsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/stores/${storeId}/auth-attempts?${stringifiedParams}` : `/v1/stores/${storeId}/auth-attempts`
+}
+
+/**
+ * @summary List store authentication audit attempts. Requires `X-Session-Token` header.
+ */
+export const listStoreAuthAttempts = async (storeId: string,
+    params?: ListStoreAuthAttemptsParams, options?: RequestInit): Promise<listStoreAuthAttemptsResponse> => {
+
+  return customFetch<listStoreAuthAttemptsResponse>(getListStoreAuthAttemptsUrl(storeId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStoreAuthAttemptsQueryKey = (storeId: string,
+    params?: ListStoreAuthAttemptsParams,) => {
+    return [
+    `/v1/stores/${storeId}/auth-attempts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListStoreAuthAttemptsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreAuthAttempts>>, TError = ListStoreAuthAttempts400 | ListStoreAuthAttempts401 | ListStoreAuthAttempts403>(storeId: string,
+    params?: ListStoreAuthAttemptsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreAuthAttempts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStoreAuthAttemptsQueryKey(storeId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStoreAuthAttempts>>> = ({ signal }) => listStoreAuthAttempts(storeId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: storeId !== null && storeId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStoreAuthAttempts>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListStoreAuthAttemptsQueryResult = NonNullable<Awaited<ReturnType<typeof listStoreAuthAttempts>>>
+export type ListStoreAuthAttemptsQueryError = ListStoreAuthAttempts400 | ListStoreAuthAttempts401 | ListStoreAuthAttempts403
+
+
+export function useListStoreAuthAttempts<TData = Awaited<ReturnType<typeof listStoreAuthAttempts>>, TError = ListStoreAuthAttempts400 | ListStoreAuthAttempts401 | ListStoreAuthAttempts403>(
+ storeId: string,
+    params: undefined |  ListStoreAuthAttemptsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreAuthAttempts>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listStoreAuthAttempts>>,
+          TError,
+          Awaited<ReturnType<typeof listStoreAuthAttempts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListStoreAuthAttempts<TData = Awaited<ReturnType<typeof listStoreAuthAttempts>>, TError = ListStoreAuthAttempts400 | ListStoreAuthAttempts401 | ListStoreAuthAttempts403>(
+ storeId: string,
+    params?: ListStoreAuthAttemptsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreAuthAttempts>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listStoreAuthAttempts>>,
+          TError,
+          Awaited<ReturnType<typeof listStoreAuthAttempts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListStoreAuthAttempts<TData = Awaited<ReturnType<typeof listStoreAuthAttempts>>, TError = ListStoreAuthAttempts400 | ListStoreAuthAttempts401 | ListStoreAuthAttempts403>(
+ storeId: string,
+    params?: ListStoreAuthAttemptsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreAuthAttempts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List store authentication audit attempts. Requires `X-Session-Token` header.
+ */
+
+export function useListStoreAuthAttempts<TData = Awaited<ReturnType<typeof listStoreAuthAttempts>>, TError = ListStoreAuthAttempts400 | ListStoreAuthAttempts401 | ListStoreAuthAttempts403>(
+ storeId: string,
+    params?: ListStoreAuthAttemptsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreAuthAttempts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListStoreAuthAttemptsQueryOptions(storeId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type resetStoreAuthLockoutResponse200 = {
+  data: ResetStoreAuthLockout200
+  status: 200
+}
+
+export type resetStoreAuthLockoutResponse400 = {
+  data: ResetStoreAuthLockout400
+  status: 400
+}
+
+export type resetStoreAuthLockoutResponse401 = {
+  data: ResetStoreAuthLockout401
+  status: 401
+}
+
+export type resetStoreAuthLockoutResponse403 = {
+  data: ResetStoreAuthLockout403
+  status: 403
+}
+
+export type resetStoreAuthLockoutResponse404 = {
+  data: ResetStoreAuthLockout404
+  status: 404
+}
+
+export type resetStoreAuthLockoutResponse409 = {
+  data: ResetStoreAuthLockout409
+  status: 409
+}
+
+export type resetStoreAuthLockoutResponseSuccess = (resetStoreAuthLockoutResponse200) & {
+  headers: Headers;
+};
+export type resetStoreAuthLockoutResponseError = (resetStoreAuthLockoutResponse400 | resetStoreAuthLockoutResponse401 | resetStoreAuthLockoutResponse403 | resetStoreAuthLockoutResponse404 | resetStoreAuthLockoutResponse409) & {
+  headers: Headers;
+};
+
+export type resetStoreAuthLockoutResponse = (resetStoreAuthLockoutResponseSuccess | resetStoreAuthLockoutResponseError)
+
+export const getResetStoreAuthLockoutUrl = (storeId: string,
+    actorId: string,) => {
+
+
+
+
+  return `/v1/stores/${storeId}/auth-lockouts/${actorId}/reset`
+}
+
+/**
+ * @summary Reset a store auth lockout for an actor. Requires `X-Session-Token` header.
+ */
+export const resetStoreAuthLockout = async (storeId: string,
+    actorId: string,
+    resetStoreAuthLockoutBody?: ResetStoreAuthLockoutBody, options?: RequestInit): Promise<resetStoreAuthLockoutResponse> => {
+
+  return customFetch<resetStoreAuthLockoutResponse>(getResetStoreAuthLockoutUrl(storeId,actorId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(resetStoreAuthLockoutBody)
+  }
+);}
+
+
+
+
+export const getResetStoreAuthLockoutMutationOptions = <TError = ResetStoreAuthLockout400 | ResetStoreAuthLockout401 | ResetStoreAuthLockout403 | ResetStoreAuthLockout404 | ResetStoreAuthLockout409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetStoreAuthLockout>>, TError,{storeId: string;actorId: string;data?: ResetStoreAuthLockoutBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetStoreAuthLockout>>, TError,{storeId: string;actorId: string;data?: ResetStoreAuthLockoutBody}, TContext> => {
+
+const mutationKey = ['resetStoreAuthLockout'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetStoreAuthLockout>>, {storeId: string;actorId: string;data?: ResetStoreAuthLockoutBody}> = (props) => {
+          const {storeId,actorId,data} = props ?? {};
+
+          return  resetStoreAuthLockout(storeId,actorId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetStoreAuthLockoutMutationResult = NonNullable<Awaited<ReturnType<typeof resetStoreAuthLockout>>>
+    export type ResetStoreAuthLockoutMutationBody = ResetStoreAuthLockoutBody | undefined
+    export type ResetStoreAuthLockoutMutationError = ResetStoreAuthLockout400 | ResetStoreAuthLockout401 | ResetStoreAuthLockout403 | ResetStoreAuthLockout404 | ResetStoreAuthLockout409
+
+    /**
+ * @summary Reset a store auth lockout for an actor. Requires `X-Session-Token` header.
+ */
+export const useResetStoreAuthLockout = <TError = ResetStoreAuthLockout400 | ResetStoreAuthLockout401 | ResetStoreAuthLockout403 | ResetStoreAuthLockout404 | ResetStoreAuthLockout409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetStoreAuthLockout>>, TError,{storeId: string;actorId: string;data?: ResetStoreAuthLockoutBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof resetStoreAuthLockout>>,
+        TError,
+        {storeId: string;actorId: string;data?: ResetStoreAuthLockoutBody},
+        TContext
+      > => {
+      return useMutation(getResetStoreAuthLockoutMutationOptions(options), queryClient);
+    }
+    export type getStoreAuthSettingsResponse200 = {
   data: GetStoreAuthSettings200
   status: 200
 }

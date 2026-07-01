@@ -577,6 +577,18 @@ func (s *Store) Find(ctx context.Context, operation string, key string) (app.Ide
 	return record, ok, nil
 }
 
+func (s *Store) Claim(ctx context.Context, record app.IdempotencyRecord) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	key := idempotencyMapKey(record.Operation, record.Key)
+	if _, ok := s.idempotency[key]; ok {
+		return false, nil
+	}
+	s.idempotency[key] = record
+	return true, nil
+}
+
 func (s *Store) Save(ctx context.Context, record app.IdempotencyRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

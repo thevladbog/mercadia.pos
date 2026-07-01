@@ -161,6 +161,41 @@ func (s *Store) SaveAuthAttempt(ctx context.Context, attempt domain.AuthAttempt)
 	return nil
 }
 
+func (s *Store) ListAuthAttempts(ctx context.Context, filter app.AuthAttemptFilter, params app.PageParams) (app.PageResult[domain.AuthAttempt], error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	attempts := make([]domain.AuthAttempt, 0, len(s.authAttempts))
+	for _, attempt := range s.authAttempts {
+		if filter.StoreID != "" && attempt.StoreID != filter.StoreID {
+			continue
+		}
+		if filter.ActorID != "" && attempt.ActorID != filter.ActorID {
+			continue
+		}
+		if filter.TerminalID != "" && attempt.TerminalID != filter.TerminalID {
+			continue
+		}
+		if filter.Successful != nil && attempt.Successful != *filter.Successful {
+			continue
+		}
+		if !filter.Since.IsZero() && attempt.CreatedAt.Before(filter.Since) {
+			continue
+		}
+		if !filter.Until.IsZero() && attempt.CreatedAt.After(filter.Until) {
+			continue
+		}
+		attempts = append(attempts, attempt)
+	}
+	sort.Slice(attempts, func(i, j int) bool {
+		if attempts[i].CreatedAt.Equal(attempts[j].CreatedAt) {
+			return attempts[i].ID > attempts[j].ID
+		}
+		return attempts[i].CreatedAt.After(attempts[j].CreatedAt)
+	})
+	return app.PaginateSlice(attempts, params), nil
+}
+
 func (s *Store) CountFailedAuthAttemptsSinceLastSuccess(ctx context.Context, storeID string, actorID string, since time.Time) (int, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

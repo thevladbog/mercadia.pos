@@ -737,7 +737,25 @@
     "updatedBy": "Последнее изменение: {{actorId}}, {{timestamp}}",
     "save": "Сохранить настройки",
     "saved": "Настройки магазина сохранены.",
-    "invalidNumber": "Введите значения в допустимых диапазонах для всех настроек."
+    "invalidNumber": "Введите значения в допустимых диапазонах для всех настроек.",
+    "authAudit": "Аудит авторизации",
+    "authAuditHint": "Просмотр последних попыток входа и сброс блокировки кассира после проверки управляющим.",
+    "authAuditActorId": "Фильтр по сотруднику",
+    "authAuditActorPlaceholder": "cashier-1",
+    "authAuditActorRequired": "Введите ID сотрудника для сброса блокировки.",
+    "authAuditLoginRequired": "Откройте сессию управляющего, чтобы смотреть аудит и сбрасывать блокировки.",
+    "authAuditEmpty": "Попытки авторизации не найдены.",
+    "authAuditTime": "Время",
+    "authAuditActor": "Сотрудник",
+    "authAuditTerminal": "Терминал",
+    "authAuditStatus": "Статус",
+    "authAuditReason": "Причина",
+    "authAuditCredential": "Удостоверение",
+    "authAuditSuccess": "Успешно",
+    "authAuditFailure": "Ошибка",
+    "authResetLockout": "Сбросить блокировку",
+    "authResetReason": "Сброс управляющим из настроек магазина",
+    "authLockoutReset": "Блокировка авторизации сброшена."
   },
   "branding": {
     "status": {
