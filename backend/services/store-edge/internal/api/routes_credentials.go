@@ -117,13 +117,15 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 			"401": {Description: "Session is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
 			"404": {Description: "Manager actor was not found", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Idempotency key was reused for another credential policy command", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
 		managerID, ok := credentialManagerID(w, r, auth)
 		if !ok {
 			return
 		}
-		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+		idempotencyKey, err := httpapi.RequireIdempotencyKey(r)
+		if err != nil {
 			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 			return
 		}
@@ -133,10 +135,11 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 			return
 		}
 		result, err := credentials.SetStoreCredentialPolicy(r.Context(), app.SetStoreCredentialPolicyCommand{
-			StoreID:      r.PathValue("storeId"),
-			ManagerID:    managerID,
-			Required:     request.Required,
-			AllowedKinds: request.AllowedKinds,
+			IdempotencyKey: idempotencyKey,
+			StoreID:        r.PathValue("storeId"),
+			ManagerID:      managerID,
+			Required:       request.Required,
+			AllowedKinds:   request.AllowedKinds,
 		})
 		if err != nil {
 			writeAppError(w, err)
@@ -166,14 +169,15 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 			"401": {Description: "Session is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
 			"404": {Description: "Actor or manager was not found", Schema: httpapi.ProblemSchema()},
-			"409": {Description: "Separation of duties conflict", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Separation of duties or idempotency conflict", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
 		managerID, ok := credentialManagerID(w, r, auth)
 		if !ok {
 			return
 		}
-		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+		idempotencyKey, err := httpapi.RequireIdempotencyKey(r)
+		if err != nil {
 			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 			return
 		}
@@ -183,6 +187,7 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 			return
 		}
 		result, err := credentials.SetActorCredentialPolicy(r.Context(), app.SetActorCredentialPolicyCommand{
+			IdempotencyKey:     idempotencyKey,
 			TargetActorID:      r.PathValue("actorId"),
 			ManagerID:          managerID,
 			InheritStorePolicy: request.InheritStorePolicy,
@@ -217,14 +222,15 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 			"401": {Description: "Session is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
 			"404": {Description: "Actor or manager was not found", Schema: httpapi.ProblemSchema()},
-			"409": {Description: "Separation of duties conflict", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Separation of duties or idempotency conflict", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
 		managerID, ok := credentialManagerID(w, r, auth)
 		if !ok {
 			return
 		}
-		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+		idempotencyKey, err := httpapi.RequireIdempotencyKey(r)
+		if err != nil {
 			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 			return
 		}
@@ -234,11 +240,12 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 			return
 		}
 		result, err := credentials.AddCredentialBinding(r.Context(), app.AddCredentialBindingCommand{
-			TargetActorID: r.PathValue("actorId"),
-			ManagerID:     managerID,
-			Kind:          request.Kind,
-			Token:         request.Token,
-			MaskedToken:   request.MaskedToken,
+			IdempotencyKey: idempotencyKey,
+			TargetActorID:  r.PathValue("actorId"),
+			ManagerID:      managerID,
+			Kind:           request.Kind,
+			Token:          request.Token,
+			MaskedToken:    request.MaskedToken,
 		})
 		if err != nil {
 			writeAppError(w, err)
@@ -268,14 +275,15 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 			"401": {Description: "Session is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
 			"404": {Description: "Actor or binding was not found", Schema: httpapi.ProblemSchema()},
-			"409": {Description: "Separation of duties conflict", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Separation of duties or idempotency conflict", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
 		managerID, ok := credentialManagerID(w, r, auth)
 		if !ok {
 			return
 		}
-		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+		idempotencyKey, err := httpapi.RequireIdempotencyKey(r)
+		if err != nil {
 			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
 			return
 		}
@@ -285,6 +293,7 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 			return
 		}
 		result, err := credentials.RevokeCredentialBinding(r.Context(), app.RevokeCredentialBindingCommand{
+			IdempotencyKey:   idempotencyKey,
 			TargetActorID:    r.PathValue("actorId"),
 			ManagerID:        managerID,
 			Kind:             request.Kind,

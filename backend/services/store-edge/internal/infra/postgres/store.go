@@ -983,6 +983,18 @@ func decodeIdempotencyResult(operation string, data []byte) (any, error) {
 			return nil, err
 		}
 		return result, nil
+	case operation == "credentials.set_store_policy":
+		var result app.CredentialPolicyResult
+		if err := json.Unmarshal(data, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
+	case strings.HasPrefix(operation, "credentials."):
+		var result app.ActorCredentialResult
+		if err := json.Unmarshal(data, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
 	default:
 		return nil, fmt.Errorf("unknown idempotency operation %q", operation)
 	}
