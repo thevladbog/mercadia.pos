@@ -8083,7 +8083,7 @@
                 }
               }
             },
-            "description": "Separation of duties conflict"
+            "description": "Separation of duties or idempotency conflict"
           }
         },
         "summary": "Add actor staff credential binding. Requires `X-Session-Token` header.",
@@ -8421,7 +8421,7 @@
                 }
               }
             },
-            "description": "Separation of duties conflict"
+            "description": "Separation of duties or idempotency conflict"
           }
         },
         "summary": "Revoke actor staff credential binding. Requires `X-Session-Token` header.",
@@ -8766,7 +8766,7 @@
                 }
               }
             },
-            "description": "Separation of duties conflict"
+            "description": "Separation of duties or idempotency conflict"
           }
         },
         "summary": "Set actor staff credential policy override. Requires `X-Session-Token` header.",

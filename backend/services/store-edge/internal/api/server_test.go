@@ -239,6 +239,37 @@ func TestCredentialManagementReplaysPolicyIdempotency(t *testing.T) {
 	if reused.Code != http.StatusConflict {
 		t.Fatalf("credential policy reused key status = %d, body = %s", reused.Code, reused.Body.String())
 	}
+
+	actorBody := `{"inheritStorePolicy":false,"required":true,"allowedKinds":["ibutton","msr_card"]}`
+	actorFirst := httptest.NewRecorder()
+	actorFirstRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/actors/cashier-1/credential-policy", bytes.NewBufferString(actorBody))
+	actorFirstRequest.Header.Set(sessionTokenHeader, adminToken)
+	actorFirstRequest.Header.Set("Idempotency-Key", "actor-credential-policy-replay")
+	server.ServeHTTP(actorFirst, actorFirstRequest)
+	if actorFirst.Code != http.StatusOK {
+		t.Fatalf("actor credential policy status = %d, body = %s", actorFirst.Code, actorFirst.Body.String())
+	}
+
+	actorReplay := httptest.NewRecorder()
+	actorReplayRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/actors/cashier-1/credential-policy", bytes.NewBufferString(`{"inheritStorePolicy":false,"required":true,"allowedKinds":["msr_card","ibutton"]}`))
+	actorReplayRequest.Header.Set(sessionTokenHeader, adminToken)
+	actorReplayRequest.Header.Set("Idempotency-Key", "actor-credential-policy-replay")
+	server.ServeHTTP(actorReplay, actorReplayRequest)
+	if actorReplay.Code != http.StatusOK {
+		t.Fatalf("actor credential policy replay status = %d, body = %s", actorReplay.Code, actorReplay.Body.String())
+	}
+	if actorReplay.Body.String() != actorFirst.Body.String() {
+		t.Fatalf("actor credential policy replay body = %s, want %s", actorReplay.Body.String(), actorFirst.Body.String())
+	}
+
+	actorReused := httptest.NewRecorder()
+	actorReusedRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/actors/cashier-1/credential-policy", bytes.NewBufferString(`{"inheritStorePolicy":false,"required":true,"allowedKinds":["barcode_card"]}`))
+	actorReusedRequest.Header.Set(sessionTokenHeader, adminToken)
+	actorReusedRequest.Header.Set("Idempotency-Key", "actor-credential-policy-replay")
+	server.ServeHTTP(actorReused, actorReusedRequest)
+	if actorReused.Code != http.StatusConflict {
+		t.Fatalf("actor credential policy reused key status = %d, body = %s", actorReused.Code, actorReused.Body.String())
+	}
 }
 
 func TestCredentialManagementReplaysBindingIdempotency(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -281,7 +282,7 @@ func (s *CredentialManagementService) AddCredentialBinding(ctx context.Context, 
 	}
 	actor.CredentialBindings = addCredentialBinding(actor.CredentialBindings, command.Kind, tokenHash, maskedToken)
 	result := actorCredentialResult(actor)
-	fingerprint := credentialBindingFingerprint(command.ManagerID, command.Kind, tokenFingerprint(tokenHash), maskedToken)
+	fingerprint := credentialBindingFingerprint(command.ManagerID, command.Kind, tokenHash, maskedToken)
 	if result, found, err := s.findActorCredentialIdempotency(ctx, addCredentialBindingOperation, command.IdempotencyKey, command.TargetActorID, fingerprint); err != nil || found {
 		return result, err
 	}
@@ -515,6 +516,7 @@ func credentialKindsFingerprint(kinds []domain.CredentialKind) string {
 	for _, kind := range kinds {
 		parts = append(parts, string(kind))
 	}
+	sort.Strings(parts)
 	return strings.Join(parts, ",")
 }
 

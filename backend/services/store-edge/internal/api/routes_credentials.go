@@ -169,7 +169,7 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 			"401": {Description: "Session is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
 			"404": {Description: "Actor or manager was not found", Schema: httpapi.ProblemSchema()},
-			"409": {Description: "Separation of duties conflict", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Separation of duties or idempotency conflict", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
 		managerID, ok := credentialManagerID(w, r, auth)
@@ -222,7 +222,7 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 			"401": {Description: "Session is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
 			"404": {Description: "Actor or manager was not found", Schema: httpapi.ProblemSchema()},
-			"409": {Description: "Separation of duties conflict", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Separation of duties or idempotency conflict", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
 		managerID, ok := credentialManagerID(w, r, auth)
@@ -275,7 +275,7 @@ func mountCredentialRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.Aut
 			"401": {Description: "Session is missing or invalid", Schema: httpapi.ProblemSchema()},
 			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
 			"404": {Description: "Actor or binding was not found", Schema: httpapi.ProblemSchema()},
-			"409": {Description: "Separation of duties conflict", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Separation of duties or idempotency conflict", Schema: httpapi.ProblemSchema()},
 		},
 	}, func(w http.ResponseWriter, r *http.Request) {
 		managerID, ok := credentialManagerID(w, r, auth)
