@@ -49,7 +49,7 @@ When calling store-edge **command** endpoints from admin-web:
 Store-edge paths must be proxied to `:8081` **before** the central catch-all `/v1` rule in [`vite.config.ts`](../../frontend/apps/admin-web/vite.config.ts):
 
 ```typescript
-"^/v1/stores/[^/]+/(monitoring|terminals|cash-|bank-|business-|operation-journal|operational-days|shifts|returns|credential-management|credential-policy|actors|auth-settings)";
+"^/v1/stores/[^/]+/(monitoring|terminals|cash-|bank-|business-|operation-journal|operational-days|shifts|returns|credential-management|credential-policy|actors|auth-settings|auth-attempts|auth-lockouts)";
 ```
 
 Also proxy `/v1/operational-days`, `/v1/shifts`, `/v1/receipts`, `/v1/returns`, `/v1/terminals`.

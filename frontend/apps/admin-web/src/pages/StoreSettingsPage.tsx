@@ -3,8 +3,10 @@ import {
   clearSessionToken as clearStoreEdgeSessionToken,
   createAuthSession,
   getSessionToken as getStoreEdgeSessionToken,
+  resetStoreAuthLockout,
   setSessionToken as setStoreEdgeSessionToken,
   setStoreAuthSettings,
+  useListStoreAuthAttempts,
   useGetStoreAuthSettings,
   type SetStoreAuthSettingsBody,
 } from '@mercadia/api-clients-store-edge';
@@ -84,6 +86,7 @@ export function StoreSettingsPage() {
     () => getStoreEdgeSessionToken() !== null,
   );
   const [draft, setDraft] = useState<SettingsDraft | null>(null);
+  const [authAuditActorId, setAuthAuditActorId] = useState('cashier-1');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -94,6 +97,19 @@ export function StoreSettingsPage() {
   const settings = settingsQuery.data?.status === 200 ? settingsQuery.data.data.settings : null;
   const loadError = settingsQuery.error != null ? getApiErrorMessage(settingsQuery.error) : null;
   const formDraft = draft ?? (settings ? settingsToDraft(settings) : DEFAULT_DRAFT);
+  const authAuditQuery = useListStoreAuthAttempts(
+    activeStoreId,
+    {
+      limit: 25,
+      actorId: authAuditActorId.trim() || undefined,
+    },
+    {
+      query: { enabled: activeStoreId.length > 0 && hasManagerSession },
+    },
+  );
+  const authAttempts = authAuditQuery.data?.status === 200 ? authAuditQuery.data.data.items : [];
+  const authAuditError =
+    authAuditQuery.error != null ? getApiErrorMessage(authAuditQuery.error) : null;
 
   async function loginManager(): Promise<void> {
     setIsSubmitting(true);
@@ -145,6 +161,34 @@ export function StoreSettingsPage() {
     }
   }
 
+  async function resetLockout(): Promise<void> {
+    const actorId = authAuditActorId.trim();
+    if (!actorId) {
+      setError(t('settings.authAuditActorRequired'));
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError('');
+    setMessage('');
+    try {
+      const response = await resetStoreAuthLockout(
+        activeStoreId,
+        actorId,
+        { reason: t('settings.authResetReason') },
+        { headers: createIdempotencyHeaders() },
+      );
+      if (response.status === 200) {
+        await authAuditQuery.refetch();
+        setMessage(t('settings.authLockoutReset'));
+      }
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <section className="stack">
       <div className="panel">
@@ -172,6 +216,7 @@ export function StoreSettingsPage() {
               setDraft(null);
               setHasManagerSession(false);
               setManagerPin('');
+              setAuthAuditActorId('cashier-1');
               clearStoreEdgeSessionToken();
               setMessage('');
               setError('');
@@ -273,6 +318,84 @@ export function StoreSettingsPage() {
             {isSubmitting ? t('common.submitting') : t('settings.save')}
           </Button>
         </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h3>{t('settings.authAudit')}</h3>
+            <p className="muted">{t('settings.authAuditHint')}</p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!hasManagerSession || authAuditQuery.isFetching || activeStoreId.length === 0}
+            onClick={() => void authAuditQuery.refetch()}
+          >
+            {authAuditQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
+          </Button>
+        </div>
+
+        <div className="form-grid form-grid--two">
+          <TextField
+            label={t('settings.authAuditActorId')}
+            value={authAuditActorId}
+            onValueChange={setAuthAuditActorId}
+            placeholder={t('settings.authAuditActorPlaceholder')}
+          />
+          <div className="header-actions-inline">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isSubmitting || !hasManagerSession || activeStoreId.length === 0}
+              onClick={() => void resetLockout()}
+            >
+              {isSubmitting ? t('common.submitting') : t('settings.authResetLockout')}
+            </Button>
+          </div>
+        </div>
+
+        {!hasManagerSession && <p className="muted">{t('settings.authAuditLoginRequired')}</p>}
+        {authAuditError && <p className="error">{authAuditError}</p>}
+        {hasManagerSession && authAttempts.length === 0 && (
+          <p className="muted">{t('settings.authAuditEmpty')}</p>
+        )}
+        {authAttempts.length > 0 && (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{t('settings.authAuditTime')}</th>
+                  <th>{t('settings.authAuditActor')}</th>
+                  <th>{t('settings.authAuditTerminal')}</th>
+                  <th>{t('settings.authAuditStatus')}</th>
+                  <th>{t('settings.authAuditReason')}</th>
+                  <th>{t('settings.authAuditCredential')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {authAttempts.map((attempt) => (
+                  <tr key={attempt.id}>
+                    <td>{new Date(attempt.createdAt).toLocaleString()}</td>
+                    <td>{attempt.actorId}</td>
+                    <td>{attempt.terminalId || t('common.emDash')}</td>
+                    <td>
+                      {attempt.successful
+                        ? t('settings.authAuditSuccess')
+                        : t('settings.authAuditFailure')}
+                    </td>
+                    <td>{attempt.failureReason || t('common.emDash')}</td>
+                    <td>
+                      {attempt.credentialKind
+                        ? `${attempt.credentialKind} ${attempt.credentialFingerprint ?? ''}`.trim()
+                        : t('common.emDash')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </section>
   );

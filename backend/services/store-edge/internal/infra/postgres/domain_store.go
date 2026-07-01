@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -437,6 +438,68 @@ func (s *Store) SaveAuthAttempt(ctx context.Context, attempt domain.AuthAttempt)
 		return fmt.Errorf("save auth attempt: %w", err)
 	}
 	return nil
+}
+
+func (s *Store) ListAuthAttempts(ctx context.Context, filter app.AuthAttemptFilter, params app.PageParams) (app.PageResult[domain.AuthAttempt], error) {
+	conditions := []string{"store_id = $1"}
+	args := []any{filter.StoreID}
+	if filter.ActorID != "" {
+		args = append(args, filter.ActorID)
+		conditions = append(conditions, fmt.Sprintf("actor_id = $%d", len(args)))
+	}
+	if filter.TerminalID != "" {
+		args = append(args, filter.TerminalID)
+		conditions = append(conditions, fmt.Sprintf("terminal_id = $%d", len(args)))
+	}
+	if filter.Successful != nil {
+		args = append(args, *filter.Successful)
+		conditions = append(conditions, fmt.Sprintf("successful = $%d", len(args)))
+	}
+	if !filter.Since.IsZero() {
+		args = append(args, filter.Since)
+		conditions = append(conditions, fmt.Sprintf("created_at >= $%d", len(args)))
+	}
+	if !filter.Until.IsZero() {
+		args = append(args, filter.Until)
+		conditions = append(conditions, fmt.Sprintf("created_at <= $%d", len(args)))
+	}
+
+	rows, err := s.pool.Query(ctx, fmt.Sprintf(`
+		SELECT id, store_id, actor_id, terminal_id, credential_kind, credential_fingerprint,
+			successful, failure_reason, created_at
+		FROM auth_attempts
+		WHERE %s
+		ORDER BY created_at DESC, id DESC
+	`, strings.Join(conditions, " AND ")), args...)
+	if err != nil {
+		return app.PageResult[domain.AuthAttempt]{}, fmt.Errorf("list auth attempts: %w", err)
+	}
+	defer rows.Close()
+
+	attempts := []domain.AuthAttempt{}
+	for rows.Next() {
+		var attempt domain.AuthAttempt
+		var kind string
+		if err := rows.Scan(
+			&attempt.ID,
+			&attempt.StoreID,
+			&attempt.ActorID,
+			&attempt.TerminalID,
+			&kind,
+			&attempt.CredentialFingerprint,
+			&attempt.Successful,
+			&attempt.FailureReason,
+			&attempt.CreatedAt,
+		); err != nil {
+			return app.PageResult[domain.AuthAttempt]{}, fmt.Errorf("scan auth attempt: %w", err)
+		}
+		attempt.CredentialKind = domain.CredentialKind(kind)
+		attempts = append(attempts, attempt)
+	}
+	if err := rows.Err(); err != nil {
+		return app.PageResult[domain.AuthAttempt]{}, fmt.Errorf("list auth attempts rows: %w", err)
+	}
+	return app.PaginateSlice(attempts, params), nil
 }
 
 func (s *Store) CountFailedAuthAttemptsSinceLastSuccess(ctx context.Context, storeID string, actorID string, since time.Time) (int, error) {

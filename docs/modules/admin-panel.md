@@ -264,6 +264,10 @@ through Store Edge with a manager session and idempotency key; Store Edge enforc
 uses these values for cashier login lockout. Settings must be versioned. Risky changes should
 require confirmation and audit.
 
+Store Settings also exposes a manager-only authentication audit view backed by Store Edge auth
+attempt records. The view lists terminal-safe login attempt metadata without raw PINs or credential
+tokens and allows an authorized manager to reset an actor lockout with an idempotent command.
+
 ## POS And SCO Device Management
 
 Device management requirements:

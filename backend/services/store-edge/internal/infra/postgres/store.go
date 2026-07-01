@@ -946,8 +946,14 @@ func decodeIdempotencyResult(operation string, data []byte) (any, error) {
 			return nil, err
 		}
 		return result, nil
-	case strings.HasPrefix(operation, "store_settings."):
+	case operation == "store_settings.set_auth_settings":
 		var result app.StoreAuthSettingsResult
+		if err := json.Unmarshal(data, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
+	case operation == "store_settings.reset_auth_lockout":
+		var result app.AuthLockoutResetResult
 		if err := json.Unmarshal(data, &result); err != nil {
 			return nil, err
 		}
