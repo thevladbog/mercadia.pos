@@ -61,6 +61,7 @@ import type {
   SetStoreCredentialPolicy401,
   SetStoreCredentialPolicy403,
   SetStoreCredentialPolicy404,
+  SetStoreCredentialPolicy409,
   SetStoreCredentialPolicyBody
 } from '../models';
 
@@ -676,10 +677,15 @@ export type setStoreCredentialPolicyResponse404 = {
   status: 404
 }
 
+export type setStoreCredentialPolicyResponse409 = {
+  data: SetStoreCredentialPolicy409
+  status: 409
+}
+
 export type setStoreCredentialPolicyResponseSuccess = (setStoreCredentialPolicyResponse200) & {
   headers: Headers;
 };
-export type setStoreCredentialPolicyResponseError = (setStoreCredentialPolicyResponse400 | setStoreCredentialPolicyResponse401 | setStoreCredentialPolicyResponse403 | setStoreCredentialPolicyResponse404) & {
+export type setStoreCredentialPolicyResponseError = (setStoreCredentialPolicyResponse400 | setStoreCredentialPolicyResponse401 | setStoreCredentialPolicyResponse403 | setStoreCredentialPolicyResponse404 | setStoreCredentialPolicyResponse409) & {
   headers: Headers;
 };
 
@@ -711,7 +717,7 @@ export const setStoreCredentialPolicy = async (storeId: string,
 
 
 
-export const getSetStoreCredentialPolicyMutationOptions = <TError = SetStoreCredentialPolicy400 | SetStoreCredentialPolicy401 | SetStoreCredentialPolicy403 | SetStoreCredentialPolicy404,
+export const getSetStoreCredentialPolicyMutationOptions = <TError = SetStoreCredentialPolicy400 | SetStoreCredentialPolicy401 | SetStoreCredentialPolicy403 | SetStoreCredentialPolicy404 | SetStoreCredentialPolicy409,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setStoreCredentialPolicy>>, TError,{storeId: string;data: SetStoreCredentialPolicyBody}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof setStoreCredentialPolicy>>, TError,{storeId: string;data: SetStoreCredentialPolicyBody}, TContext> => {
 
@@ -740,12 +746,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type SetStoreCredentialPolicyMutationResult = NonNullable<Awaited<ReturnType<typeof setStoreCredentialPolicy>>>
     export type SetStoreCredentialPolicyMutationBody = SetStoreCredentialPolicyBody
-    export type SetStoreCredentialPolicyMutationError = SetStoreCredentialPolicy400 | SetStoreCredentialPolicy401 | SetStoreCredentialPolicy403 | SetStoreCredentialPolicy404
+    export type SetStoreCredentialPolicyMutationError = SetStoreCredentialPolicy400 | SetStoreCredentialPolicy401 | SetStoreCredentialPolicy403 | SetStoreCredentialPolicy404 | SetStoreCredentialPolicy409
 
     /**
  * @summary Set store staff credential policy. Requires `X-Session-Token` header.
  */
-export const useSetStoreCredentialPolicy = <TError = SetStoreCredentialPolicy400 | SetStoreCredentialPolicy401 | SetStoreCredentialPolicy403 | SetStoreCredentialPolicy404,
+export const useSetStoreCredentialPolicy = <TError = SetStoreCredentialPolicy400 | SetStoreCredentialPolicy401 | SetStoreCredentialPolicy403 | SetStoreCredentialPolicy404 | SetStoreCredentialPolicy409,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setStoreCredentialPolicy>>, TError,{storeId: string;data: SetStoreCredentialPolicyBody}, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof setStoreCredentialPolicy>>,

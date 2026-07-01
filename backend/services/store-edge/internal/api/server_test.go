@@ -205,6 +205,108 @@ func TestCredentialManagementRejectsBodyActorID(t *testing.T) {
 	}
 }
 
+func TestCredentialManagementReplaysPolicyIdempotency(t *testing.T) {
+	server := NewServer()
+	adminToken := createAuthSessionForTest(t, server, "admin-1", "9999")
+	body := `{"required":true,"allowedKinds":["ibutton"]}`
+
+	first := httptest.NewRecorder()
+	firstRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/credential-policy", bytes.NewBufferString(body))
+	firstRequest.Header.Set(sessionTokenHeader, adminToken)
+	firstRequest.Header.Set("Idempotency-Key", "credential-policy-replay")
+	server.ServeHTTP(first, firstRequest)
+	if first.Code != http.StatusOK {
+		t.Fatalf("credential policy status = %d, body = %s", first.Code, first.Body.String())
+	}
+
+	replay := httptest.NewRecorder()
+	replayRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/credential-policy", bytes.NewBufferString(body))
+	replayRequest.Header.Set(sessionTokenHeader, adminToken)
+	replayRequest.Header.Set("Idempotency-Key", "credential-policy-replay")
+	server.ServeHTTP(replay, replayRequest)
+	if replay.Code != http.StatusOK {
+		t.Fatalf("credential policy replay status = %d, body = %s", replay.Code, replay.Body.String())
+	}
+	if replay.Body.String() != first.Body.String() {
+		t.Fatalf("credential policy replay body = %s, want %s", replay.Body.String(), first.Body.String())
+	}
+
+	reused := httptest.NewRecorder()
+	reusedRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/credential-policy", bytes.NewBufferString(`{"required":true,"allowedKinds":["msr_card"]}`))
+	reusedRequest.Header.Set(sessionTokenHeader, adminToken)
+	reusedRequest.Header.Set("Idempotency-Key", "credential-policy-replay")
+	server.ServeHTTP(reused, reusedRequest)
+	if reused.Code != http.StatusConflict {
+		t.Fatalf("credential policy reused key status = %d, body = %s", reused.Code, reused.Body.String())
+	}
+}
+
+func TestCredentialManagementReplaysBindingIdempotency(t *testing.T) {
+	server := NewServer()
+	adminToken := createAuthSessionForTest(t, server, "admin-1", "9999")
+	body := `{"kind":"ibutton","token":"cashier-demo-ibutton","maskedToken":"iButton ****0001"}`
+
+	first := httptest.NewRecorder()
+	firstRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/actors/cashier-1/credential-bindings", bytes.NewBufferString(body))
+	firstRequest.Header.Set(sessionTokenHeader, adminToken)
+	firstRequest.Header.Set("Idempotency-Key", "credential-binding-add-replay")
+	server.ServeHTTP(first, firstRequest)
+	if first.Code != http.StatusOK {
+		t.Fatalf("add credential binding status = %d, body = %s", first.Code, first.Body.String())
+	}
+	var addResponse ActorCredentialAcceptedResponse
+	if err := json.Unmarshal(first.Body.Bytes(), &addResponse); err != nil {
+		t.Fatalf("decode add credential binding: %v", err)
+	}
+	if len(addResponse.Actor.CredentialBindings) != 1 {
+		t.Fatalf("credential bindings = %+v", addResponse.Actor.CredentialBindings)
+	}
+	fingerprint := addResponse.Actor.CredentialBindings[0].TokenFingerprint
+
+	replay := httptest.NewRecorder()
+	replayRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/actors/cashier-1/credential-bindings", bytes.NewBufferString(body))
+	replayRequest.Header.Set(sessionTokenHeader, adminToken)
+	replayRequest.Header.Set("Idempotency-Key", "credential-binding-add-replay")
+	server.ServeHTTP(replay, replayRequest)
+	if replay.Code != http.StatusOK {
+		t.Fatalf("add credential binding replay status = %d, body = %s", replay.Code, replay.Body.String())
+	}
+	if replay.Body.String() != first.Body.String() {
+		t.Fatalf("add credential binding replay body = %s, want %s", replay.Body.String(), first.Body.String())
+	}
+
+	reused := httptest.NewRecorder()
+	reusedRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/actors/cashier-1/credential-bindings", bytes.NewBufferString(`{"kind":"ibutton","token":"other-token"}`))
+	reusedRequest.Header.Set(sessionTokenHeader, adminToken)
+	reusedRequest.Header.Set("Idempotency-Key", "credential-binding-add-replay")
+	server.ServeHTTP(reused, reusedRequest)
+	if reused.Code != http.StatusConflict {
+		t.Fatalf("add credential binding reused key status = %d, body = %s", reused.Code, reused.Body.String())
+	}
+
+	revokeBody := fmt.Sprintf(`{"kind":"ibutton","tokenFingerprint":"%s"}`, fingerprint)
+	revoke := httptest.NewRecorder()
+	revokeRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/actors/cashier-1/credential-bindings/revoke", bytes.NewBufferString(revokeBody))
+	revokeRequest.Header.Set(sessionTokenHeader, adminToken)
+	revokeRequest.Header.Set("Idempotency-Key", "credential-binding-revoke-replay")
+	server.ServeHTTP(revoke, revokeRequest)
+	if revoke.Code != http.StatusOK {
+		t.Fatalf("revoke credential binding status = %d, body = %s", revoke.Code, revoke.Body.String())
+	}
+
+	revokeReplay := httptest.NewRecorder()
+	revokeReplayRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/actors/cashier-1/credential-bindings/revoke", bytes.NewBufferString(revokeBody))
+	revokeReplayRequest.Header.Set(sessionTokenHeader, adminToken)
+	revokeReplayRequest.Header.Set("Idempotency-Key", "credential-binding-revoke-replay")
+	server.ServeHTTP(revokeReplay, revokeReplayRequest)
+	if revokeReplay.Code != http.StatusOK {
+		t.Fatalf("revoke credential binding replay status = %d, body = %s", revokeReplay.Code, revokeReplay.Body.String())
+	}
+	if revokeReplay.Body.String() != revoke.Body.String() {
+		t.Fatalf("revoke credential binding replay body = %s, want %s", revokeReplay.Body.String(), revoke.Body.String())
+	}
+}
+
 func TestStoreAuthSettingsCanBeReadAndUpdatedByManagerSession(t *testing.T) {
 	server := NewServer()
 
