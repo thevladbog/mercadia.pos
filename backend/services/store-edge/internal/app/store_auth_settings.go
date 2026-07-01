@@ -249,20 +249,33 @@ func (s *StoreAuthSettingsService) ResetAuthLockout(ctx context.Context, command
 		Reason:    command.Reason,
 		ResetAt:   now,
 	}
+	claimed := false
+	record := IdempotencyRecord{
+		Operation:   resetAuthLockoutOperation,
+		Key:         command.IdempotencyKey,
+		TargetID:    targetID,
+		Fingerprint: fingerprint,
+		Result:      result,
+		CreatedAt:   now,
+	}
 	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		var err error
+		claimed, err = s.idempotency.Claim(ctx, record)
+		if err != nil || !claimed {
+			return err
+		}
 		if err := s.repo.SaveAuthAttempt(ctx, attempt); err != nil {
 			return err
 		}
-		return s.idempotency.Save(ctx, IdempotencyRecord{
-			Operation:   resetAuthLockoutOperation,
-			Key:         command.IdempotencyKey,
-			TargetID:    targetID,
-			Fingerprint: fingerprint,
-			Result:      result,
-			CreatedAt:   now,
-		})
+		return nil
 	}); err != nil {
 		return AuthLockoutResetResult{}, err
+	}
+	if !claimed {
+		if result, found, err := s.findAuthLockoutResetIdempotency(ctx, command.IdempotencyKey, targetID, fingerprint); err != nil || found {
+			return result, err
+		}
+		return AuthLockoutResetResult{}, ErrIdempotencyResultMissing
 	}
 	return result, nil
 }

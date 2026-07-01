@@ -66,8 +66,8 @@ func mountStoreSettingsRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.
 		httpapi.QueryParamSpec{Name: "actorId", Description: "Filter by actor ID", Schema: httpapi.StringSchema()},
 		httpapi.QueryParamSpec{Name: "terminalId", Description: "Filter by terminal ID", Schema: httpapi.StringSchema()},
 		httpapi.QueryParamSpec{Name: "successful", Description: "Filter by successful flag", Schema: httpapi.Schema{"type": "boolean"}},
-		httpapi.QueryParamSpec{Name: "since", Description: "Filter attempts created at or after this RFC3339 timestamp", Schema: httpapi.StringSchema()},
-		httpapi.QueryParamSpec{Name: "until", Description: "Filter attempts created at or before this RFC3339 timestamp", Schema: httpapi.StringSchema()},
+		httpapi.QueryParamSpec{Name: "since", Description: "Filter attempts created at or after this RFC3339 timestamp", Schema: httpapi.DateTimeSchema()},
+		httpapi.QueryParamSpec{Name: "until", Description: "Filter attempts created at or before this RFC3339 timestamp", Schema: httpapi.DateTimeSchema()},
 	)
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
@@ -361,7 +361,7 @@ func authAttemptResponseSchema() httpapi.Schema {
 		"credentialFingerprint": httpapi.StringSchema(),
 		"successful":            {"type": "boolean"},
 		"failureReason":         httpapi.StringSchema(),
-		"createdAt":             httpapi.StringSchema(),
+		"createdAt":             httpapi.DateTimeSchema(),
 	}, "id", "storeId", "actorId", "successful", "createdAt")
 }
 
@@ -383,6 +383,6 @@ func authLockoutResetResponseSchema() httpapi.Schema {
 		"actorId":   httpapi.StringSchema(),
 		"resetById": httpapi.StringSchema(),
 		"reason":    httpapi.StringSchema(),
-		"resetAt":   httpapi.StringSchema(),
+		"resetAt":   httpapi.DateTimeSchema(),
 	}, "storeId", "actorId", "resetById", "resetAt")
 }

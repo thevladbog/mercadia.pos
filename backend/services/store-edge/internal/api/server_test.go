@@ -388,6 +388,18 @@ func TestAuthSessionLocksAfterConfiguredFailedAttempts(t *testing.T) {
 		t.Fatalf("reset auth lockout status = %d, body = %s", reset.Code, reset.Body.String())
 	}
 
+	resetReplay := httptest.NewRecorder()
+	resetReplayRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/auth-lockouts/cashier-1/reset", bytes.NewBufferString(`{"reason":"manager verified cashier"}`))
+	resetReplayRequest.Header.Set(sessionTokenHeader, adminToken)
+	resetReplayRequest.Header.Set("Idempotency-Key", "auth-lockout-reset-cashier")
+	server.ServeHTTP(resetReplay, resetReplayRequest)
+	if resetReplay.Code != http.StatusOK {
+		t.Fatalf("reset auth lockout replay status = %d, body = %s", resetReplay.Code, resetReplay.Body.String())
+	}
+	if resetReplay.Body.String() != reset.Body.String() {
+		t.Fatalf("reset auth lockout replay body = %s, want %s", resetReplay.Body.String(), reset.Body.String())
+	}
+
 	correctAfterReset := httptest.NewRecorder()
 	correctAfterResetRequest := httptest.NewRequest(http.MethodPost, "/v1/auth/sessions", bytes.NewBufferString(`{
 		"actorId": "cashier-1",
@@ -398,15 +410,6 @@ func TestAuthSessionLocksAfterConfiguredFailedAttempts(t *testing.T) {
 	server.ServeHTTP(correctAfterReset, correctAfterResetRequest)
 	if correctAfterReset.Code != http.StatusCreated {
 		t.Fatalf("correct login after reset status = %d, body = %s", correctAfterReset.Code, correctAfterReset.Body.String())
-	}
-
-	resetReplay := httptest.NewRecorder()
-	resetReplayRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/auth-lockouts/cashier-1/reset", bytes.NewBufferString(`{"reason":"manager verified cashier"}`))
-	resetReplayRequest.Header.Set(sessionTokenHeader, adminToken)
-	resetReplayRequest.Header.Set("Idempotency-Key", "auth-lockout-reset-cashier")
-	server.ServeHTTP(resetReplay, resetReplayRequest)
-	if resetReplay.Code != http.StatusOK {
-		t.Fatalf("reset auth lockout replay status = %d, body = %s", resetReplay.Code, resetReplay.Body.String())
 	}
 }
 

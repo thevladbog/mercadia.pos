@@ -8850,6 +8850,7 @@
             "name": "since",
             "required": false,
             "schema": {
+              "format": "date-time",
               "type": "string"
             }
           },
@@ -8859,6 +8860,7 @@
             "name": "until",
             "required": false,
             "schema": {
+              "format": "date-time",
               "type": "string"
             }
           }
@@ -8878,6 +8880,7 @@
                             "type": "string"
                           },
                           "createdAt": {
+                            "format": "date-time",
                             "type": "string"
                           },
                           "credentialFingerprint": {
@@ -9111,6 +9114,7 @@
                           "type": "string"
                         },
                         "resetAt": {
+                          "format": "date-time",
                           "type": "string"
                         },
                         "resetById": {

@@ -19,6 +19,7 @@ import { getApiErrorMessage } from '@/auth/api-errors.js';
 import { TextField } from '@/components/FormControls.js';
 import { StorePicker } from '@/components/StorePicker.js';
 import { createIdempotencyHeaders } from '@/pages/cash-mutation-utils.js';
+import { formatTimestamp } from '@/pages/reporting-utils.js';
 import { readStoreFromSearchParams } from '@/pages/store-routes.js';
 
 type SettingsDraft = {
@@ -86,6 +87,7 @@ export function StoreSettingsPage() {
     () => getStoreEdgeSessionToken() !== null,
   );
   const [draft, setDraft] = useState<SettingsDraft | null>(null);
+  const [authAuditActorDraft, setAuthAuditActorDraft] = useState('cashier-1');
   const [authAuditActorId, setAuthAuditActorId] = useState('cashier-1');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -107,9 +109,21 @@ export function StoreSettingsPage() {
       query: { enabled: activeStoreId.length > 0 && hasManagerSession },
     },
   );
-  const authAttempts = authAuditQuery.data?.status === 200 ? authAuditQuery.data.data.items : [];
+  const authAttempts =
+    hasManagerSession && authAuditQuery.data?.status === 200 ? authAuditQuery.data.data.items : [];
   const authAuditError =
-    authAuditQuery.error != null ? getApiErrorMessage(authAuditQuery.error) : null;
+    hasManagerSession && authAuditQuery.error != null
+      ? getApiErrorMessage(authAuditQuery.error)
+      : null;
+
+  function refreshAuthAudit(): void {
+    const actorId = authAuditActorDraft.trim();
+    if (actorId !== authAuditActorId) {
+      setAuthAuditActorId(actorId);
+      return;
+    }
+    void authAuditQuery.refetch();
+  }
 
   async function loginManager(): Promise<void> {
     setIsSubmitting(true);
@@ -162,7 +176,7 @@ export function StoreSettingsPage() {
   }
 
   async function resetLockout(): Promise<void> {
-    const actorId = authAuditActorId.trim();
+    const actorId = authAuditActorDraft.trim();
     if (!actorId) {
       setError(t('settings.authAuditActorRequired'));
       return;
@@ -179,7 +193,11 @@ export function StoreSettingsPage() {
         { headers: createIdempotencyHeaders() },
       );
       if (response.status === 200) {
-        await authAuditQuery.refetch();
+        if (actorId !== authAuditActorId) {
+          setAuthAuditActorId(actorId);
+        } else {
+          await authAuditQuery.refetch();
+        }
         setMessage(t('settings.authLockoutReset'));
       }
     } catch (err) {
@@ -216,6 +234,7 @@ export function StoreSettingsPage() {
               setDraft(null);
               setHasManagerSession(false);
               setManagerPin('');
+              setAuthAuditActorDraft('cashier-1');
               setAuthAuditActorId('cashier-1');
               clearStoreEdgeSessionToken();
               setMessage('');
@@ -330,7 +349,7 @@ export function StoreSettingsPage() {
             type="button"
             variant="secondary"
             disabled={!hasManagerSession || authAuditQuery.isFetching || activeStoreId.length === 0}
-            onClick={() => void authAuditQuery.refetch()}
+            onClick={refreshAuthAudit}
           >
             {authAuditQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
           </Button>
@@ -339,8 +358,8 @@ export function StoreSettingsPage() {
         <div className="form-grid form-grid--two">
           <TextField
             label={t('settings.authAuditActorId')}
-            value={authAuditActorId}
-            onValueChange={setAuthAuditActorId}
+            value={authAuditActorDraft}
+            onValueChange={setAuthAuditActorDraft}
             placeholder={t('settings.authAuditActorPlaceholder')}
           />
           <div className="header-actions-inline">
@@ -360,7 +379,7 @@ export function StoreSettingsPage() {
         {hasManagerSession && authAttempts.length === 0 && (
           <p className="muted">{t('settings.authAuditEmpty')}</p>
         )}
-        {authAttempts.length > 0 && (
+        {hasManagerSession && authAttempts.length > 0 && (
           <div className="table-wrap">
             <table>
               <thead>
@@ -376,7 +395,7 @@ export function StoreSettingsPage() {
               <tbody>
                 {authAttempts.map((attempt) => (
                   <tr key={attempt.id}>
-                    <td>{new Date(attempt.createdAt).toLocaleString()}</td>
+                    <td>{formatTimestamp(attempt.createdAt)}</td>
                     <td>{attempt.actorId}</td>
                     <td>{attempt.terminalId || t('common.emDash')}</td>
                     <td>

@@ -31,6 +31,7 @@ type ReceiptRepository interface {
 
 type IdempotencyStore interface {
 	Find(ctx context.Context, operation string, key string) (IdempotencyRecord, bool, error)
+	Claim(ctx context.Context, record IdempotencyRecord) (bool, error)
 	Save(ctx context.Context, record IdempotencyRecord) error
 }
 

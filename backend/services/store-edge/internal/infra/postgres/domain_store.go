@@ -464,13 +464,28 @@ func (s *Store) ListAuthAttempts(ctx context.Context, filter app.AuthAttemptFilt
 		conditions = append(conditions, fmt.Sprintf("created_at <= $%d", len(args)))
 	}
 
+	where := strings.Join(conditions, " AND ")
+	var totalCount int
+	if err := s.pool.QueryRow(ctx, fmt.Sprintf(`
+		SELECT COUNT(*)
+		FROM auth_attempts
+		WHERE %s
+	`, where), args...).Scan(&totalCount); err != nil {
+		return app.PageResult[domain.AuthAttempt]{}, fmt.Errorf("count auth attempts: %w", err)
+	}
+
+	queryArgs := append([]any(nil), args...)
+	queryArgs = append(queryArgs, params.Limit, params.Offset)
+	limitParam := len(queryArgs) - 1
+	offsetParam := len(queryArgs)
 	rows, err := s.pool.Query(ctx, fmt.Sprintf(`
 		SELECT id, store_id, actor_id, terminal_id, credential_kind, credential_fingerprint,
 			successful, failure_reason, created_at
 		FROM auth_attempts
 		WHERE %s
 		ORDER BY created_at DESC, id DESC
-	`, strings.Join(conditions, " AND ")), args...)
+		LIMIT $%d OFFSET $%d
+	`, where, limitParam, offsetParam), queryArgs...)
 	if err != nil {
 		return app.PageResult[domain.AuthAttempt]{}, fmt.Errorf("list auth attempts: %w", err)
 	}
@@ -499,7 +514,7 @@ func (s *Store) ListAuthAttempts(ctx context.Context, filter app.AuthAttemptFilt
 	if err := rows.Err(); err != nil {
 		return app.PageResult[domain.AuthAttempt]{}, fmt.Errorf("list auth attempts rows: %w", err)
 	}
-	return app.PaginateSlice(attempts, params), nil
+	return app.PageResult[domain.AuthAttempt]{Items: attempts, TotalCount: totalCount}, nil
 }
 
 func (s *Store) CountFailedAuthAttemptsSinceLastSuccess(ctx context.Context, storeID string, actorID string, since time.Time) (int, error) {
