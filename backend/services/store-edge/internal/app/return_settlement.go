@@ -409,13 +409,11 @@ func allocateRefundAmounts(payments []domain.Payment, returnTotal int64, totalRe
 
 	allocations := make(map[string]int64, len(sorted))
 	var allocated int64
-	for i, payment := range sorted {
-		var amount int64
-		if i == len(sorted)-1 {
-			amount = returnTotal - allocated
-		} else {
-			amount = returnTotal * payment.RefundableAmountMinor() / totalRefundable
-		}
+
+	// First pass: floored proportional share for every payment, capped at
+	// what that payment can actually refund.
+	for _, payment := range sorted {
+		amount := returnTotal * payment.RefundableAmountMinor() / totalRefundable
 		if amount > payment.RefundableAmountMinor() {
 			amount = payment.RefundableAmountMinor()
 		}
@@ -424,6 +422,28 @@ func allocateRefundAmounts(payments []domain.Payment, returnTotal int64, totalRe
 			allocated += amount
 		}
 	}
+
+	// Second pass: distribute the rounding remainder into whatever spare
+	// refundable capacity each payment still has, in the same deterministic
+	// sort order, filling earlier payments first. The guard at the top of
+	// this function guarantees enough total capacity exists, so this loop
+	// always terminates with allocated == returnTotal.
+	for _, payment := range sorted {
+		if allocated >= returnTotal {
+			break
+		}
+		spare := payment.RefundableAmountMinor() - allocations[payment.ID]
+		if spare <= 0 {
+			continue
+		}
+		remaining := returnTotal - allocated
+		if spare > remaining {
+			spare = remaining
+		}
+		allocations[payment.ID] += spare
+		allocated += spare
+	}
+
 	if allocated != returnTotal {
 		return nil, ErrReturnSettlementPaymentMismatch
 	}
