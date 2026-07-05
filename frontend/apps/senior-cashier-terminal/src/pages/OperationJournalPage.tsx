@@ -7,7 +7,7 @@ import { useListOperationJournal } from '@mercadia/api-clients-store-edge';
 import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
 import { selectSuccessData } from '@/lib/cash-utils.js';
-import { TerminalHeader } from '@/components/TerminalHeader.js';
+import { TopBar } from '@/components/TopBar.js';
 
 const PAGE_SIZE = 20;
 
@@ -39,9 +39,11 @@ export function OperationJournalPage() {
 
   return (
     <div className="sr-terminal-shell">
-      <TerminalHeader title={t('journal.title')} onLogout={logout} />
+      <TopBar onHandover={() => navigate('/handover')} onLock={logout} />
 
       <main className="sr-terminal-main">
+        <h1 className="sr-page-title">{t('journal.title')}</h1>
+
         <div className="sr-panel">
           {isFetching ? (
             <p className="muted">{t('common.loading')}</p>

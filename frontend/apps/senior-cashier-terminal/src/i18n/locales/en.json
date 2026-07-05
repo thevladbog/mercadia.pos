@@ -21,6 +21,15 @@
     "dark": "Dark",
     "toggle": "Toggle theme"
   },
+  "topbar": {
+    "authorized": "SIGNED IN",
+    "since": "since {{time}}",
+    "operations": "OPS: {{count}}",
+    "alerts": "ALERTS: {{count}}",
+    "autoLock": "AUTO-LOCK IN {{value}}",
+    "handover": "Hand over shift",
+    "lock": "Lock"
+  },
   "language": {
     "label": "Language",
     "ru": "Русский",

@@ -7,7 +7,7 @@ import { useListStoreTerminals } from '@mercadia/api-clients-store-edge';
 import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
 import { selectSuccessData } from '@/lib/cash-utils.js';
-import { TerminalHeader } from '@/components/TerminalHeader.js';
+import { TopBar } from '@/components/TopBar.js';
 
 const FILTERS = ['all', 'ready', 'busy', 'error', 'offline'] as const;
 type Filter = (typeof FILTERS)[number];
@@ -50,9 +50,11 @@ export function MonitoringPage() {
 
   return (
     <div className="sr-terminal-shell">
-      <TerminalHeader title={t('monitoring.title')} onLogout={logout} />
+      <TopBar onHandover={() => navigate('/handover')} onLock={logout} />
 
       <main className="sr-terminal-main">
+        <h1 className="sr-page-title">{t('monitoring.title')}</h1>
+
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           {FILTERS.map((f) => (
             <Button

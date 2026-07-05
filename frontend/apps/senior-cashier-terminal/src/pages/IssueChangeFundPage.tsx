@@ -20,7 +20,7 @@ import {
 } from '@/lib/cash-utils.js';
 import { DenominationInput } from '@/components/DenominationInput.js';
 import { CashierSelectModal } from '@/components/CashierSelectModal.js';
-import { TerminalHeader } from '@/components/TerminalHeader.js';
+import { TopBar } from '@/components/TopBar.js';
 
 export function IssueChangeFundPage() {
   const { t } = useTranslation();
@@ -118,15 +118,17 @@ export function IssueChangeFundPage() {
 
   return (
     <div className="sr-terminal-shell">
-      <TerminalHeader
-        title={t('cash.changeFundTitle')}
-        onLogout={() => {
+      <TopBar
+        onHandover={() => navigate('/handover')}
+        onLock={() => {
           logout();
           navigate('/login', { replace: true });
         }}
       />
 
       <main className="sr-terminal-main">
+        <h1 className="sr-page-title">{t('cash.changeFundTitle')}</h1>
+
         <form onSubmit={handleSubmit} className="sr-form">
           <p className="muted">
             {t('cash.sourceSafe')} → {t('cash.destinationDrawer')}

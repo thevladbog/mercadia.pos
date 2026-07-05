@@ -9,18 +9,15 @@ import {
 } from '@mercadia/api-clients-store-edge';
 
 import { useAuth } from '@/auth/AuthProvider.js';
-import { useIdleTimer } from '@/lib/use-idle-timer.js';
 import { getStoreId } from '@/api-client-config.js';
 import { formatMinor, selectSuccessData } from '@/lib/cash-utils.js';
-import { TerminalHeader } from '@/components/TerminalHeader.js';
+import { TopBar } from '@/components/TopBar.js';
 
 export function DashboardPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, remaining } = useAuth();
   const storeId = useMemo(() => getStoreId(), []);
-
-  const { remaining } = useIdleTimer();
 
   const { data: balancesResp } = useListCashBalances(storeId);
   const { data: shiftsResp } = useListOpenStoreShifts(storeId);
@@ -77,9 +74,11 @@ export function DashboardPage() {
 
   return (
     <div className="sr-terminal-shell">
-      <TerminalHeader title={t('dashboard.title')} onLogout={logout} />
+      <TopBar onHandover={() => navigate('/handover')} onLock={logout} />
 
       <main className="sr-terminal-main">
+        <h1 className="sr-page-title">{t('dashboard.title')}</h1>
+
         <div className="sr-kpi-grid">
           <div className="sr-kpi-card">
             <span className="sr-kpi-label">{t('dashboard.safeBalance')}</span>

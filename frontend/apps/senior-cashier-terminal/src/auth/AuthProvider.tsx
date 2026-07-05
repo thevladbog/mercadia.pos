@@ -8,6 +8,7 @@ import {
 } from '@mercadia/api-clients-store-edge';
 
 import { getStoreId } from '@/api-client-config.js';
+import { useIdleTimer } from '@/lib/use-idle-timer.js';
 
 import type { SessionResult } from './types.js';
 
@@ -19,6 +20,10 @@ interface AuthContextValue {
     credentialFactor: CreateAuthSessionBodyCredentialFactor,
   ) => Promise<SessionResult>;
   logout: () => void;
+  /** Milliseconds remaining before the idle timer's auto-lock countdown reaches zero. */
+  remaining: number;
+  /** True once `remaining` has reached zero. Not yet consumed anywhere (no forced logout wired up). */
+  isExpired: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -71,6 +76,7 @@ function clearSession(): void {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionResult | null>(loadSession);
+  const { remaining, isExpired } = useIdleTimer();
 
   const login = useCallback(
     async (
@@ -108,7 +114,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, []);
 
-  const value = useMemo(() => ({ session, login, logout }), [session, login, logout]);
+  const value = useMemo(
+    () => ({ session, login, logout, remaining, isExpired }),
+    [session, login, logout, remaining, isExpired],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

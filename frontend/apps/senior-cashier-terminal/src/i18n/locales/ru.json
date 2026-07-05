@@ -21,6 +21,15 @@
     "dark": "Тёмная",
     "toggle": "Переключить тему"
   },
+  "topbar": {
+    "authorized": "АВТОРИЗОВАН",
+    "since": "с {{time}}",
+    "operations": "ОПЕРАЦИЙ: {{count}}",
+    "alerts": "АЛЕРТЫ: {{count}}",
+    "autoLock": "АВТОБЛОКИРОВКА ЧЕРЕЗ {{value}}",
+    "handover": "Передать смену",
+    "lock": "Заблокировать"
+  },
   "language": {
     "label": "Язык",
     "ru": "Русский",
