@@ -20,6 +20,7 @@ surfaces:
 - [Architecture decisions](adr/README.md) - accepted and proposed architecture decision records.
 - [Technology discussion](technology-discussion.md) - pending discussion for admin panel, backend, Store Edge packaging, and observability technology choices.
 - [Development documentation](development/README.md) - AI agent rules, API contract workflow, and documentation backlog.
+- [Hardware support matrix](hardware-support-matrix.md) - device support matrix, current Hardware Agent architecture, and the real-driver/ATOL integration plan.
 - [Open questions](open-questions.md) - decisions that should be resolved before implementation hardening.
 
 ## Reading Order
