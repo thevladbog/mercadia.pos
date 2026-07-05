@@ -238,7 +238,7 @@ even though no command surfaces it explicitly today.
    priority than fiscal/payment/scanner because these gate senior-cashier
    authentication factors, not the base sale flow.
 6. **Scanner model and connection mode** (owner: vendor docs).
-   `docs/open-questions.md:64` says "chaще всего COM, можно поддержать и USB"
+   `docs/open-questions.md:64` says "чаще всего COM, можно поддержать и USB"
    (usually COM, USB support possible) but names no specific model. This
    affects whether the real scanner driver is a COM/serial reader or a USB
    HID keyboard-wedge pass-through, which are architecturally different
