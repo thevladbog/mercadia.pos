@@ -12,11 +12,7 @@ import {
 import { CreateRecountModal } from '@/components/cash/CreateRecountModal.js';
 
 type CashAction =
-  | 'change_fund'
-  | 'drawer_to_safe'
-  | 'bank_collection'
-  | 'business_expense'
-  | 'recount';
+  'change_fund' | 'drawer_to_safe' | 'bank_collection' | 'business_expense' | 'recount';
 
 type CashActionsPanelProps = {
   storeId: string;
