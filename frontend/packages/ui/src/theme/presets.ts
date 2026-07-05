@@ -5,6 +5,7 @@ export const ACCENT_PRESETS: Record<AccentPreset, string> = {
   return: '#2563EB',
   sco: '#F25F1C',
   neutral: '#FF6600',
+  'senior-cashier': '#EA580C',
 };
 
 export function resolveAccentHex(options: {

@@ -2,7 +2,7 @@ export type Surface = 'admin' | 'terminal' | 'sco' | 'senior-cashier';
 
 export type ColorMode = 'light' | 'dark';
 
-export type AccentPreset = 'sale' | 'return' | 'sco' | 'neutral';
+export type AccentPreset = 'sale' | 'return' | 'sco' | 'neutral' | 'senior-cashier';
 
 export type ThemeConfig = {
   surface: Surface;

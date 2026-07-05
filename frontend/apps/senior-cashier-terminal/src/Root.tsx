@@ -12,7 +12,11 @@ export function Root() {
   return (
     <I18nextProvider i18n={i18n}>
       <ThemeProvider
-        defaultTheme={{ surface: 'senior-cashier', colorMode: 'dark', accentPreset: 'neutral' }}
+        defaultTheme={{
+          surface: 'senior-cashier',
+          colorMode: 'dark',
+          accentPreset: 'senior-cashier',
+        }}
         persist
       >
         <QueryClientProvider client={queryClient}>
