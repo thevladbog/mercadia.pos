@@ -158,6 +158,7 @@ jobs:
         run: |
           pnpm --filter senior-cashier-terminal test
           pnpm --filter pos-terminal test
+          pnpm --filter sco-terminal test
           pnpm --filter admin-web test
 
       - name: Build admin-web

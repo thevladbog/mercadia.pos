@@ -20,6 +20,7 @@ registry=https://registry.npmjs.org/
 frontend/
   apps/admin-web/                      # Central admin UI (Vite + React)
   apps/pos-terminal/                   # POS terminal dev shell (Vite + React)
+  apps/sco-terminal/                   # Self-checkout terminal dev shell (Vite + React)
   apps/senior-cashier-terminal/        # Senior cashier touch terminal (Vite + React)
   packages/ui/                         # @mercadia/ui — Radix components + theme system
   packages/api-clients/central/        # Orval client for central-backend OpenAPI
@@ -226,6 +227,41 @@ Default demo env vars:
 - `VITE_LAYOUT_TEMPLATE_ID` and `VITE_CENTRAL_SESSION_TOKEN` — optional central layout template access
 - `VITE_HARDWARE_AGENT_URL` — optional Hardware Agent base URL when bypassing the Vite proxy
 
+## Local development — sco-terminal
+
+The SCO (self-checkout) terminal is a Vite dev shell covering M1: idle screen, manual barcode
+scanning (no scanner hardware integration yet), and a live receipt view — built only on existing
+Store Edge APIs. Payment, fiscalization, assistant mode, and marking are later milestones. See
+[`docs/sco-terminal-implementation-design.md`](../docs/sco-terminal-implementation-design.md).
+
+1. Start **store-edge** on port `8081` (see `backend/README.md`). A demo actor (`cashier-1` / PIN
+   `1234`) must exist — store-edge seeds it by default.
+2. Start the SCO UI:
+
+   ```bash
+   cd frontend
+   pnpm --filter sco-terminal dev
+   ```
+
+3. Open `http://localhost:5176`. The app logs in a placeholder service actor at boot (see
+   design-doc §4 and the `TODO(sco-auth)` comment in `src/auth/AuthProvider.tsx`), opens the
+   operational day/shift if needed, and sends an SCO terminal heartbeat. From the idle screen,
+   **Start scanning** opens a receipt; scan the demo barcode or type one and **Add item**; use
+   **Cancel and start over** to abandon and return to idle.
+
+Default demo env vars:
+
+- `VITE_SCO_STORE_ID=store-1`
+- `VITE_SCO_TERMINAL_ID=sco-1`
+- `VITE_SCO_LAYOUT_PROFILE=h` — `h` (horizontal), `v` (vertical), or `hd`
+- `VITE_SCO_SERVICE_ACTOR_ID=cashier-1` / `VITE_SCO_SERVICE_ACTOR_PIN=1234` — dev-demo placeholder
+  service actor (design-doc open question 1)
+- `VITE_SCO_DRAWER_ID=sco-drawer-1` — opaque shift-open placeholder; SCO is cashless (ADR-0008)
+- `VITE_SCO_DEMO_BARCODE=4600000000000`
+- `VITE_SCO_SOFTWARE_VERSION=dev`
+- `VITE_STORE_EDGE_URL` — optional Store Edge base URL when bypassing the Vite proxy
+- `VITE_STORE_EDGE_SESSION_TOKEN` — optional Store Edge session token
+
 ## Local development — senior-cashier-terminal
 
 The senior cashier terminal uses Store Edge for operational commands and Hardware Agent for local
@@ -261,10 +297,7 @@ committed, then runs typecheck, lint, format check, build, and dependency audit.
 
 ## Expected future apps
 
-- `apps/pos-terminal`
-- `apps/sco-terminal`
 - `apps/senior-cashier-web`
-- `apps/senior-cashier-terminal`
 - `apps/assistant-station`
 
 Do not place backend services or backend packages here.

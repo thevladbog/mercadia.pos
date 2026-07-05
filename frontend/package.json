@@ -18,7 +18,7 @@
     "format:check": "prettier --check .",
     "storybook:ui": "pnpm --filter @mercadia/ui storybook",
     "build-storybook:ui": "pnpm --filter @mercadia/ui build-storybook",
-    "verify": "pnpm orval:central && pnpm orval:store-edge && pnpm orval:hardware-agent && pnpm typecheck && pnpm lint && pnpm format:check && pnpm --filter @mercadia/ui test && pnpm --filter @mercadia/receipt-kit test && pnpm --filter senior-cashier-terminal test && pnpm --filter pos-terminal test && pnpm --filter admin-web test && pnpm --filter admin-web build && pnpm --filter pos-terminal typecheck && pnpm --filter senior-cashier-terminal typecheck"
+    "verify": "pnpm orval:central && pnpm orval:store-edge && pnpm orval:hardware-agent && pnpm typecheck && pnpm lint && pnpm format:check && pnpm --filter @mercadia/ui test && pnpm --filter @mercadia/receipt-kit test && pnpm --filter senior-cashier-terminal test && pnpm --filter pos-terminal test && pnpm --filter sco-terminal test && pnpm --filter admin-web test && pnpm --filter admin-web build && pnpm --filter pos-terminal typecheck && pnpm --filter senior-cashier-terminal typecheck && pnpm --filter sco-terminal typecheck"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

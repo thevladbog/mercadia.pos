@@ -1,0 +1,77 @@
+{
+  "language": {
+    "label": "Language",
+    "ru": "Russian",
+    "en": "English"
+  },
+  "sco": {
+    "eyebrow": "Self-checkout",
+    "appTitle": "Self-Checkout",
+    "boot": {
+      "starting": "Starting up, please wait...",
+      "preparing": "Getting the till ready, please wait..."
+    },
+    "outOfService": {
+      "title": "This till is unavailable",
+      "message": "This self-checkout terminal is temporarily out of service. Please use another till or ask a member of staff for help.",
+      "retry": "Try again"
+    },
+    "idle": {
+      "title": "Ready when you are",
+      "subtitle": "Scan your first item to begin your shop.",
+      "guidanceScan": "Scan each item as you go.",
+      "guidanceCheck": "Check your receipt on screen.",
+      "guidancePay": "Pay to finish and take your receipt.",
+      "availableBadge": "Till available",
+      "startAction": "Start scanning"
+    },
+    "scanning": {
+      "title": "Scan your items",
+      "subtitle": "Enter or scan a barcode, then add it to your basket.",
+      "barcodeLabel": "Barcode",
+      "scanAction": "Add item",
+      "demoBarcodeAction": "Scan a sample item",
+      "reviewAction": "Review my basket"
+    },
+    "stage": {
+      "label": "Checkout progress",
+      "scanning": "Scanning",
+      "receipt": "Review",
+      "payment": "Payment",
+      "done": "Done",
+      "comingSoon": "coming soon"
+    },
+    "receipt": {
+      "title": "Your basket",
+      "reviewSubtitle": "Check your items before paying.",
+      "backToScanning": "Add more items",
+      "empty": "No items scanned yet.",
+      "product": "Item",
+      "quantity": "Qty",
+      "price": "Price",
+      "total": "Total",
+      "grandTotal": "Amount due",
+      "itemCount": "Items scanned: {{count}}"
+    },
+    "cancel": {
+      "action": "Cancel and start over",
+      "confirmTitle": "Cancel this shop?",
+      "confirmBody": "All scanned items will be removed and cannot be recovered.",
+      "confirmAction": "Yes, cancel",
+      "keepShopping": "No, keep shopping",
+      "reason": "Customer cancelled at self-checkout"
+    },
+    "footer": {
+      "store": "Store {{storeId}}",
+      "terminal": "Till {{terminalId}}",
+      "online": "online",
+      "offline": "offline"
+    },
+    "errors": {
+      "startFailed": "We could not start your shop. Please ask a member of staff for help.",
+      "scanFailed": "We could not add that item. Please try again or ask a member of staff for help.",
+      "cancelFailed": "We could not cancel your shop yet. Please ask a member of staff for help.",
+      "callStaffHint": "Please ask a member of staff for help."
+    }
+  }
+}
