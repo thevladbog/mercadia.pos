@@ -355,7 +355,7 @@ func (s *CheckoutService) CancelReceipt(ctx context.Context, command CancelRecei
 		return ReceiptResult{}, ErrInvalidCheckoutCommand
 	}
 	if command.ApprovedByID != "" && command.ApprovedByID == command.ActorID {
-		return ReceiptResult{}, ErrInvalidCheckoutCommand
+		return ReceiptResult{}, ErrSeparationOfDutiesViolation
 	}
 
 	const operation = "checkout.cancel_receipt"

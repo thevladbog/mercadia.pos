@@ -250,8 +250,8 @@ func TestCancelReceiptRejectsSelfApproval(t *testing.T) {
 		ActorID:        "cashier-1",
 		ApprovedByID:   "cashier-1",
 	})
-	if !errors.Is(err, app.ErrInvalidCheckoutCommand) {
-		t.Fatalf("expected ErrInvalidCheckoutCommand, got %v", err)
+	if !errors.Is(err, app.ErrSeparationOfDutiesViolation) {
+		t.Fatalf("expected ErrSeparationOfDutiesViolation, got %v", err)
 	}
 }
 
