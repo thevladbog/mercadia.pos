@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -28,19 +29,30 @@ func WithDemoActors() StoreOption {
 func demoActors() []domain.Actor {
 	notRequired := domain.CredentialPolicy{Required: false}
 	return []domain.Actor{
-		{ID: "cashier-1", PIN: "1234", Roles: []domain.Role{domain.RoleCashier}, CredentialPolicy: &notRequired},
+		{ID: "cashier-1", PINHash: mustHashDemoPIN("1234"), Roles: []domain.Role{domain.RoleCashier}, CredentialPolicy: &notRequired},
 		{
-			ID:    "senior-1",
-			PIN:   "5678",
-			Roles: []domain.Role{domain.RoleSeniorCashier},
+			ID:      "senior-1",
+			PINHash: mustHashDemoPIN("5678"),
+			Roles:   []domain.Role{domain.RoleSeniorCashier},
 			CredentialBindings: []domain.CredentialBinding{
 				{Kind: domain.CredentialKindIButton, TokenHash: app.HashCredentialToken("demo-ibutton-senior-1"), MaskedToken: "iButton demo ****0001", Active: true},           // #nosec G101 -- deterministic demo binding fixture, not a secret.
 				{Kind: domain.CredentialKindMSRCard, TokenHash: app.HashCredentialToken("demo-msr-senior-1"), MaskedToken: "MSR staff demo ****0001", Active: true},             // #nosec G101 -- deterministic demo binding fixture, not a secret.
 				{Kind: domain.CredentialKindBarcodeCard, TokenHash: app.HashCredentialToken("demo-barcode-senior-1"), MaskedToken: "Barcode staff demo ****0001", Active: true}, // #nosec G101 -- deterministic demo binding fixture, not a secret.
 			},
 		},
-		{ID: "admin-1", PIN: "9999", Roles: []domain.Role{domain.RoleAdmin}, CredentialPolicy: &notRequired},
+		{ID: "admin-1", PINHash: mustHashDemoPIN("9999"), Roles: []domain.Role{domain.RoleAdmin}, CredentialPolicy: &notRequired},
 	}
+}
+
+// mustHashDemoPIN hashes a hardcoded demo PIN for the in-memory store's seed
+// data. Errors are only possible for malformed bcrypt cost/input, which
+// cannot occur for these fixed literals, so panicking keeps callers simple.
+func mustHashDemoPIN(pin string) string {
+	hash, err := app.HashPIN(pin)
+	if err != nil {
+		panic(fmt.Sprintf("hash demo pin: %v", err))
+	}
+	return hash
 }
 
 func (s *Store) FindActor(ctx context.Context, actorID string) (domain.Actor, error) {

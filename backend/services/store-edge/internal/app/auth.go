@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"mercadia.dev/pos/services/store-edge/internal/domain"
 )
 
@@ -138,7 +140,7 @@ func (s *AuthService) CreateSession(ctx context.Context, command CreateSessionCo
 		}
 		return SessionResult{}, err
 	}
-	if actor.PIN != command.PIN {
+	if !verifyPIN(actor.PINHash, command.PIN) {
 		if err := s.recordFailedAuthAttempt(ctx, settings, command, now, "invalid_pin"); err != nil {
 			return SessionResult{}, err
 		}
@@ -338,6 +340,23 @@ func credentialKindAllowed(policy domain.CredentialPolicy, kind domain.Credentia
 
 func HashCredentialToken(token string) string {
 	return hashCredentialToken(token)
+}
+
+// HashPIN hashes a staff PIN with bcrypt for storage at rest. PINs are
+// low-entropy (often 4 digits), so bcrypt's built-in salting and cost factor
+// are required here rather than a plain fast hash like SHA-256.
+func HashPIN(pin string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(pin), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("hash pin: %w", err)
+	}
+	return string(hash), nil
+}
+
+// verifyPIN compares a submitted plaintext PIN against a stored bcrypt hash
+// in constant time (bcrypt.CompareHashAndPassword is constant-time internally).
+func verifyPIN(pinHash, pin string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(pinHash), []byte(pin)) == nil
 }
 
 func hashCredentialToken(token string) string {
