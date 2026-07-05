@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@mercadia/ui';
 import { useListOperationJournal } from '@mercadia/api-clients-store-edge';
 
-import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
 import { selectSuccessData } from '@/lib/cash-utils.js';
+import { useTopBarActions } from '@/lib/use-topbar-actions.js';
 import { TopBar } from '@/components/TopBar.js';
 
 const PAGE_SIZE = 20;
@@ -14,7 +14,7 @@ const PAGE_SIZE = 20;
 export function OperationJournalPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { onHandover, onLock } = useTopBarActions();
   const storeId = getStoreId();
   const [page, setPage] = useState(0);
 
@@ -39,7 +39,7 @@ export function OperationJournalPage() {
 
   return (
     <div className="sr-terminal-shell">
-      <TopBar onHandover={() => navigate('/handover')} onLock={logout} />
+      <TopBar onHandover={onHandover} onLock={onLock} />
 
       <main className="sr-terminal-main">
         <h1 className="sr-page-title">{t('journal.title')}</h1>

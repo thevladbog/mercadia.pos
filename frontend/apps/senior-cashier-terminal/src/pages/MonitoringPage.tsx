@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@mercadia/ui';
 import { useListStoreTerminals } from '@mercadia/api-clients-store-edge';
 
-import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
 import { selectSuccessData } from '@/lib/cash-utils.js';
+import { useTopBarActions } from '@/lib/use-topbar-actions.js';
 import { TopBar } from '@/components/TopBar.js';
 
 const FILTERS = ['all', 'ready', 'busy', 'error', 'offline'] as const;
@@ -30,7 +30,7 @@ const STATUS_COLORS: Record<string, string> = {
 export function MonitoringPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { onHandover, onLock } = useTopBarActions();
   const storeId = useMemo(() => getStoreId(), []);
   const [filter, setFilter] = useState<Filter>('all');
 
@@ -50,7 +50,7 @@ export function MonitoringPage() {
 
   return (
     <div className="sr-terminal-shell">
-      <TopBar onHandover={() => navigate('/handover')} onLock={logout} />
+      <TopBar onHandover={onHandover} onLock={onLock} />
 
       <main className="sr-terminal-main">
         <h1 className="sr-page-title">{t('monitoring.title')}</h1>

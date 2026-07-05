@@ -9,9 +9,9 @@ import {
 } from '@mercadia/api-clients-store-edge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
 import { actorsMustDiffer, computeDenominationTotal, selectSuccessData } from '@/lib/cash-utils.js';
+import { useTopBarActions } from '@/lib/use-topbar-actions.js';
 import { DenominationInput } from '@/components/DenominationInput.js';
 import { CashierSelectModal } from '@/components/CashierSelectModal.js';
 import { MismatchDialog } from '@/components/MismatchDialog.js';
@@ -21,7 +21,7 @@ export function ReceiveCashPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { logout } = useAuth();
+  const { onHandover, onLock } = useTopBarActions();
   const storeId = useMemo(() => getStoreId(), []);
 
   const { data: shiftsResp } = useListOpenStoreShifts(storeId);
@@ -114,13 +114,7 @@ export function ReceiveCashPage() {
 
   return (
     <div className="sr-terminal-shell">
-      <TopBar
-        onHandover={() => navigate('/handover')}
-        onLock={() => {
-          logout();
-          navigate('/login', { replace: true });
-        }}
-      />
+      <TopBar onHandover={onHandover} onLock={onLock} />
 
       <main className="sr-terminal-main">
         <h1 className="sr-page-title">{t('cash.receiveCashTitle')}</h1>

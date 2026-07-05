@@ -5,12 +5,14 @@ import { Button, Input, Field, Label } from '@mercadia/ui';
 
 import { useAuth } from '@/auth/AuthProvider.js';
 import { readIButton } from '@/auth/ibutton.js';
+import { useTopBarActions } from '@/lib/use-topbar-actions.js';
 import { TopBar } from '@/components/TopBar.js';
 
 export function ShiftHandoverPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { session, logout } = useAuth();
+  const { onHandover } = useTopBarActions();
 
   const [incomingId, setIncomingId] = useState('');
   const [incomingPin, setIncomingPin] = useState('');
@@ -64,7 +66,7 @@ export function ShiftHandoverPage() {
 
   return (
     <div className="sr-terminal-shell">
-      <TopBar onHandover={() => navigate('/handover')} onLock={() => navigate('/login')} />
+      <TopBar onHandover={onHandover} onLock={() => navigate('/login')} />
 
       <main className="sr-terminal-main">
         <h1 className="sr-page-title">{t('handover.title')}</h1>

@@ -20,6 +20,7 @@ import {
 } from '@/auth/ibutton.js';
 import { TopBar } from '@/components/TopBar.js';
 import { getStoreId } from '@/api-client-config.js';
+import { useTopBarActions } from '@/lib/use-topbar-actions.js';
 
 const CREDENTIAL_KINDS: StaffCredentialKind[] = ['ibutton', 'msr_card', 'barcode_card'];
 
@@ -30,8 +31,9 @@ function actorLabel(actor: GetCredentialManagement200ActorsItem): string {
 export function CredentialEnrollmentPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { session, logout } = useAuth();
+  const { session } = useAuth();
   const { remaining } = useIdleTimerContext();
+  const { onHandover, onLock } = useTopBarActions();
   const storeId = useMemo(() => getStoreId(), []);
   const [selectedActorId, setSelectedActorId] = useState('');
   const [credentialKind, setCredentialKind] = useState<StaffCredentialKind>('ibutton');
@@ -165,7 +167,7 @@ export function CredentialEnrollmentPage() {
 
   return (
     <div className="sr-terminal-shell">
-      <TopBar onHandover={() => navigate('/handover')} onLock={logout} />
+      <TopBar onHandover={onHandover} onLock={onLock} />
 
       <main className="sr-terminal-main">
         <h1 className="sr-page-title">{t('credentials.title')}</h1>
