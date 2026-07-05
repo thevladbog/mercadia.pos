@@ -9,7 +9,6 @@ import {
   type StaffCredentialKind,
   type StaffCredentialRead,
 } from '@/auth/ibutton.js';
-import { useIdleTimer } from '@/lib/use-idle-timer.js';
 
 const MAX_ATTEMPTS = 5;
 const ATTEMPTS_KEY = 'mercadia.sr-terminal.login-attempts';
@@ -48,8 +47,6 @@ export function LoginPage() {
   const [attempts, setAttempts] = useState(loadAttempts);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isBlocked = attempts >= MAX_ATTEMPTS;
-
-  useIdleTimer();
 
   const handleCredentialKind = useCallback((kind: StaffCredentialKind) => {
     setCredentialKind(kind);

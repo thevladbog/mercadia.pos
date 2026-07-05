@@ -12,14 +12,15 @@ import {
 } from '@mercadia/api-clients-store-edge';
 
 import { useAuth } from '@/auth/AuthProvider.js';
+import { useIdleTimerContext } from '@/auth/IdleTimerProvider.js';
 import {
   readStaffCredential,
   type StaffCredentialKind,
   type StaffCredentialRead,
 } from '@/auth/ibutton.js';
-import { TerminalHeader } from '@/components/TerminalHeader.js';
+import { TopBar } from '@/components/TopBar.js';
 import { getStoreId } from '@/api-client-config.js';
-import { useIdleTimer } from '@/lib/use-idle-timer.js';
+import { useTopBarActions } from '@/lib/use-topbar-actions.js';
 
 const CREDENTIAL_KINDS: StaffCredentialKind[] = ['ibutton', 'msr_card', 'barcode_card'];
 
@@ -30,9 +31,10 @@ function actorLabel(actor: GetCredentialManagement200ActorsItem): string {
 export function CredentialEnrollmentPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { session, logout } = useAuth();
+  const { session } = useAuth();
+  const { remaining } = useIdleTimerContext();
+  const { onHandover, onLock } = useTopBarActions();
   const storeId = useMemo(() => getStoreId(), []);
-  const { remaining } = useIdleTimer();
   const [selectedActorId, setSelectedActorId] = useState('');
   const [credentialKind, setCredentialKind] = useState<StaffCredentialKind>('ibutton');
   const [credentialRead, setCredentialRead] = useState<StaffCredentialRead | null>(null);
@@ -165,9 +167,11 @@ export function CredentialEnrollmentPage() {
 
   return (
     <div className="sr-terminal-shell">
-      <TerminalHeader title={t('credentials.title')} onLogout={logout} />
+      <TopBar onHandover={onHandover} onLock={onLock} />
 
       <main className="sr-terminal-main">
+        <h1 className="sr-page-title">{t('credentials.title')}</h1>
+
         <div className="sr-panel sr-stack">
           <div className="sr-panel-header">
             <div>

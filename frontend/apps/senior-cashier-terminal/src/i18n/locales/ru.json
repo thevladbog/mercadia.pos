@@ -21,6 +21,20 @@
     "dark": "Тёмная",
     "toggle": "Переключить тему"
   },
+  "topbar": {
+    "authorized": "АВТОРИЗОВАН",
+    "since": "с {{time}}",
+    "operations": "ОПЕРАЦИЙ: {{count}}",
+    "alerts": "АЛЕРТЫ: {{count}}",
+    "autoLock": "АВТОБЛОКИРОВКА ЧЕРЕЗ {{value}}",
+    "handover": "Передать смену",
+    "lock": "Заблокировать",
+    "roles": {
+      "cashier": "Кассир",
+      "seniorCashier": "Старший кассир",
+      "admin": "Администратор"
+    }
+  },
   "language": {
     "label": "Язык",
     "ru": "Русский",

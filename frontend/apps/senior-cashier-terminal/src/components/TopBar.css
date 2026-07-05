@@ -1,0 +1,88 @@
+.sr-topbar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--ui-surface);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.sr-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.sr-topbar-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-accent);
+  color: var(--ui-accent-foreground);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.sr-topbar-wordmark {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--ui-text-muted);
+  white-space: nowrap;
+}
+
+.sr-topbar-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.sr-topbar-identity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.sr-topbar-identity-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--ui-success);
+}
+
+.sr-topbar-identity-line {
+  font-size: 0.85rem;
+  color: var(--ui-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sr-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.sr-topbar-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sr-topbar-utility {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-left: 0.5rem;
+  margin-left: 0.25rem;
+  border-left: 1px solid var(--ui-border);
+}

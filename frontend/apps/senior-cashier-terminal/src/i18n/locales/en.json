@@ -21,6 +21,20 @@
     "dark": "Dark",
     "toggle": "Toggle theme"
   },
+  "topbar": {
+    "authorized": "SIGNED IN",
+    "since": "since {{time}}",
+    "operations": "OPS: {{count}}",
+    "alerts": "ALERTS: {{count}}",
+    "autoLock": "AUTO-LOCK IN {{value}}",
+    "handover": "Hand over shift",
+    "lock": "Lock",
+    "roles": {
+      "cashier": "Cashier",
+      "seniorCashier": "Senior Cashier",
+      "admin": "Administrator"
+    }
+  },
   "language": {
     "label": "Language",
     "ru": "Русский",

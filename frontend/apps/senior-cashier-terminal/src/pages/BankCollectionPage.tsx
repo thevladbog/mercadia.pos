@@ -8,17 +8,17 @@ import {
 } from '@mercadia/api-clients-store-edge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
 import { actorsMustDiffer, computeDenominationTotal } from '@/lib/cash-utils.js';
+import { useTopBarActions } from '@/lib/use-topbar-actions.js';
 import { DenominationInput } from '@/components/DenominationInput.js';
-import { TerminalHeader } from '@/components/TerminalHeader.js';
+import { TopBar } from '@/components/TopBar.js';
 
 export function BankCollectionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { logout } = useAuth();
+  const { onHandover, onLock } = useTopBarActions();
   const storeId = useMemo(() => getStoreId(), []);
 
   const [collectorName, setCollectorName] = useState('');
@@ -98,15 +98,11 @@ export function BankCollectionPage() {
 
   return (
     <div className="sr-terminal-shell">
-      <TerminalHeader
-        title={t('cash.bankCollectionTitle')}
-        onLogout={() => {
-          logout();
-          navigate('/login', { replace: true });
-        }}
-      />
+      <TopBar onHandover={onHandover} onLock={onLock} />
 
       <main className="sr-terminal-main">
+        <h1 className="sr-page-title">{t('cash.bankCollectionTitle')}</h1>
+
         <form onSubmit={handleSubmit} className="sr-form">
           <p className="muted">{t('cash.collectorInfo')}</p>
 
