@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -111,6 +112,56 @@ func TestCreateSessionRejectsInvalidPIN(t *testing.T) {
 	})
 	if !errors.Is(err, app.ErrInvalidCredentials) {
 		t.Fatalf("expected invalid credentials, got %v", err)
+	}
+}
+
+func TestCreateSessionSucceedsAgainstBcryptHashedPIN(t *testing.T) {
+	store := memory.NewStore(memory.WithDemoActors())
+	auth := app.NewAuthService(store, store, store, store)
+
+	actor, err := store.FindActor(context.Background(), "cashier-1")
+	if err != nil {
+		t.Fatalf("find actor: %v", err)
+	}
+	if actor.PINHash == "" || actor.PINHash == "1234" || !strings.HasPrefix(actor.PINHash, "$2a$") {
+		t.Fatalf("expected actor PIN to be stored as a bcrypt hash, got %q", actor.PINHash)
+	}
+
+	result, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
+		ActorID: "cashier-1",
+		PIN:     "1234",
+		StoreID: "store-1",
+	})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	if result.Token == "" || result.ActorID != "cashier-1" {
+		t.Fatalf("session = %+v", result)
+	}
+}
+
+func TestCreateSessionRejectsInvalidPINAndRecordsAttempt(t *testing.T) {
+	store := memory.NewStore(memory.WithDemoActors())
+	auth := app.NewAuthService(store, store, store, store)
+
+	_, err := auth.CreateSession(context.Background(), app.CreateSessionCommand{
+		ActorID: "cashier-1",
+		PIN:     "0000",
+		StoreID: "store-1",
+	})
+	if !errors.Is(err, app.ErrInvalidCredentials) {
+		t.Fatalf("expected invalid credentials, got %v", err)
+	}
+
+	attempts, err := store.ListAuthAttempts(context.Background(), app.AuthAttemptFilter{
+		StoreID: "store-1",
+		ActorID: "cashier-1",
+	}, app.PageParams{Limit: 10})
+	if err != nil {
+		t.Fatalf("list auth attempts: %v", err)
+	}
+	if len(attempts.Items) != 1 || attempts.Items[0].FailureReason != "invalid_pin" {
+		t.Fatalf("attempts = %+v", attempts.Items)
 	}
 }
 

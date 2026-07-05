@@ -15,7 +15,12 @@ import (
 
 func (s *Store) SeedDemoActors(ctx context.Context) error {
 	return s.Run(ctx, func(ctx context.Context) error {
-		for _, actor := range demoActors() {
+		for _, seed := range demoActors() {
+			actor := seed.Actor
+			pinHash, err := app.HashPIN(seed.PIN)
+			if err != nil {
+				return fmt.Errorf("hash demo pin for actor %s: %w", actor.ID, err)
+			}
 			roles, err := json.Marshal(actor.Roles)
 			if err != nil {
 				return fmt.Errorf("marshal actor roles: %w", err)
@@ -36,14 +41,14 @@ func (s *Store) SeedDemoActors(ctx context.Context) error {
 				return fmt.Errorf("marshal actor credential bindings: %w", err)
 			}
 			_, err = s.conn(ctx).Exec(ctx, `
-			INSERT INTO store_actors (id, pin, roles, credential_policy, credential_bindings)
+			INSERT INTO store_actors (id, pin_hash, roles, credential_policy, credential_bindings)
 			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (id) DO UPDATE SET
-				pin = EXCLUDED.pin,
+				pin_hash = EXCLUDED.pin_hash,
 				roles = EXCLUDED.roles,
 				credential_policy = EXCLUDED.credential_policy,
 				credential_bindings = EXCLUDED.credential_bindings
-		`, actor.ID, actor.PIN, roles, credentialPolicy, credentialBindings)
+		`, actor.ID, pinHash, roles, credentialPolicy, credentialBindings)
 			if err != nil {
 				return fmt.Errorf("seed actor %s: %w", actor.ID, err)
 			}
@@ -71,27 +76,43 @@ func (s *Store) SeedDemoActors(ctx context.Context) error {
 	})
 }
 
-func demoActors() []domain.Actor {
+// demoActorSeed pairs a demo actor with its human-readable plaintext PIN.
+// The plaintext is hashed with app.HashPIN immediately before being persisted
+// by SeedDemoActors; it is never written to storage or logged in the clear.
+type demoActorSeed struct {
+	Actor domain.Actor
+	PIN   string
+}
+
+func demoActors() []demoActorSeed {
 	notRequired := domain.CredentialPolicy{Required: false}
-	return []domain.Actor{
-		{ID: "cashier-1", PIN: "1234", Roles: []domain.Role{domain.RoleCashier}, CredentialPolicy: &notRequired},
+	return []demoActorSeed{
 		{
-			ID:    "senior-1",
-			PIN:   "5678",
-			Roles: []domain.Role{domain.RoleSeniorCashier},
-			CredentialBindings: []domain.CredentialBinding{
-				{Kind: domain.CredentialKindIButton, TokenHash: app.HashCredentialToken("demo-ibutton-senior-1"), MaskedToken: "iButton demo ****0001", Active: true},           // #nosec G101 -- deterministic demo binding fixture, not a secret.
-				{Kind: domain.CredentialKindMSRCard, TokenHash: app.HashCredentialToken("demo-msr-senior-1"), MaskedToken: "MSR staff demo ****0001", Active: true},             // #nosec G101 -- deterministic demo binding fixture, not a secret.
-				{Kind: domain.CredentialKindBarcodeCard, TokenHash: app.HashCredentialToken("demo-barcode-senior-1"), MaskedToken: "Barcode staff demo ****0001", Active: true}, // #nosec G101 -- deterministic demo binding fixture, not a secret.
-			},
+			Actor: domain.Actor{ID: "cashier-1", Roles: []domain.Role{domain.RoleCashier}, CredentialPolicy: &notRequired},
+			PIN:   "1234",
 		},
-		{ID: "admin-1", PIN: "9999", Roles: []domain.Role{domain.RoleAdmin}, CredentialPolicy: &notRequired},
+		{
+			Actor: domain.Actor{
+				ID:    "senior-1",
+				Roles: []domain.Role{domain.RoleSeniorCashier},
+				CredentialBindings: []domain.CredentialBinding{
+					{Kind: domain.CredentialKindIButton, TokenHash: app.HashCredentialToken("demo-ibutton-senior-1"), MaskedToken: "iButton demo ****0001", Active: true},           // #nosec G101 -- deterministic demo binding fixture, not a secret.
+					{Kind: domain.CredentialKindMSRCard, TokenHash: app.HashCredentialToken("demo-msr-senior-1"), MaskedToken: "MSR staff demo ****0001", Active: true},             // #nosec G101 -- deterministic demo binding fixture, not a secret.
+					{Kind: domain.CredentialKindBarcodeCard, TokenHash: app.HashCredentialToken("demo-barcode-senior-1"), MaskedToken: "Barcode staff demo ****0001", Active: true}, // #nosec G101 -- deterministic demo binding fixture, not a secret.
+				},
+			},
+			PIN: "5678",
+		},
+		{
+			Actor: domain.Actor{ID: "admin-1", Roles: []domain.Role{domain.RoleAdmin}, CredentialPolicy: &notRequired},
+			PIN:   "9999",
+		},
 	}
 }
 
 func (s *Store) FindActor(ctx context.Context, actorID string) (domain.Actor, error) {
 	row := s.pool.QueryRow(ctx, `
-		SELECT id, pin, roles, credential_policy, credential_bindings FROM store_actors WHERE id = $1
+		SELECT id, pin_hash, roles, credential_policy, credential_bindings FROM store_actors WHERE id = $1
 	`, actorID)
 
 	actor, err := scanActor(row)
@@ -103,7 +124,7 @@ func (s *Store) FindActor(ctx context.Context, actorID string) (domain.Actor, er
 
 func (s *Store) ListActors(ctx context.Context) ([]domain.Actor, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, pin, roles, credential_policy, credential_bindings FROM store_actors ORDER BY id
+		SELECT id, pin_hash, roles, credential_policy, credential_bindings FROM store_actors ORDER BY id
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("list actors: %w", err)
@@ -146,9 +167,9 @@ func (s *Store) SaveActor(ctx context.Context, actor domain.Actor) error {
 	}
 	commandTag, err := s.conn(ctx).Exec(ctx, `
 		UPDATE store_actors
-		SET pin = $2, roles = $3, credential_policy = $4, credential_bindings = $5
+		SET pin_hash = $2, roles = $3, credential_policy = $4, credential_bindings = $5
 		WHERE id = $1
-	`, actor.ID, actor.PIN, roles, credentialPolicy, credentialBindings)
+	`, actor.ID, actor.PINHash, roles, credentialPolicy, credentialBindings)
 	if err != nil {
 		return fmt.Errorf("save actor: %w", err)
 	}
@@ -225,7 +246,7 @@ func (s *Store) UpdateActorCredentialBindings(ctx context.Context, actorID strin
 
 func (s *Store) findActorForCredentialUpdate(ctx context.Context, actorID string) (domain.Actor, error) {
 	row := s.conn(ctx).QueryRow(ctx, `
-		SELECT id, pin, roles, credential_policy, credential_bindings
+		SELECT id, pin_hash, roles, credential_policy, credential_bindings
 		FROM store_actors
 		WHERE id = $1
 		FOR UPDATE
@@ -269,7 +290,7 @@ func scanActor(row pgx.Row) (domain.Actor, error) {
 	var rolesJSON []byte
 	var credentialPolicyJSON []byte
 	var credentialBindingsJSON []byte
-	if err := row.Scan(&actor.ID, &actor.PIN, &rolesJSON, &credentialPolicyJSON, &credentialBindingsJSON); err != nil {
+	if err := row.Scan(&actor.ID, &actor.PINHash, &rolesJSON, &credentialPolicyJSON, &credentialBindingsJSON); err != nil {
 		if err == pgx.ErrNoRows {
 			return domain.Actor{}, app.ErrActorNotFound
 		}

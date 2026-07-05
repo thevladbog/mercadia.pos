@@ -29,7 +29,7 @@ var (
 
 type Actor struct {
 	ID                 string
-	PIN                string
+	PINHash            string
 	Roles              []Role
 	CredentialPolicy   *CredentialPolicy
 	CredentialBindings []CredentialBinding
