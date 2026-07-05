@@ -19,6 +19,7 @@ ADR status values:
 - [ADR-0007: Fiscalization and payments as separate state machines](0007-fiscalization-payment-state-machines.md)
 - [ADR-0008: SCO cash payments out of first stage](0008-sco-cashless-first-stage.md)
 - [ADR-0009: OpenAPI generation, Scalar docs, and Orval clients](0009-openapi-scalar-orval.md)
+- [ADR-0010: Admin-web scope separation (store vs central)](0010-admin-web-scope-separation.md)
 
 ## Upcoming Decisions
 
