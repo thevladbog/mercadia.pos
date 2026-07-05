@@ -43,6 +43,17 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 
+import {
+  createIdempotencyHeaders,
+  createIdempotencyKey,
+  filterGridByCategory,
+  formatInputAmount,
+  formatMinorAmount,
+  parseAmountToMinor,
+  settledPaymentAmountMinor,
+  type ReceiptPayment,
+} from '@mercadia/receipt-kit';
+
 import { AuthProvider, useAuth } from '@/auth/AuthProvider.js';
 import {
   readStaffCredential,
@@ -52,14 +63,6 @@ import {
 import type { SessionResult } from '@/auth/types.js';
 import { getStoreId, getTerminalId } from '@/api-client-config.js';
 import { changeAppLocale, i18n, type AppLocale } from '@/i18n/config.js';
-import {
-  filterGridByCategory,
-  formatInputAmount,
-  formatMinorAmount,
-  parseAmountToMinor,
-  settledPaymentAmountMinor,
-  type ReceiptPayment,
-} from '@/lib/receipt-utils.js';
 import { queryClient } from '@/query-client.js';
 
 const ALL_CATEGORIES = '__all__';
@@ -131,14 +134,6 @@ const terminalConfig = {
     Intl.DateTimeFormat().resolvedOptions().timeZone,
   ),
 };
-
-function createIdempotencyKey(action: string): string {
-  return `pos-terminal:${action}:${crypto.randomUUID()}`;
-}
-
-function createIdempotencyHeaders(idempotencyKey: string): HeadersInit {
-  return { 'Idempotency-Key': idempotencyKey };
-}
 
 function localCalendarDate(date: Date): string {
   const year = date.getFullYear();
@@ -450,7 +445,7 @@ function TerminalShell({
             softwareVersion: terminalConfig.softwareVersion,
             storeId: terminalConfig.storeId,
           },
-          { headers: createIdempotencyHeaders(createIdempotencyKey('heartbeat')) },
+          { headers: createIdempotencyHeaders(createIdempotencyKey('pos-terminal', 'heartbeat')) },
         );
         if (!cancelled && response.status === 202) {
           setLastHeartbeatAt(response.data.terminal.lastSeenAt);
@@ -673,7 +668,7 @@ function TerminalShell({
             openedById: terminalConfig.openedById,
             storeId: terminalConfig.storeId,
           },
-          { headers: createIdempotencyHeaders(createIdempotencyKey('open-day')) },
+          { headers: createIdempotencyHeaders(createIdempotencyKey('pos-terminal', 'open-day')) },
         );
         if (openedDay.status === 202) {
           operationalDayId = openedDay.data.operationalDay.id;
@@ -689,7 +684,7 @@ function TerminalShell({
             storeId: terminalConfig.storeId,
             terminalId: terminalConfig.terminalId,
           },
-          { headers: createIdempotencyHeaders(createIdempotencyKey('open-shift')) },
+          { headers: createIdempotencyHeaders(createIdempotencyKey('pos-terminal', 'open-shift')) },
         );
       } catch (error) {
         if (!(error instanceof ApiError) || error.status !== 409) {
@@ -716,7 +711,7 @@ function TerminalShell({
           storeId: terminalConfig.storeId,
           terminalId: terminalConfig.terminalId,
         },
-        { headers: createIdempotencyHeaders(createIdempotencyKey('open-receipt')) },
+        { headers: createIdempotencyHeaders(createIdempotencyKey('pos-terminal', 'open-receipt')) },
       );
       if (response.status === 202) {
         setReceipt(response.data.receipt);
@@ -749,7 +744,7 @@ function TerminalShell({
       const response = await scanReceiptLine(
         receipt.id,
         { barcode: scannedBarcode, quantity: 1 },
-        { headers: createIdempotencyHeaders(createIdempotencyKey('scan-product')) },
+        { headers: createIdempotencyHeaders(createIdempotencyKey('pos-terminal', 'scan-product')) },
       );
       if (response.status === 202) {
         const nextRemainingMinor = Math.max(response.data.receipt.totalMinor - paidMinor, 0);
@@ -790,7 +785,7 @@ function TerminalShell({
     }
     const attempt: PaymentAttempt = {
       amountMinor: requestedAmount,
-      idempotencyKey: createIdempotencyKey('capture-payment'),
+      idempotencyKey: createIdempotencyKey('pos-terminal', 'capture-payment'),
       method: paymentMethod,
       providerReference:
         paymentMethod === PAYMENT_METHOD_CARD_MOCK ? `POS-${Date.now()}` : undefined,
@@ -855,7 +850,7 @@ function TerminalShell({
         ? fiscalAttempt
         : {
             deviceId: terminalConfig.fiscalDeviceId,
-            idempotencyKey: createIdempotencyKey('fiscalize-receipt'),
+            idempotencyKey: createIdempotencyKey('pos-terminal', 'fiscalize-receipt'),
             receiptId: receipt.id,
           };
     setFiscalAttempt(attempt);
