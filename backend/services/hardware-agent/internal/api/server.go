@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -62,7 +63,19 @@ func OpenAPI() map[string]any {
 }
 
 func newMuxAndSpec() (*http.ServeMux, *httpapi.Spec) {
-	store := memory.NewStore()
+	var store *memory.Store
+	configuredDevices, err := loadConfiguredDevices()
+	if err != nil {
+		// Fatal misconfig at startup, not at first command; mirrors the
+		// panic-on-construction-error pattern used by store-edge's
+		// NewServer()/OpenAPI() (services/store-edge/internal/api/server.go).
+		panic(fmt.Errorf("hardware-agent: %w", err))
+	}
+	if configuredDevices != nil {
+		store = memory.NewStoreWithDevices(configuredDevices)
+	} else {
+		store = memory.NewStore()
+	}
 	devices := app.NewDeviceService(store, store, store, simulated.DefaultRegistry())
 
 	info := httpapi.ServiceInfo{

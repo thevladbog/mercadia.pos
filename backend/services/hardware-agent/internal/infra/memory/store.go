@@ -26,6 +26,23 @@ func NewStore() *Store {
 	return store
 }
 
+// NewStoreWithDevices creates a Store pre-populated with the given devices
+// instead of the built-in simulated seed. It is used when
+// MERCADIA_HARDWARE_AGENT_DEVICES provides a config-driven inventory (see
+// docs/hardware-support-matrix.md §3); NewStore's default behavior is
+// unchanged so existing callers and tests keep seeing the simulated seed.
+func NewStoreWithDevices(devices []domain.Device) *Store {
+	store := &Store{
+		devices:     map[string]domain.Device{},
+		commands:    map[string]domain.DeviceCommand{},
+		idempotency: map[string]app.IdempotencyRecord{},
+	}
+	for _, device := range devices {
+		store.devices[device.ID] = device
+	}
+	return store
+}
+
 func (s *Store) seedDevices() {
 	now := time.Now().UTC()
 	devices := []domain.Device{
