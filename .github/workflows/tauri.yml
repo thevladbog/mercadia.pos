@@ -17,7 +17,7 @@ concurrency:
 jobs:
   tauri-shell:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: frontend
@@ -42,7 +42,10 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: frontend/apps/pos-terminal/src-tauri
+          workspaces: |
+            frontend/apps/pos-terminal/src-tauri
+            frontend/apps/senior-cashier-terminal/src-tauri
+            frontend/apps/sco-terminal/src-tauri
 
       - uses: pnpm/action-setup@v6
         with:
@@ -63,3 +66,17 @@ jobs:
 
       - name: Build pos-terminal desktop shell (no bundle)
         run: pnpm --filter pos-terminal tauri build --no-bundle --ci
+
+      - name: Cargo check (senior-cashier-terminal Tauri shell)
+        working-directory: frontend/apps/senior-cashier-terminal/src-tauri
+        run: cargo check
+
+      - name: Build senior-cashier-terminal desktop shell (no bundle)
+        run: pnpm --filter senior-cashier-terminal tauri build --no-bundle --ci
+
+      - name: Cargo check (sco-terminal Tauri shell)
+        working-directory: frontend/apps/sco-terminal/src-tauri
+        run: cargo check
+
+      - name: Build sco-terminal desktop shell (no bundle)
+        run: pnpm --filter sco-terminal tauri build --no-bundle --ci

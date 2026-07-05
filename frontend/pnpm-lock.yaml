@@ -179,6 +179,9 @@ importers:
         specifier: ^17.0.8
         version: 17.0.8(i18next@26.3.1(typescript@6.0.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
     devDependencies:
+      '@tauri-apps/cli':
+        specifier: ^2.11.4
+        version: 2.11.4
       '@types/react':
         specifier: ^19.2.16
         version: 19.2.17
@@ -209,6 +212,9 @@ importers:
       '@mercadia/api-clients-store-edge':
         specifier: workspace:*
         version: link:../../packages/api-clients/store-edge
+      '@mercadia/receipt-kit':
+        specifier: workspace:*
+        version: link:../../packages/receipt-kit
       '@mercadia/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -231,6 +237,9 @@ importers:
         specifier: ^7.10.0
         version: 7.18.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
     devDependencies:
+      '@tauri-apps/cli':
+        specifier: ^2.11.4
+        version: 2.11.4
       '@types/react':
         specifier: ^19.2.16
         version: 19.2.17

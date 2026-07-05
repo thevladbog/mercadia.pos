@@ -20,17 +20,10 @@ export class ApiError extends Error {
 let apiBaseUrl = '';
 
 export function setApiBaseUrl(url: string): void {
-  const normalized = url.trim().replace(/\/$/, '');
-  if (!normalized) {
-    throw new Error('VITE_HARDWARE_AGENT_URL is required');
-  }
-  apiBaseUrl = normalized;
+  apiBaseUrl = url.replace(/\/$/, '');
 }
 
 export function getApiBaseUrl(): string {
-  if (!apiBaseUrl) {
-    throw new Error('VITE_HARDWARE_AGENT_URL is required');
-  }
   return apiBaseUrl;
 }
 
