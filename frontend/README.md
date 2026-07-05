@@ -267,6 +267,15 @@ Default demo env vars:
 - `VITE_STORE_EDGE_URL` — optional Store Edge base URL when bypassing the Vite proxy
 - `VITE_STORE_EDGE_SESSION_TOKEN` — optional Store Edge session token
 
+sco-terminal also has a Tauri v2 desktop shell (`apps/sco-terminal/src-tauri/`) for packaged,
+kiosk-capable distribution — see [`docs/development/tauri.md`](../docs/development/tauri.md):
+
+```bash
+cd frontend
+pnpm --filter sco-terminal tauri dev     # native window against the Vite dev server
+pnpm --filter sco-terminal tauri build --no-bundle   # release build, no installer
+```
+
 ## Local development — senior-cashier-terminal
 
 The senior cashier terminal uses Store Edge for operational commands and Hardware Agent for local
@@ -282,11 +291,21 @@ iButton reads used by hardware-backed login and handover flows.
 
 3. Open `http://localhost:5175`.
 
-Required env vars:
+Env vars:
 
-- `VITE_STORE_EDGE_URL` — Store Edge base URL.
-- `VITE_HARDWARE_AGENT_URL` — Hardware Agent base URL.
-- `VITE_STORE_ID` — active store ID for senior cashier workflows.
+- `VITE_STORE_EDGE_URL` — optional Store Edge base URL when bypassing the Vite proxy
+- `VITE_HARDWARE_AGENT_URL` — optional Hardware Agent base URL when bypassing the Vite proxy
+- `VITE_STORE_ID` — required active store ID for senior cashier workflows
+
+senior-cashier-terminal also has a Tauri v2 desktop shell
+(`apps/senior-cashier-terminal/src-tauri/`) for packaged, kiosk-capable distribution — see
+[`docs/development/tauri.md`](../docs/development/tauri.md):
+
+```bash
+cd frontend
+pnpm --filter senior-cashier-terminal tauri dev     # native window against the Vite dev server
+pnpm --filter senior-cashier-terminal tauri build --no-bundle   # release build, no installer
+```
 
 ## Dependency policy
 
