@@ -50,10 +50,18 @@ Run backend tests:
 .\backend\scripts\test.ps1
 ```
 
+```bash
+./backend/scripts/test.sh
+```
+
 Regenerate OpenAPI contracts:
 
 ```powershell
 .\backend\scripts\export-openapi.ps1
+```
+
+```bash
+./backend/scripts/export-openapi.sh
 ```
 
 Run local services:
