@@ -16,11 +16,7 @@ export default defineConfig({
   server: {
     port: 5176,
     proxy: {
-      '^/v1/(auth|operational-days|receipts|shifts|terminals)(/.*)?$': {
-        target: 'http://127.0.0.1:8081',
-        changeOrigin: true,
-      },
-      '/v1/stores': {
+      '^/v1/(auth|operational-days|receipts|shifts|stores|terminals)(/.*)?$': {
         target: 'http://127.0.0.1:8081',
         changeOrigin: true,
       },
