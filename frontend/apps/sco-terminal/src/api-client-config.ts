@@ -2,9 +2,15 @@ import {
   setApiBaseUrl as setStoreEdgeApiBaseUrl,
   setSessionToken as setStoreEdgeSessionToken,
 } from '@mercadia/api-clients-store-edge';
+import { isRunningInTauri, resolveApiBaseUrl } from '@mercadia/receipt-kit';
 
 export function configureApiClients(): void {
-  setStoreEdgeApiBaseUrl(import.meta.env.VITE_STORE_EDGE_URL ?? '');
+  setStoreEdgeApiBaseUrl(
+    resolveApiBaseUrl('storeEdge', {
+      isTauri: isRunningInTauri(),
+      envValue: import.meta.env.VITE_STORE_EDGE_URL,
+    }),
+  );
 
   const storeEdgeToken = import.meta.env.VITE_STORE_EDGE_SESSION_TOKEN;
   if (storeEdgeToken) {
