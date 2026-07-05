@@ -7,6 +7,7 @@ import {
   deriveLoginAt,
   formatCountdown,
   formatLoginTime,
+  formatRoleLabel,
 } from './topbar-utils.js';
 
 describe('deriveInitials', () => {
@@ -84,5 +85,25 @@ describe('formatCountdown', () => {
 
   it('clamps negative remaining time to 0:00', () => {
     expect(formatCountdown(-5000)).toBe('0:00');
+  });
+});
+
+describe('formatRoleLabel', () => {
+  const translate = (key: string) => `[${key}]`;
+
+  it('maps "cashier" to its i18n key', () => {
+    expect(formatRoleLabel('cashier', translate)).toBe('[topbar.roles.cashier]');
+  });
+
+  it('maps "senior_cashier" to its i18n key', () => {
+    expect(formatRoleLabel('senior_cashier', translate)).toBe('[topbar.roles.seniorCashier]');
+  });
+
+  it('maps "admin" to its i18n key', () => {
+    expect(formatRoleLabel('admin', translate)).toBe('[topbar.roles.admin]');
+  });
+
+  it('falls back to the raw value for an unrecognized role', () => {
+    expect(formatRoleLabel('mystery_role', translate)).toBe('mystery_role');
   });
 });

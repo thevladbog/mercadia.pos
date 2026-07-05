@@ -67,3 +67,23 @@ export function formatCountdown(remainingMs: number): string {
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
+
+/**
+ * Maps a raw role enum value (`cashier` | `senior_cashier` | `admin`, per
+ * `backend/services/store-edge/internal/domain/session.go:11-13`) to its
+ * i18n key for a human-readable label. The actual label strings live in
+ * `i18n/locales/*.json` under `topbar.roles.*`, not here — `translate` is
+ * injected so this stays a pure, testable function without needing an i18n
+ * context in tests, matching how the rest of TopBar sources its strings.
+ */
+const ROLE_LABEL_KEYS: Record<string, string> = {
+  cashier: 'topbar.roles.cashier',
+  senior_cashier: 'topbar.roles.seniorCashier',
+  admin: 'topbar.roles.admin',
+};
+
+/** Human-readable label for a role; falls back to the raw value for any unrecognized role. */
+export function formatRoleLabel(role: string, translate: (key: string) => string): string {
+  const key = ROLE_LABEL_KEYS[role];
+  return key ? translate(key) : role;
+}

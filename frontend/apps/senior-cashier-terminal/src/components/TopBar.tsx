@@ -9,6 +9,7 @@ import {
   deriveLoginAt,
   formatCountdown,
   formatLoginTime,
+  formatRoleLabel,
 } from '@/lib/topbar-utils.js';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher.js';
 import { ThemeToggle } from '@/components/ThemeToggle.js';
@@ -49,6 +50,7 @@ export function TopBar({ onHandover, onLock, operationsCount, alertsCount }: Top
   const loginAt = deriveLoginAt(session.expiresAt);
   const elapsed = deriveElapsed(loginAt, now);
   const role = session.roles[0] ?? '';
+  const roleLabel = formatRoleLabel(role, (key) => t(key));
 
   return (
     <header className="sr-topbar">
@@ -64,8 +66,8 @@ export function TopBar({ onHandover, onLock, operationsCount, alertsCount }: Top
         <div className="sr-topbar-identity-text">
           <span className="sr-topbar-identity-label">{t('topbar.authorized')}</span>
           <span className="sr-topbar-identity-line">
-            {session.actorId} · {role} · {t('topbar.since', { time: formatLoginTime(loginAt) })} (
-            {elapsed.hours}
+            {session.actorId} · {roleLabel} ·{' '}
+            {t('topbar.since', { time: formatLoginTime(loginAt) })} ({elapsed.hours}
             {t('dashboard.hours')} {elapsed.minutes}
             {t('dashboard.minutes')})
           </span>

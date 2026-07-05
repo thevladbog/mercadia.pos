@@ -28,7 +28,12 @@
     "alerts": "ALERTS: {{count}}",
     "autoLock": "AUTO-LOCK IN {{value}}",
     "handover": "Hand over shift",
-    "lock": "Lock"
+    "lock": "Lock",
+    "roles": {
+      "cashier": "Cashier",
+      "seniorCashier": "Senior Cashier",
+      "admin": "Administrator"
+    }
   },
   "language": {
     "label": "Language",
