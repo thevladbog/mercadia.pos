@@ -5,3 +5,5 @@ pnpm-lock.yaml
 **/src/generated/**
 **/tsconfig.tsbuildinfo
 *.env.example
+**/src-tauri/target/**
+**/src-tauri/gen/**

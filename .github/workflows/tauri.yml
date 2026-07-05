@@ -1,0 +1,65 @@
+name: Tauri
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'frontend/apps/*/src-tauri/**'
+      - '.github/workflows/tauri.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tauri-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tauri-shell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: frontend/apps/pos-terminal/src-tauri
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.5.2
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: frontend/.node-version
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cargo check (pos-terminal Tauri shell)
+        working-directory: frontend/apps/pos-terminal/src-tauri
+        run: cargo check
+
+      - name: Build pos-terminal desktop shell (no bundle)
+        run: pnpm --filter pos-terminal tauri build --no-bundle --ci

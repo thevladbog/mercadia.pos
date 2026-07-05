@@ -7,6 +7,7 @@ This folder contains engineering and agent-facing guidance for building Mercadia
 - [AI agent rules](ai-agent-rules.md) - rules for Codex/AI agents working in the repository.
 - [API contract workflow](api-contract-workflow.md) - OpenAPI generation, Scalar docs, and Orval client generation.
 - [Repository structure](repository-structure.md) - POS folder ownership and app/service/package layout.
+- [Tauri desktop shell](tauri.md) - Tauri v2 desktop shell for terminal apps, URL resolution in dev vs packaged, kiosk build, and the replication checklist for other terminals.
 - [Dependency and version policy](dependency-policy.md) - current, maintained, and secure component rules.
 - [Continuous integration](ci.md) - GitHub Actions jobs, path filters, and branch protection.
 - [Documentation backlog](documentation-backlog.md) - important topics that are not yet described deeply enough.

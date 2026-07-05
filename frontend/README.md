@@ -227,6 +227,11 @@ Default demo env vars:
 - `VITE_LAYOUT_TEMPLATE_ID` and `VITE_CENTRAL_SESSION_TOKEN` — optional central layout template access
 - `VITE_HARDWARE_AGENT_URL` — optional Hardware Agent base URL when bypassing the Vite proxy
 
+pos-terminal also has a Tauri v2 desktop shell (`apps/pos-terminal/src-tauri/`) for packaged,
+kiosk-capable distribution — see [`docs/development/tauri.md`](../docs/development/tauri.md) for
+prerequisites, commands, URL resolution in dev vs packaged, and the checklist for wrapping the
+next terminal app.
+
 ## Local development — sco-terminal
 
 The SCO (self-checkout) terminal is a Vite dev shell covering M1: idle screen, manual barcode
