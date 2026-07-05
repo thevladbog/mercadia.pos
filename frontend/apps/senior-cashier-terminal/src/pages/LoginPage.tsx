@@ -1,7 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Button, Input, Field, Label } from '@mercadia/ui';
 
 import { useAuth } from '@/auth/AuthProvider.js';
 import {
@@ -9,10 +8,18 @@ import {
   type StaffCredentialKind,
   type StaffCredentialRead,
 } from '@/auth/ibutton.js';
+import { getStoreId } from '@/api-client-config.js';
+import { getRecentLogins, recordLogin } from '@/lib/login-history.js';
+import { reduceLoginWizardStep, type LoginWizardStep } from '@/lib/login-wizard.js';
+
+import { CredentialStep } from './login/CredentialStep.js';
+import { LoginLeftPanel } from './login/LoginLeftPanel.js';
+import './login/LoginPage.css';
+import { PersonnelIdStep } from './login/PersonnelIdStep.js';
+import { PinStep } from './login/PinStep.js';
 
 const MAX_ATTEMPTS = 5;
 const ATTEMPTS_KEY = 'mercadia.sr-terminal.login-attempts';
-const CREDENTIAL_KINDS: StaffCredentialKind[] = ['ibutton', 'msr_card', 'barcode_card'];
 
 function loadAttempts(): number {
   try {
@@ -30,11 +37,24 @@ function saveAttempts(n: number): void {
   }
 }
 
+/**
+ * Three-step split-screen login wizard (plan 020), replacing the single-card
+ * form. Layout/flow only — the underlying auth contract is unchanged:
+ * `login()` (== `createAuthSession`) still validates personnel ID + PIN +
+ * credential factor together in ONE atomic call
+ * (`backend/services/store-edge/internal/app/auth.go`'s `CreateSession`),
+ * fired exactly once here, automatically, right after step 3's credential
+ * read succeeds (`attemptLogin`, called from `handleReadCredential`) — there
+ * is no progressive/partial validation endpoint to stage this against, and
+ * this file must not invent one.
+ */
 export function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { login, session } = useAuth();
+  const storeId = useMemo(() => getStoreId(), []);
 
+  const [step, setStep] = useState<LoginWizardStep>('personnelId');
   const [personnelId, setPersonnelId] = useState('');
   const [pin, setPin] = useState('');
   const [credentialKind, setCredentialKind] = useState<StaffCredentialKind>('ibutton');
@@ -46,54 +66,64 @@ export function LoginPage() {
   const [credentialError, setCredentialError] = useState('');
   const [attempts, setAttempts] = useState(loadAttempts);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recentLogins] = useState(getRecentLogins);
   const isBlocked = attempts >= MAX_ATTEMPTS;
 
-  const handleCredentialKind = useCallback((kind: StaffCredentialKind) => {
+  const handleAdvance = useCallback(() => {
+    setStep((current) => reduceLoginWizardStep(current, { type: 'advance' }));
+  }, []);
+
+  const handleSelectRecent = useCallback((actorId: string) => {
+    setPersonnelId(actorId);
+  }, []);
+
+  /** Step 2's "Сменить" affordance: back to step 1, clearing only the PIN
+   * and any step-3 credential state (personnelId itself is left as-is so
+   * the operator can edit/confirm it rather than retyping from scratch). */
+  const handleChangeIdentity = useCallback(() => {
+    setStep((current) => reduceLoginWizardStep(current, { type: 'changeIdentity' }));
+    setPin('');
+    setCredentialRead(null);
+    setCredentialStatus('idle');
+    setCredentialError('');
+    setAuthError('');
+  }, []);
+
+  /** Step 3's "Отменить вход" affordance: full reset back to step 1. Does
+   * NOT touch `attempts` — the lockout counter tracks failed login()
+   * submissions, not wizard navigation (plan 020). */
+  const handleCancel = useCallback(() => {
+    setStep((current) => reduceLoginWizardStep(current, { type: 'cancel' }));
+    setPersonnelId('');
+    setPin('');
+    setCredentialKind('ibutton');
+    setCredentialRead(null);
+    setCredentialStatus('idle');
+    setCredentialError('');
+    setAuthError('');
+  }, []);
+
+  const handleCredentialKindChange = useCallback((kind: StaffCredentialKind) => {
     setCredentialKind(kind);
     setCredentialRead(null);
     setCredentialStatus('idle');
     setCredentialError('');
   }, []);
 
-  const handleCredentialRead = useCallback(async () => {
-    setCredentialStatus('waiting');
-    setCredentialError('');
-    try {
-      const nextCredentialRead = await readStaffCredential(credentialKind);
-      setCredentialRead(nextCredentialRead);
-      setCredentialStatus('detected');
-    } catch {
-      setCredentialRead(null);
-      setCredentialStatus('error');
-      setCredentialError(t('auth.credentialError'));
-    }
-  }, [credentialKind, t]);
-
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (isSubmitting) return;
-
-      if (isBlocked) {
-        return;
-      }
-
-      if (!personnelId || !pin) {
-        setAuthError(t('auth.invalidCredentials'));
-        return;
-      }
-
-      if (!credentialRead || credentialRead.factor.kind !== credentialKind) {
-        setAuthError(t('auth.credentialRequired'));
-        return;
-      }
+  /** The one real auth call, reusing `handleSubmit`'s exact former logic
+   * (lockout bump on "Invalid credentials", error copy, role-based redirect)
+   * — see this file's top doc comment. */
+  const attemptLogin = useCallback(
+    async (read: StaffCredentialRead) => {
+      if (isBlocked || isSubmitting) return;
 
       setIsSubmitting(true);
       setAuthError('');
       setCredentialError('');
 
       try {
-        const sess = await login(personnelId, pin, credentialRead.factor);
+        const sess = await login(personnelId, pin, read.factor);
+        recordLogin(sess.actorId);
         const target =
           sess.roles.includes('senior_cashier') || sess.roles.includes('admin')
             ? '/dashboard'
@@ -110,19 +140,25 @@ export function LoginPage() {
         setIsSubmitting(false);
       }
     },
-    [
-      personnelId,
-      pin,
-      credentialKind,
-      credentialRead,
-      login,
-      navigate,
-      t,
-      attempts,
-      isSubmitting,
-      isBlocked,
-    ],
+    [personnelId, pin, login, navigate, t, attempts, isSubmitting, isBlocked],
   );
+
+  const handleReadCredential = useCallback(async () => {
+    if (isBlocked || isSubmitting) return;
+
+    setCredentialStatus('waiting');
+    setCredentialError('');
+    try {
+      const nextRead = await readStaffCredential(credentialKind);
+      setCredentialRead(nextRead);
+      setCredentialStatus('detected');
+      await attemptLogin(nextRead);
+    } catch {
+      setCredentialRead(null);
+      setCredentialStatus('error');
+      setCredentialError(t('auth.credentialError'));
+    }
+  }, [credentialKind, t, attemptLogin, isBlocked, isSubmitting]);
 
   if (session) {
     const target =
@@ -134,106 +170,48 @@ export function LoginPage() {
   }
 
   return (
-    <div className="sr-terminal-shell" style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <div
-        className="sr-panel"
-        style={{ width: 'min(400px, calc(100vw - 2rem))', padding: '2rem' }}
-      >
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--ui-accent)' }}>
-            {t('auth.loginTitle')}
-          </h1>
-          <p className="muted" style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>
-            MERCADIA · SR. CASHIER
-          </p>
-        </div>
+    <div className="sr-login-shell">
+      <LoginLeftPanel currentStep={step} storeId={storeId} />
 
-        <form onSubmit={handleSubmit} className="sr-form">
-          <Field>
-            <Label>{t('auth.personnelId')}</Label>
-            <Input
-              value={personnelId}
-              onChange={(e) => setPersonnelId(e.target.value)}
-              placeholder={t('auth.personnelIdPlaceholder')}
-              autoFocus
-              disabled={isSubmitting}
-            />
-          </Field>
+      <div className="sr-login-right">
+        {step === 'personnelId' && (
+          <PersonnelIdStep
+            personnelId={personnelId}
+            onPersonnelIdChange={setPersonnelId}
+            onContinue={handleAdvance}
+            recentLogins={recentLogins}
+            onSelectRecent={handleSelectRecent}
+          />
+        )}
 
-          <Field>
-            <Label>{t('auth.pin')}</Label>
-            <Input
-              type="password"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              placeholder={t('auth.pinPlaceholder')}
-              disabled={isSubmitting}
-            />
-          </Field>
+        {step === 'pin' && (
+          <PinStep
+            personnelId={personnelId}
+            pin={pin}
+            onPinChange={setPin}
+            onEnter={handleAdvance}
+            onChangeIdentity={handleChangeIdentity}
+            maxAttempts={MAX_ATTEMPTS}
+          />
+        )}
 
-          <Field>
-            <Label>{t('auth.credentialKind')}</Label>
-            <div
-              className="sr-credential-options"
-              role="radiogroup"
-              aria-label={t('auth.credentialKind')}
-            >
-              {CREDENTIAL_KINDS.map((kind) => (
-                <Button
-                  key={kind}
-                  type="button"
-                  variant={credentialKind === kind ? 'primary' : 'secondary'}
-                  onClick={() => handleCredentialKind(kind)}
-                  disabled={isSubmitting || credentialStatus === 'waiting'}
-                  aria-pressed={credentialKind === kind}
-                >
-                  {t(`auth.credentialKinds.${kind}`)}
-                </Button>
-              ))}
-            </div>
-          </Field>
-
-          <div className="sr-field-row">
-            <span className="sr-field-label">
-              {credentialStatus === 'idle' && t('auth.credentialPrompt')}
-              {credentialStatus === 'waiting' && t('auth.credentialWaiting')}
-              {credentialStatus === 'detected' &&
-                t('auth.credentialDetected', {
-                  value: credentialRead?.maskedToken ?? t(`auth.credentialKinds.${credentialKind}`),
-                })}
-              {credentialStatus === 'error' && t('auth.credentialError')}
-            </span>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleCredentialRead}
-              disabled={isSubmitting || credentialStatus === 'waiting'}
-            >
-              {credentialStatus === 'detected'
-                ? t('auth.rereadCredential')
-                : t('auth.readCredential')}
-            </Button>
-          </div>
-
-          {isBlocked && <p className="sr-field-error">{t('auth.blocked')}</p>}
-
-          {!isBlocked && authError && <p className="sr-field-error">{authError}</p>}
-
-          {credentialError && <p className="sr-field-error">{credentialError}</p>}
-
-          {attempts > 0 && !isBlocked && (
-            <p className="sr-field-error">
-              {t('auth.attemptsRemaining', { count: MAX_ATTEMPTS - attempts })}
-            </p>
-          )}
-
-          <Button
-            type="submit"
-            disabled={isBlocked || isSubmitting || !personnelId || !pin || !credentialRead}
-          >
-            {isSubmitting ? t('auth.signingIn') : t('auth.signIn')}
-          </Button>
-        </form>
+        {step === 'credential' && (
+          <CredentialStep
+            personnelId={personnelId}
+            credentialKind={credentialKind}
+            onCredentialKindChange={handleCredentialKindChange}
+            credentialStatus={credentialStatus}
+            credentialRead={credentialRead}
+            onReadCredential={() => void handleReadCredential()}
+            isSubmitting={isSubmitting}
+            isBlocked={isBlocked}
+            attempts={attempts}
+            maxAttempts={MAX_ATTEMPTS}
+            authError={authError}
+            credentialError={credentialError}
+            onCancel={handleCancel}
+          />
+        )}
       </div>
     </div>
   );
