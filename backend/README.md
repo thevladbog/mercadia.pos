@@ -51,6 +51,7 @@ Environment variables:
 | `MERCADIA_CENTRAL_BACKEND_URL` | `http://127.0.0.1:8082` | store-edge catalog sync client |
 | `MERCADIA_HARDWARE_AGENT_ADDR` | `127.0.0.1:8083` | hardware-agent |
 | `MERCADIA_HARDWARE_AGENT_URL` | `http://127.0.0.1:8083` | store-edge hardware-agent client |
+| `MERCADIA_HARDWARE_AGENT_DEVICES` | _(empty = built-in simulated seed)_ | hardware-agent device inventory override, e.g. `[{"id":"store-1-fiscal-1","kind":"fiscal","model":"ATOL 42F","status":"simulated"}]`; `kind` must be one of `fiscal`, `payment_terminal`, `msr`, `ibutton`, `scanner`, `printer`, `status` defaults to `simulated` if omitted; invalid JSON, an empty array, an empty/duplicate `id`, or an unknown `kind`/`status` fails hardware-agent startup |
 | `MERCADIA_STORE_EDGE_USE_HARDWARE_AGENT` | `false` | store-edge payment/fiscal via hardware-agent |
 | `MERCADIA_STORE_EDGE_HARDWARE_AGENT_FALLBACK` | `true` | fallback to mock when hardware-agent command fails |
 | `MERCADIA_STORE_EDGE_HARDWARE_AGENT_READINESS_PROBE` | mirrors `USE_HARDWARE_AGENT` | include hardware-agent `/healthz` in store-edge `/readyz` |
