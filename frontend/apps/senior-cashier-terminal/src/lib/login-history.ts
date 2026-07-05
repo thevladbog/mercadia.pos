@@ -79,7 +79,8 @@ export function recordLogin(actorId: string, atIso: string = new Date().toISOStr
  * distinctions, since the list is capped at 4 entries and multi-day-old
  * entries are the rare case here.
  */
-export type RecentLoginRecency = { kind: 'now' } | { kind: 'time'; hhmm: string } | { kind: 'earlier' };
+export type RecentLoginRecency =
+  { kind: 'now' } | { kind: 'time'; hhmm: string } | { kind: 'earlier' };
 
 export function deriveRecentLoginRecency(
   atIso: string,

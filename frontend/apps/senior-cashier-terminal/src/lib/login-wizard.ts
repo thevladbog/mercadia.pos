@@ -14,16 +14,10 @@
 export type LoginWizardStep = 'personnelId' | 'pin' | 'credential';
 
 /** Steps in display order, used to derive "is this step already confirmed?". */
-export const LOGIN_WIZARD_STEPS: readonly LoginWizardStep[] = [
-  'personnelId',
-  'pin',
-  'credential',
-];
+export const LOGIN_WIZARD_STEPS: readonly LoginWizardStep[] = ['personnelId', 'pin', 'credential'];
 
 export type LoginWizardEvent =
-  | { type: 'advance' }
-  | { type: 'changeIdentity' }
-  | { type: 'cancel' };
+  { type: 'advance' } | { type: 'changeIdentity' } | { type: 'cancel' };
 
 /**
  * Pure transition function driving the login-wizard step machine from a UI

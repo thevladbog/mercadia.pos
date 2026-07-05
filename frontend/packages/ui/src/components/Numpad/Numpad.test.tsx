@@ -57,7 +57,9 @@ describe('Numpad', () => {
 
   it('mask defaults to false when the prop is omitted, preserving byte-for-byte behavior', () => {
     const withDefault = renderToElement(<Numpad value="42" onChange={() => {}} />);
-    const withExplicitFalse = renderToElement(<Numpad value="42" onChange={() => {}} mask={false} />);
+    const withExplicitFalse = renderToElement(
+      <Numpad value="42" onChange={() => {}} mask={false} />,
+    );
     expect(displayText(withDefault)).toBe(displayText(withExplicitFalse));
     expect(displayText(withDefault)).toBe('42');
   });

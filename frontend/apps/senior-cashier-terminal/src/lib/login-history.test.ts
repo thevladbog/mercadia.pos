@@ -61,7 +61,11 @@ describe('recordLogin / getRecentLogins', () => {
   it('filters out malformed entries (wrong shape) instead of throwing', () => {
     localStorage.setItem(
       KEY,
-      JSON.stringify([{ actorId: 'ok', atIso: '2026-07-05T10:00:00.000Z' }, { bogus: true }, 'nope']),
+      JSON.stringify([
+        { actorId: 'ok', atIso: '2026-07-05T10:00:00.000Z' },
+        { bogus: true },
+        'nope',
+      ]),
     );
     expect(getRecentLogins()).toEqual([{ actorId: 'ok', atIso: '2026-07-05T10:00:00.000Z' }]);
   });
@@ -77,7 +81,10 @@ describe('deriveRecentLoginRecency', () => {
 
   it('buckets a same-day login older than 60s as a formatted HH:MM time', () => {
     const at = new Date(2026, 6, 5, 13, 18, 0);
-    expect(deriveRecentLoginRecency(at.toISOString(), now)).toEqual({ kind: 'time', hhmm: '13:18' });
+    expect(deriveRecentLoginRecency(at.toISOString(), now)).toEqual({
+      kind: 'time',
+      hhmm: '13:18',
+    });
   });
 
   it('buckets a login from an earlier calendar day as "earlier"', () => {
