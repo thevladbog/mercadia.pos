@@ -2,6 +2,9 @@
 
 ## Purpose
 
+See also: [SCO terminal implementation design](../sco-terminal-implementation-design.md) for
+the spec-to-API gap analysis and build plan.
+
 Self-checkout, called KSO/SCO in the designs, lets customers scan and pay independently while
 staff supervise exceptions. The product must support horizontal, vertical, and HD layouts
 without changing the business workflow.
