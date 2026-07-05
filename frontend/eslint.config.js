@@ -12,6 +12,8 @@ export default defineConfig([
     '**/dist/**',
     '**/storybook-static/**',
     '**/src/generated/**',
+    '**/src-tauri/target/**',
+    '**/src-tauri/gen/**',
   ]),
   {
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],
