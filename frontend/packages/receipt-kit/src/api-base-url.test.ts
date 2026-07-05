@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveApiBaseUrl } from './api-client-config.js';
+import { resolveApiBaseUrl } from './api-base-url.js';
 
 describe('resolveApiBaseUrl', () => {
   it('returns an empty string in the browser when no env value is set (Vite proxy path)', () => {
