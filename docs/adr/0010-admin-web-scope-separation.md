@@ -85,8 +85,9 @@ migration cost, since routing already leans this way; the risk is that an
 to enforce it.
 
 **B. Two apps.** Split into `admin-store` and `admin-central`, each its own
-build/deployable, both depending on `@mercadia/ui` and the generated Orval API
-clients (`@mercadia/api-clients-central`, `@mercadia/api-clients-store-edge`).
+build/deployable, each depending on `@mercadia/ui` and only its own generated
+Orval API client (`@mercadia/api-clients-store-edge` for `admin-store`,
+`@mercadia/api-clients-central` for `admin-central`).
 Gives the cleanest boundary — independent auth, independent bundles,
 independent release cadence — and is the direct realization of "central office
 gets its own admin panel" from `docs/open-questions.md`. Cost: two build/deploy
