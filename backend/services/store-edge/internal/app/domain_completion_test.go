@@ -293,6 +293,24 @@ func TestNoReceiptReturnRequiresApproval(t *testing.T) {
 	}
 }
 
+func TestNoReceiptReturnRejectsSelfApproval(t *testing.T) {
+	store := memory.NewStore(memory.WithDemoActors())
+	auth := app.NewAuthService(store, store, store, store)
+	returns := app.NewReturnsService(store, store, store, auth)
+
+	_, err := returns.CreateNoReceiptReturn(context.Background(), app.CreateNoReceiptReturnCommand{
+		IdempotencyKey: "ret-4",
+		StoreID:        "store-1",
+		Lines:          []app.ReturnLineCommand{{ProductID: "sku-1", Name: "Milk", Quantity: 1, UnitPriceMinor: 1000}},
+		Reason:         "No receipt",
+		ActorID:        "senior-1",
+		ApprovedByID:   "senior-1",
+	})
+	if !errors.Is(err, app.ErrSeparationOfDutiesViolation) {
+		t.Fatalf("expected ErrSeparationOfDutiesViolation, got %v", err)
+	}
+}
+
 func TestValidateDataMatrixCode(t *testing.T) {
 	valid, err := domain.ValidateDataMatrixCode("0104600000000000215ABC")
 	if err != nil {

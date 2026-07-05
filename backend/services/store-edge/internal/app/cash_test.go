@@ -293,6 +293,24 @@ func TestCreateBankCollectionMovesSafeToBank(t *testing.T) {
 	}
 }
 
+func TestCreateBankCollectionRejectsSelfApproval(t *testing.T) {
+	service := newTestCashService()
+
+	_, err := service.CreateBankCollection(context.Background(), app.CreateBankCollectionCommand{
+		IdempotencyKey:  "bank-collection-1",
+		StoreID:         "store-1",
+		SafeID:          "safe-1",
+		BankContainerID: "bank-collection-1",
+		AmountMinor:     200000,
+		ActorID:         "senior-1",
+		ApprovedByID:    "senior-1",
+		Reason:          "Scheduled bank collection",
+	})
+	if !errors.Is(err, app.ErrSeparationOfDutiesViolation) {
+		t.Fatalf("expected ErrSeparationOfDutiesViolation, got %v", err)
+	}
+}
+
 func TestCreateBusinessExpenseMovesSafeToPayee(t *testing.T) {
 	service := newTestCashService()
 	if _, err := service.CreateCashMovement(context.Background(), app.CreateCashMovementCommand{
@@ -337,6 +355,24 @@ func TestCreateBusinessExpenseMovesSafeToPayee(t *testing.T) {
 	}
 	if byContainer["vendor-supplies"] != 40000 {
 		t.Fatalf("expense balance = %d", byContainer["vendor-supplies"])
+	}
+}
+
+func TestCreateBusinessExpenseRejectsSelfApproval(t *testing.T) {
+	service := newTestCashService()
+
+	_, err := service.CreateBusinessExpense(context.Background(), app.CreateBusinessExpenseCommand{
+		IdempotencyKey: "expense-1",
+		StoreID:        "store-1",
+		SafeID:         "safe-1",
+		PayeeID:        "vendor-supplies",
+		AmountMinor:    40000,
+		Reason:         "Office supplies",
+		ActorID:        "senior-1",
+		ApprovedByID:   "senior-1",
+	})
+	if !errors.Is(err, app.ErrSeparationOfDutiesViolation) {
+		t.Fatalf("expected ErrSeparationOfDutiesViolation, got %v", err)
 	}
 }
 

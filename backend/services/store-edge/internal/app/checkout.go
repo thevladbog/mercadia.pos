@@ -354,6 +354,9 @@ func (s *CheckoutService) CancelReceipt(ctx context.Context, command CancelRecei
 	if command.ReceiptID == "" || command.Reason == "" || command.ActorID == "" {
 		return ReceiptResult{}, ErrInvalidCheckoutCommand
 	}
+	if command.ApprovedByID != "" && command.ApprovedByID == command.ActorID {
+		return ReceiptResult{}, ErrSeparationOfDutiesViolation
+	}
 
 	const operation = "checkout.cancel_receipt"
 	fingerprint := fmt.Sprintf("%s|%s|%s|%s", command.ReceiptID, command.Reason, command.ActorID, command.ApprovedByID)

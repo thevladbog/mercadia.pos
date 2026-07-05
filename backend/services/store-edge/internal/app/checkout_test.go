@@ -231,6 +231,57 @@ func TestCancelReceiptIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestCancelReceiptRejectsSelfApproval(t *testing.T) {
+	service := newTestCheckoutService()
+	opened, err := service.OpenReceipt(context.Background(), app.OpenReceiptCommand{
+		IdempotencyKey: "open-1",
+		StoreID:        "store-1",
+		TerminalID:     "pos-1",
+		CashierID:      "cashier-1",
+	})
+	if err != nil {
+		t.Fatalf("open receipt: %v", err)
+	}
+
+	_, err = service.CancelReceipt(context.Background(), app.CancelReceiptCommand{
+		IdempotencyKey: "cancel-1",
+		ReceiptID:      opened.Receipt.ID,
+		Reason:         "Customer changed mind",
+		ActorID:        "cashier-1",
+		ApprovedByID:   "cashier-1",
+	})
+	if !errors.Is(err, app.ErrSeparationOfDutiesViolation) {
+		t.Fatalf("expected ErrSeparationOfDutiesViolation, got %v", err)
+	}
+}
+
+func TestCancelReceiptAllowsDistinctApprover(t *testing.T) {
+	service := newTestCheckoutService()
+	opened, err := service.OpenReceipt(context.Background(), app.OpenReceiptCommand{
+		IdempotencyKey: "open-1",
+		StoreID:        "store-1",
+		TerminalID:     "pos-1",
+		CashierID:      "cashier-1",
+	})
+	if err != nil {
+		t.Fatalf("open receipt: %v", err)
+	}
+
+	cancelled, err := service.CancelReceipt(context.Background(), app.CancelReceiptCommand{
+		IdempotencyKey: "cancel-1",
+		ReceiptID:      opened.Receipt.ID,
+		Reason:         "Customer changed mind",
+		ActorID:        "cashier-1",
+		ApprovedByID:   "senior-1",
+	})
+	if err != nil {
+		t.Fatalf("cancel receipt: %v", err)
+	}
+	if cancelled.Receipt.Status != domain.ReceiptStatusCancelled || cancelled.Receipt.CancelApprovedByID != "senior-1" {
+		t.Fatalf("cancelled receipt = %+v", cancelled.Receipt)
+	}
+}
+
 func TestListReceiptsByShift(t *testing.T) {
 	store := memory.NewStore()
 	service := app.NewCheckoutService(store, store)
