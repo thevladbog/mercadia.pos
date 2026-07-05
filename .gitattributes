@@ -1,2 +1,13 @@
 frontend/** text eol=lf
 docs/** text eol=lf
+
+# Binary files must never get EOL normalization; later rules win over the
+# directory-wide text rules above.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
