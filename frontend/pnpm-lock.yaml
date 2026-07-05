@@ -81,12 +81,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.2
         version: 6.0.2(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0))
+      happy-dom:
+        specifier: ^20.0.10
+        version: 20.10.6
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vite:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0)
+      vitest:
+        specifier: ^4.0.18
+        version: 4.1.9(@types/node@24.13.2)(happy-dom@20.10.6)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0))
 
   apps/pos-terminal:
     dependencies:
@@ -127,12 +133,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.2
         version: 6.0.2(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0))
+      happy-dom:
+        specifier: ^20.0.10
+        version: 20.10.6
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vite:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0)
+      vitest:
+        specifier: ^4.0.18
+        version: 4.1.9(@types/node@24.13.2)(happy-dom@20.10.6)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0))
 
   apps/senior-cashier-terminal:
     dependencies:
@@ -173,12 +185,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.2
         version: 6.0.2(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0))
+      happy-dom:
+        specifier: ^20.0.10
+        version: 20.10.6
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vite:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0)
+      vitest:
+        specifier: ^4.0.18
+        version: 4.1.9(@types/node@24.13.2)(happy-dom@20.10.6)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0))
 
   packages/api-clients/central:
     dependencies:
