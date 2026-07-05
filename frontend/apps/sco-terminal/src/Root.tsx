@@ -140,14 +140,22 @@ function Terminal({ session }: { session: SessionResult }) {
         }
 
         if (!operationalDayId) {
-          await openOperationalDay(
-            {
-              businessDate: todayBusinessDate(),
-              openedById: session.actorId,
-              storeId: terminalConfig.storeId,
-            },
-            { headers: createIdempotencyHeaders(createIdempotencyKey('sco-terminal', 'open-day')) },
-          );
+          try {
+            await openOperationalDay(
+              {
+                businessDate: todayBusinessDate(),
+                openedById: session.actorId,
+                storeId: terminalConfig.storeId,
+              },
+              {
+                headers: createIdempotencyHeaders(createIdempotencyKey('sco-terminal', 'open-day')),
+              },
+            );
+          } catch (error) {
+            if (!(error instanceof ApiError) || error.status !== 409) {
+              throw error;
+            }
+          }
         }
 
         try {
