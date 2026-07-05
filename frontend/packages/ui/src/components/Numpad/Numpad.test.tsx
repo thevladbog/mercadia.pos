@@ -55,6 +55,18 @@ describe('Numpad', () => {
     expect(el.innerHTML).not.toContain('1234');
   });
 
+  it('labels the masked display with a digit count for screen readers', () => {
+    const el = renderToElement(<Numpad value="567" onChange={() => {}} mask />);
+    const display = el.querySelector<HTMLElement>('.mercadia-numpad-display');
+    expect(display?.getAttribute('aria-label')).toBe('3 digits entered');
+  });
+
+  it('has no aria-label on the unmasked display', () => {
+    const el = renderToElement(<Numpad value="567" onChange={() => {}} />);
+    const display = el.querySelector<HTMLElement>('.mercadia-numpad-display');
+    expect(display?.hasAttribute('aria-label')).toBe(false);
+  });
+
   it('mask defaults to false when the prop is omitted, preserving byte-for-byte behavior', () => {
     const withDefault = renderToElement(<Numpad value="42" onChange={() => {}} />);
     const withExplicitFalse = renderToElement(

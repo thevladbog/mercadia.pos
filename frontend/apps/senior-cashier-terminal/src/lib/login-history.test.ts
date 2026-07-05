@@ -35,6 +35,16 @@ describe('recordLogin / getRecentLogins', () => {
     expect(ids).toHaveLength(4);
   });
 
+  it('moves a repeat actorId to the front instead of duplicating it', () => {
+    recordLogin('senior-1', '2026-07-05T10:00:00.000Z');
+    recordLogin('senior-2', '2026-07-05T11:00:00.000Z');
+    recordLogin('senior-1', '2026-07-05T12:00:00.000Z');
+    expect(getRecentLogins()).toEqual([
+      { actorId: 'senior-1', atIso: '2026-07-05T12:00:00.000Z' },
+      { actorId: 'senior-2', atIso: '2026-07-05T11:00:00.000Z' },
+    ]);
+  });
+
   it('returns [] when nothing has been recorded', () => {
     expect(getRecentLogins()).toEqual([]);
   });

@@ -22,6 +22,16 @@
   .sr-login-shell {
     grid-template-columns: 1fr;
   }
+
+  .sr-login-left,
+  .sr-login-right {
+    min-height: auto;
+  }
+
+  .sr-login-left {
+    border-right: 0;
+    border-bottom: 1px solid var(--ui-border);
+  }
 }
 
 .sr-login-left {

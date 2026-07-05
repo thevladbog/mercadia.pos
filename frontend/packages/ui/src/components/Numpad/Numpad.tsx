@@ -38,7 +38,12 @@ export function Numpad({
 
   return (
     <div className={cn('mercadia-numpad', className)}>
-      <div className="mercadia-numpad-display">{displayValue || '0'}</div>
+      <div
+        className="mercadia-numpad-display"
+        aria-label={mask ? `${value.length} digits entered` : undefined}
+      >
+        {displayValue || '0'}
+      </div>
       {digitKeys.map((digit) => (
         <button
           key={digit}

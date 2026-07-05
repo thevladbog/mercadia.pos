@@ -49,15 +49,18 @@ export function getRecentLogins(): RecentLogin[] {
 }
 
 /**
- * Record a successful login: prepend a new entry (newest first) and cap the
- * stored list at the last `MAX_RECENT_LOGINS` entries. `atIso` is
+ * Record a successful login: drop any existing entry for the same
+ * `actorId` (so a frequently-logging-in operator doesn't crowd out the
+ * `MAX_RECENT_LOGINS`-sized chip row with repeats of themselves), then
+ * prepend the new entry (newest first) and cap the stored list. `atIso` is
  * injectable for testability; defaults to "now". Silently no-ops on any
  * localStorage failure — this is a UX nicety, not part of the auth
  * critical path, so it must never throw into the caller.
  */
 export function recordLogin(actorId: string, atIso: string = new Date().toISOString()): void {
   try {
-    const next = [{ actorId, atIso }, ...getRecentLogins()].slice(0, MAX_RECENT_LOGINS);
+    const deduped = getRecentLogins().filter((entry) => entry.actorId !== actorId);
+    const next = [{ actorId, atIso }, ...deduped].slice(0, MAX_RECENT_LOGINS);
     localStorage.setItem(RECENT_LOGINS_KEY, JSON.stringify(next));
   } catch {
     /* noop */

@@ -36,6 +36,14 @@ export interface CredentialStepProps {
  * read already in flight. Once a read succeeds, `LoginPage.tsx` calls the
  * real `login()` immediately and automatically — there is still no visible
  * "submit" button, matching the design.
+ *
+ * Uses `credentialStepHeadingLabel` ("Key confirmation"), not
+ * `stepCredentialTitle` ("iButton token"), for its own heading — the design
+ * itself uses two different labels here: the left rail always says
+ * "Таблетка iButton" (screen `01a`/`01b`/`01c`, unchanged regardless of the
+ * selected kind), but this step's own small heading label reads "ПОДТВЕРЖДЕНИЕ
+ * КЛЮЧОМ" (screen `01c`) — generic, since this step supports iButton/MSR/
+ * barcode-card, not just iButton.
  */
 export function CredentialStep({
   personnelId,
@@ -67,7 +75,7 @@ export function CredentialStep({
       <div className="sr-login-step-heading">
         <span className="sr-login-step-heading-label">
           {t('auth.wizard.stepOfTotal', { current: 3, total: 3 })} ·{' '}
-          {t('auth.wizard.stepCredentialTitle')}
+          {t('auth.wizard.credentialStepHeadingLabel')}
         </span>
         <h2 className="sr-login-step-heading-title">{t('auth.wizard.credentialPrompt')}</h2>
       </div>

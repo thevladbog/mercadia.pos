@@ -65,6 +65,7 @@ export function LoginLeftPanel({ currentStep, storeId }: LoginLeftPanelProps) {
                 className={`sr-login-step${active ? ' sr-login-step--active' : ''}${
                   done ? ' sr-login-step--done' : ''
                 }`}
+                aria-current={active ? 'step' : undefined}
               >
                 <span className="sr-login-step-marker">
                   {done ? <CheckIcon width={14} height={14} /> : index + 1}

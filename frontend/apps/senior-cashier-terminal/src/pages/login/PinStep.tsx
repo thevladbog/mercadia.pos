@@ -23,6 +23,11 @@ export interface PinStepProps {
  * reused `MAX_ATTEMPTS` constant (`LoginPage.tsx`) is 5, not 3 — this plan
  * does not change that business rule, so the copy interpolates the real
  * `maxAttempts` value instead of hardcoding the design's literal "three."
+ *
+ * `PinDots` is `aria-hidden` and `Numpad`'s own display is hidden via CSS
+ * (see `LoginPage.css`), so neither gives assistive tech any feedback on
+ * PIN entry progress. The visually hidden `aria-live="polite"` status below
+ * announces the digit count only — never the PIN value itself.
  */
 export function PinStep({
   personnelId,
@@ -50,6 +55,9 @@ export function PinStep({
       </div>
 
       <PinDots length={pin.length} />
+      <span className="mercadia-sr-only" aria-live="polite">
+        {t('auth.wizard.pinDigitsEntered', { count: pin.length })}
+      </span>
 
       <Numpad
         className="sr-login-pin-numpad"
