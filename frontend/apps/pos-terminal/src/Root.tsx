@@ -5,7 +5,6 @@ import {
   createReceiptPayment,
   type CreateReceiptFiscalDocument202Document,
   type CreateReceiptFiscalDocumentBody,
-  type CreateReceiptPayment202Payment,
   type CreateReceiptPaymentBody,
   getCurrentOperationalDay,
   type GetReceipt200,
@@ -15,7 +14,6 @@ import {
   listReceiptFiscalDocuments,
   type ListReceiptFiscalDocuments200DocumentsItem,
   listReceiptPayments,
-  type ListReceiptPayments200PaymentsItem,
   openOperationalDay,
   openReceipt,
   openShift,
@@ -54,6 +52,14 @@ import {
 import type { SessionResult } from '@/auth/types.js';
 import { getStoreId, getTerminalId } from '@/api-client-config.js';
 import { changeAppLocale, i18n, type AppLocale } from '@/i18n/config.js';
+import {
+  filterGridByCategory,
+  formatInputAmount,
+  formatMinorAmount,
+  parseAmountToMinor,
+  settledPaymentAmountMinor,
+  type ReceiptPayment,
+} from '@/lib/receipt-utils.js';
 import { queryClient } from '@/query-client.js';
 
 const ALL_CATEGORIES = '__all__';
@@ -75,7 +81,6 @@ type FiscalAttempt = CreateReceiptFiscalDocumentBody & {
   receiptId: string;
 };
 
-type ReceiptPayment = CreateReceiptPayment202Payment | ListReceiptPayments200PaymentsItem;
 type ReceiptFiscalDocument =
   | CreateReceiptFiscalDocument202Document
   | ListReceiptFiscalDocuments200DocumentsItem;
@@ -135,13 +140,6 @@ function createIdempotencyHeaders(idempotencyKey: string): HeadersInit {
   return { 'Idempotency-Key': idempotencyKey };
 }
 
-function formatMinorAmount(amountMinor: number, language: string): string {
-  const locale = language === 'en' ? 'en-US' : 'ru-RU';
-  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'RUB' }).format(
-    amountMinor / 100,
-  );
-}
-
 function localCalendarDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -185,49 +183,8 @@ function resolveTemplateId(): string {
   return params.get('templateId') ?? import.meta.env.VITE_LAYOUT_TEMPLATE_ID ?? '';
 }
 
-function filterGridByCategory(grid: LayoutGridSpec, categoryId: string | null): LayoutGridSpec {
-  if (categoryId === null) {
-    return grid;
-  }
-  return {
-    ...grid,
-    tiles: grid.tiles.filter((tile) => tile.categoryId === categoryId),
-  };
-}
-
-function parseAmountToMinor(value: string): number | null {
-  const normalized = value.trim().replace(',', '.');
-  if (!normalized) {
-    return null;
-  }
-  if (!/^\d+(?:\.\d{0,2})?$/.test(normalized)) {
-    return null;
-  }
-  const parsed = Number(normalized);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return null;
-  }
-  const [major, fractional = ''] = normalized.split('.');
-  return Number(major) * 100 + Number(fractional.padEnd(2, '0'));
-}
-
-function formatInputAmount(amountMinor: number): string {
-  return (amountMinor / 100).toFixed(2);
-}
-
 function isFiscalReceipt(document: ReceiptFiscalDocument): boolean {
   return document.kind === 'receipt';
-}
-
-function settledPaymentAmountMinor(payment: ReceiptPayment): number {
-  switch (payment.status) {
-    case 'captured':
-      return payment.amountMinor;
-    case 'partially_refunded':
-      return Math.max(payment.amountMinor - payment.refundedAmountMinor, 0);
-    default:
-      return 0;
-  }
 }
 
 function LoginScreen() {
