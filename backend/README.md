@@ -201,6 +201,10 @@ Post-sale card refunds use the hardware-agent `refund` command with the original
 Post-fiscal cash refunds post a compensating `cash_sale_reversal` movement from the receipt drawer back to the external customer container.
 Return settlement refunds captured payments on the original receipt through the existing refund paths (card via hardware-agent when enabled, cash via ledger reversal) and transitions the return to `settled`. Partial returns allocate refund amounts proportionally across refundable payment balances. Cumulative settled return totals for a receipt are capped at the receipt total at settlement time; per-line return quantities are capped at create time across prior with-receipt returns in `completed` or `settled` status. No-receipt returns settle with a `no_receipt_return_payout` cash movement from the drawer; the approver recorded on the return is stored on the movement and cannot be the disbursing actor. After settlement, with-receipt returns can be fiscalized with `POST /v1/returns/{returnId}/fiscal-documents` (mock `print_receipt` via hardware-agent when enabled); receipt listing includes both sale and return fiscal documents.
 
+All hardware-agent device paths are simulated today; see
+[`docs/hardware-support-matrix.md`](../docs/hardware-support-matrix.md) for the
+device support matrix and the real-driver/ATOL integration plan.
+
 Command endpoints require `Idempotency-Key`. Reusing the same key for the same command returns
 the same result; reusing it with a different command payload returns an idempotency conflict.
 
