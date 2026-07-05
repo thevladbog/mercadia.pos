@@ -8083,7 +8083,7 @@
                 }
               }
             },
-            "description": "Separation of duties conflict"
+            "description": "Separation of duties or idempotency conflict"
           }
         },
         "summary": "Add actor staff credential binding. Requires `X-Session-Token` header.",
@@ -8421,7 +8421,7 @@
                 }
               }
             },
-            "description": "Separation of duties conflict"
+            "description": "Separation of duties or idempotency conflict"
           }
         },
         "summary": "Revoke actor staff credential binding. Requires `X-Session-Token` header.",
@@ -8766,7 +8766,7 @@
                 }
               }
             },
-            "description": "Separation of duties conflict"
+            "description": "Separation of duties or idempotency conflict"
           }
         },
         "summary": "Set actor staff credential policy override. Requires `X-Session-Token` header.",
@@ -11914,6 +11914,40 @@
               }
             },
             "description": "Manager actor was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Idempotency key was reused for another credential policy command"
           }
         },
         "summary": "Set store staff credential policy. Requires `X-Session-Token` header.",

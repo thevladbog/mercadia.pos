@@ -352,6 +352,7 @@ export * from './setStoreCredentialPolicy400.ts';
 export * from './setStoreCredentialPolicy401.ts';
 export * from './setStoreCredentialPolicy403.ts';
 export * from './setStoreCredentialPolicy404.ts';
+export * from './setStoreCredentialPolicy409.ts';
 export * from './setStoreCredentialPolicyBody.ts';
 export * from './setStoreCredentialPolicyBodyAllowedKindsItem.ts';
 export * from './settleReturn202.ts';

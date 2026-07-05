@@ -1,6 +1,7 @@
 import { useListStores } from '@mercadia/api-clients-central';
 import {
   addActorCredentialBinding,
+  clearSessionToken as clearStoreEdgeSessionToken,
   createAuthSession,
   getSessionToken as getStoreEdgeSessionToken,
   revokeActorCredentialBinding,
@@ -91,7 +92,8 @@ export function StoreCredentialManagementPage() {
   const credentialsQuery = useGetCredentialManagement(activeStoreId, {
     query: { enabled: activeStoreId.length > 0 && hasManagerSession },
   });
-  const credentials = credentialsQuery.data?.status === 200 ? credentialsQuery.data.data : null;
+  const credentials =
+    hasManagerSession && credentialsQuery.data?.status === 200 ? credentialsQuery.data.data : null;
   const actors = credentials?.actors ?? [];
   const selectedActor = actors.find((actor) => actor.id === selectedActorId) ?? actors[0] ?? null;
   const targetActorId = selectedActor?.id ?? '';
@@ -101,7 +103,9 @@ export function StoreCredentialManagementPage() {
   };
   const actorPolicyForm = actorPolicyDraft ?? actorPolicyDraftFromActor(selectedActor);
   const loadError =
-    credentialsQuery.error != null ? getApiErrorMessage(credentialsQuery.error) : null;
+    hasManagerSession && credentialsQuery.error != null
+      ? getApiErrorMessage(credentialsQuery.error)
+      : null;
 
   async function loginManager(): Promise<void> {
     setIsSubmitting(true);
@@ -193,6 +197,14 @@ export function StoreCredentialManagementPage() {
               setStorePolicyDraft(null);
               setSelectedActorId('');
               setActorPolicyDraft(null);
+              setHasManagerSession(false);
+              setManagerPin('');
+              setManagerCredentialToken('');
+              setBindingToken('');
+              setBindingMaskedToken('');
+              clearStoreEdgeSessionToken();
+              setMessage('');
+              setError('');
             }}
           />
           <TextField
