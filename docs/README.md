@@ -15,6 +15,7 @@ surfaces:
 - [POS terminal specification](modules/pos-terminal.md) - cashier checkout, payments, service operations, returns, and authentication.
 - [Senior cashier terminal specification](modules/senior-cashier-terminal.md) - three-factor login, safe operations, cashier handover, EoD support, and audit journal.
 - [Self-checkout specification](modules/self-checkout.md) - customer journey, assistant mode, age checks, marking, weighing, and error handling.
+- [SCO terminal implementation design](sco-terminal-implementation-design.md) - spec-to-API gap analysis, app architecture reuse plan, auth model proposal, and milestone slicing for a future `sco-terminal` app.
 - [Admin panel specification](modules/admin-panel.md) - monitoring, cash office, EoD, users, catalog, integrations, devices, templates, and branding.
 - [Architecture proposal](architecture.md) - suggested system architecture, bounded contexts, data model, deployment topology, integration patterns, and reliability strategy.
 - [Architecture decisions](adr/README.md) - accepted and proposed architecture decision records.
