@@ -44,6 +44,10 @@ export default defineConfig({
         target: 'http://127.0.0.1:8083',
         changeOrigin: true,
       },
+      '/v1/hardware': {
+        target: 'http://127.0.0.1:8083',
+        changeOrigin: true,
+      },
     },
   },
 });
