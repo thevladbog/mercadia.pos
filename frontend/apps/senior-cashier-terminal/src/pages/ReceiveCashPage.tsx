@@ -2,7 +2,11 @@ import { useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, Field, Label } from '@mercadia/ui';
-import { useListOpenStoreShifts, createCashMovement } from '@mercadia/api-clients-store-edge';
+import {
+  useListOpenStoreShifts,
+  createCashMovement,
+  getListCashBalancesQueryKey,
+} from '@mercadia/api-clients-store-edge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/auth/AuthProvider.js';
@@ -69,7 +73,7 @@ export function ReceiveCashPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/v1/stores', storeId, 'cash-balances'] });
+      queryClient.invalidateQueries({ queryKey: getListCashBalancesQueryKey(storeId) });
       navigate('/dashboard', { replace: true });
     },
     onError: (err: Error) => setError(err?.message ?? t('common.unexpectedError')),

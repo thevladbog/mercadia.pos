@@ -218,5 +218,9 @@
     "detected": "iButton считан",
     "error": "Ошибка чтения iButton",
     "retry": "Повторить"
+  },
+  "validation": {
+    "required": "{{field}} — обязательно",
+    "mustBePositive": "{{field}} — должно быть больше 0"
   }
 }
