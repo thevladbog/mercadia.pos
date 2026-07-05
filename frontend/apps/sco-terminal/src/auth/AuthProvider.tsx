@@ -29,9 +29,7 @@ const SERVICE_ACTOR_PIN = envValue('VITE_SCO_SERVICE_ACTOR_PIN', '1234');
 const SESSION_KEY = 'mercadia.sco-terminal.session';
 
 export type BootState =
-  | { status: 'booting' }
-  | { status: 'ready'; session: SessionResult }
-  | { status: 'error' };
+  { status: 'booting' } | { status: 'ready'; session: SessionResult } | { status: 'error' };
 
 interface AuthContextValue {
   state: BootState;

@@ -85,8 +85,7 @@ type FiscalAttempt = CreateReceiptFiscalDocumentBody & {
 };
 
 type ReceiptFiscalDocument =
-  | CreateReceiptFiscalDocument202Document
-  | ListReceiptFiscalDocuments200DocumentsItem;
+  CreateReceiptFiscalDocument202Document | ListReceiptFiscalDocuments200DocumentsItem;
 
 type StatusMessage = {
   key: string;

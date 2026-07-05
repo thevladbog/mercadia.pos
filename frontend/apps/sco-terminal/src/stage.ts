@@ -23,10 +23,7 @@ export function isStageComingSoon(stage: ScoStage): boolean {
 }
 
 export type ScoStageEvent =
-  | { type: 'start' }
-  | { type: 'reviewReceipt' }
-  | { type: 'resumeScanning' }
-  | { type: 'cancel' };
+  { type: 'start' } | { type: 'reviewReceipt' } | { type: 'resumeScanning' } | { type: 'cancel' };
 
 /** Pure transition function driving the sale-stage machine from a UI event. */
 export function reduceScoStage(stage: ScoStage, event: ScoStageEvent): ScoStage {
