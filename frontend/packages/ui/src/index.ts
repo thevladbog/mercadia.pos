@@ -18,6 +18,14 @@ export { LayoutGrid } from './components/LayoutGrid/LayoutGrid.js';
 export { Numpad } from './components/Numpad/Numpad.js';
 export { Stepper } from './components/Stepper/Stepper.js';
 export { ThemePreview } from './components/ThemePreview/ThemePreview.js';
+export {
+  AvatarChip,
+  avatarChipVariants,
+  resolveAvatarColor,
+} from './components/AvatarChip/AvatarChip.js';
+export type { AvatarChipProps } from './components/AvatarChip/AvatarChip.js';
+export { ProgressBar } from './components/ProgressBar/ProgressBar.js';
+export type { ProgressBarProps } from './components/ProgressBar/ProgressBar.js';
 export type {
   LayoutGridSpec,
   LayoutGridTileSpec,

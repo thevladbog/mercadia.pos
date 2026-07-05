@@ -1,0 +1,29 @@
+.mercadia-avatar-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--ui-radius-pill);
+  font-weight: 600;
+  line-height: 1;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.mercadia-avatar-chip--sm {
+  width: 40px;
+  height: 40px;
+  font-size: 0.8125rem;
+}
+
+.mercadia-avatar-chip--md {
+  width: 48px;
+  height: 48px;
+  font-size: 0.9375rem;
+}
+
+.mercadia-avatar-chip--lg {
+  width: 64px;
+  height: 64px;
+  font-size: 1.25rem;
+}

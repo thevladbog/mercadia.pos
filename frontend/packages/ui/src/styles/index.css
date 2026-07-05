@@ -17,3 +17,5 @@
 @import '../components/LayoutGrid/LayoutGrid.css';
 @import '../components/Numpad/Numpad.css';
 @import '../components/Stepper/Stepper.css';
+@import '../components/AvatarChip/AvatarChip.css';
+@import '../components/ProgressBar/ProgressBar.css';

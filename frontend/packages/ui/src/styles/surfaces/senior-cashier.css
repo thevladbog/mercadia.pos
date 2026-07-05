@@ -1,1 +1,23 @@
 /* Layout tokens for senior cashier terminal — pairs with dark colorMode */
+
+/*
+ * Color tokens for the senior-cashier redesign (Plan 018).
+ * Scoped to this surface's dark color-mode selector (see below) so it
+ * overrides semantic-dark.css's generic dark tokens only for this surface
+ * (import order in styles/index.css: semantic-dark.css -> surfaces/admin.css
+ * -> surfaces/terminal.css -> surfaces/sco.css -> surfaces/senior-cashier.css).
+ *
+ * --ui-surface-elevated judgment call: chosen as a step lighter than
+ * --ui-surface (#1a140e -> #241a12), following the same
+ * surface < surface-elevated relationship as semantic-dark.css
+ * (#1a1a1a -> #262626). Not sourced from an exact design pixel value —
+ * revisit against the real screens in the per-screen phases if it doesn't
+ * match closely enough once components sit on top of it.
+ */
+[data-surface='senior-cashier'][data-color-mode='dark'] {
+  --ui-bg: #0d0a07;
+  --ui-surface: #1a140e;
+  --ui-surface-elevated: #241a12;
+  --ui-border: #2a251d;
+  --ui-text-muted: #87806f;
+}
