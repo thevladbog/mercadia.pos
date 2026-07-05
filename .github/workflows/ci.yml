@@ -151,6 +151,12 @@ jobs:
       - name: Test UI package
         run: pnpm --filter @mercadia/ui test
 
+      - name: Test frontend apps
+        run: |
+          pnpm --filter senior-cashier-terminal test
+          pnpm --filter pos-terminal test
+          pnpm --filter admin-web test
+
       - name: Build admin-web
         run: pnpm --filter admin-web build
 
