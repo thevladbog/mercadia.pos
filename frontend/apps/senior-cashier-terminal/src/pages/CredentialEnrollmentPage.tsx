@@ -12,6 +12,7 @@ import {
 } from '@mercadia/api-clients-store-edge';
 
 import { useAuth } from '@/auth/AuthProvider.js';
+import { useIdleTimerContext } from '@/auth/IdleTimerProvider.js';
 import {
   readStaffCredential,
   type StaffCredentialKind,
@@ -29,7 +30,8 @@ function actorLabel(actor: GetCredentialManagement200ActorsItem): string {
 export function CredentialEnrollmentPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { session, logout, remaining } = useAuth();
+  const { session, logout } = useAuth();
+  const { remaining } = useIdleTimerContext();
   const storeId = useMemo(() => getStoreId(), []);
   const [selectedActorId, setSelectedActorId] = useState('');
   const [credentialKind, setCredentialKind] = useState<StaffCredentialKind>('ibutton');

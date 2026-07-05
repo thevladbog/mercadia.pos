@@ -9,6 +9,7 @@ import {
 } from '@mercadia/api-clients-store-edge';
 
 import { useAuth } from '@/auth/AuthProvider.js';
+import { useIdleTimerContext } from '@/auth/IdleTimerProvider.js';
 import { getStoreId } from '@/api-client-config.js';
 import { formatMinor, selectSuccessData } from '@/lib/cash-utils.js';
 import { TopBar } from '@/components/TopBar.js';
@@ -16,7 +17,8 @@ import { TopBar } from '@/components/TopBar.js';
 export function DashboardPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { logout, remaining } = useAuth();
+  const { logout } = useAuth();
+  const { remaining } = useIdleTimerContext();
   const storeId = useMemo(() => getStoreId(), []);
 
   const { data: balancesResp } = useListCashBalances(storeId);

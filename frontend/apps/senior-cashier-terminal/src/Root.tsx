@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from '@mercadia/ui';
 
 import { AuthProvider } from '@/auth/AuthProvider.js';
+import { IdleTimerProvider } from '@/auth/IdleTimerProvider.js';
 import { i18n } from '@/i18n/config.js';
 import { App } from '@/App.js';
 import { queryClient } from '@/query-client.js';
@@ -22,7 +23,9 @@ export function Root() {
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
             <AuthProvider>
-              <App />
+              <IdleTimerProvider>
+                <App />
+              </IdleTimerProvider>
             </AuthProvider>
           </BrowserRouter>
         </QueryClientProvider>

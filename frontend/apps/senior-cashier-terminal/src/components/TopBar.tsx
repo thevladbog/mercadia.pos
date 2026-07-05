@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { AvatarChip, Badge, Button } from '@mercadia/ui';
 
 import { useAuth } from '@/auth/AuthProvider.js';
+import { useIdleTimerContext } from '@/auth/IdleTimerProvider.js';
 import {
   deriveElapsed,
   deriveInitials,
@@ -30,13 +31,16 @@ export interface TopBarProps {
 
 /**
  * App-wide top bar (plan 019, Phase 2 of the senior-cashier-terminal
- * redesign). Reads `session`/`remaining` from `useAuth()` directly since
- * every consumer already sits inside `AuthProvider` — no need to pass them
- * down as props.
+ * redesign). Reads `session` from `useAuth()` and the ticking `remaining`
+ * countdown from `useIdleTimerContext()` directly, since every consumer
+ * already sits inside both providers — no need to pass them down as props.
+ * The two are kept as separate contexts so the 1s idle-timer tick only
+ * re-renders components that consume it, not every `useAuth()` consumer.
  */
 export function TopBar({ onHandover, onLock, operationsCount, alertsCount }: TopBarProps) {
   const { t } = useTranslation();
-  const { session, remaining } = useAuth();
+  const { session } = useAuth();
+  const { remaining } = useIdleTimerContext();
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
