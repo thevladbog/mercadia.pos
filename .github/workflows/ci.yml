@@ -151,6 +151,9 @@ jobs:
       - name: Test UI package
         run: pnpm --filter @mercadia/ui test
 
+      - name: Test receipt-kit package
+        run: pnpm --filter @mercadia/receipt-kit test
+
       - name: Test frontend apps
         run: |
           pnpm --filter senior-cashier-terminal test
