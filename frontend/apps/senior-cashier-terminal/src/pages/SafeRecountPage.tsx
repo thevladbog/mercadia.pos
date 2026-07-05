@@ -6,6 +6,8 @@ import {
   useListCashBalances,
   createCashRecount,
   resolveCashRecount,
+  getListCashBalancesQueryKey,
+  getListCashRecountsQueryKey,
 } from '@mercadia/api-clients-store-edge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -70,8 +72,8 @@ export function SafeRecountPage() {
     onSuccess: () => {
       setRecountId('pending');
 
-      queryClient.invalidateQueries({ queryKey: ['/v1/stores', storeId, 'cash-recounts'] });
-      queryClient.invalidateQueries({ queryKey: ['/v1/stores', storeId, 'cash-balances'] });
+      queryClient.invalidateQueries({ queryKey: getListCashRecountsQueryKey(storeId) });
+      queryClient.invalidateQueries({ queryKey: getListCashBalancesQueryKey(storeId) });
 
       if (countedMinor !== safeBalance) {
         setShowMismatch(true);

@@ -2,7 +2,10 @@ import { useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, Field, Label } from '@mercadia/ui';
-import { createBankCollection } from '@mercadia/api-clients-store-edge';
+import {
+  createBankCollection,
+  getListCashBalancesQueryKey,
+} from '@mercadia/api-clients-store-edge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/auth/AuthProvider.js';
@@ -43,7 +46,7 @@ export function BankCollectionPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/v1/stores', storeId, 'cash-balances'] });
+      queryClient.invalidateQueries({ queryKey: getListCashBalancesQueryKey(storeId) });
       navigate('/dashboard', { replace: true });
     },
     onError: (err: Error) => setError(err?.message ?? t('common.unexpectedError')),
@@ -55,19 +58,19 @@ export function BankCollectionPage() {
       setError('');
 
       if (!collectorName) {
-        setError(t('cash.collectorName') + ' — обязательно');
+        setError(t('validation.required', { field: t('cash.collectorName') }));
         return;
       }
       if (!contractNumber) {
-        setError(t('cash.collectorContract') + ' — обязательно');
+        setError(t('validation.required', { field: t('cash.collectorContract') }));
         return;
       }
       if (!bagSealNumber) {
-        setError(t('cash.bagSealNumber') + ' — обязательно');
+        setError(t('validation.required', { field: t('cash.bagSealNumber') }));
         return;
       }
       if (!countedMinor || countedMinor <= 0) {
-        setError(t('cash.countedAmount') + ' — должно быть больше 0');
+        setError(t('validation.mustBePositive', { field: t('cash.countedAmount') }));
         return;
       }
       if (!actorId || !approvedById) {

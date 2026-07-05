@@ -218,5 +218,9 @@
     "detected": "iButton read",
     "error": "iButton read error",
     "retry": "Retry"
+  },
+  "validation": {
+    "required": "{{field}} — required",
+    "mustBePositive": "{{field}} — must be greater than 0"
   }
 }
