@@ -39,8 +39,9 @@ Before implementing or changing behavior, read:
 
 ## Commands
 
-- Run backend tests with `.\backend\scripts\test.ps1`.
-- Regenerate OpenAPI contracts with `.\backend\scripts\export-openapi.ps1`.
+- Run backend tests with `.\backend\scripts\test.ps1` (Windows) or `./backend/scripts/test.sh` (macOS/Linux).
+- Regenerate OpenAPI contracts with `.\backend\scripts\export-openapi.ps1` (Windows) or
+  `./backend/scripts/export-openapi.sh` (macOS/Linux).
 - Keep generated OpenAPI files in `contracts/openapi` up to date when API handlers change.
 
 When a behavior is unclear, update `docs/open-questions.md` or ask for clarification before

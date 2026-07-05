@@ -214,7 +214,6 @@ Default demo env vars:
 
 - `VITE_POS_STORE_ID=store-1`
 - `VITE_POS_TERMINAL_ID=pos-1`
-- `VITE_POS_CASHIER_ID=cashier-1`
 - `VITE_POS_DRAWER_ID=drawer-1`
 - `VITE_POS_OPENED_BY_ID=admin-1`
 - `VITE_POS_FISCAL_DEVICE_ID=fiscal-1`
@@ -223,7 +222,9 @@ Default demo env vars:
 - `VITE_POS_STORE_TIME_ZONE` — optional IANA store time zone for operational day date selection
 - `VITE_STORE_EDGE_URL` — optional Store Edge base URL when bypassing the Vite proxy
 - `VITE_STORE_EDGE_SESSION_TOKEN` — optional Store Edge session token
+- `VITE_CENTRAL_BACKEND_URL` — optional central-backend base URL when bypassing the Vite proxy
 - `VITE_LAYOUT_TEMPLATE_ID` and `VITE_CENTRAL_SESSION_TOKEN` — optional central layout template access
+- `VITE_HARDWARE_AGENT_URL` — optional Hardware Agent base URL when bypassing the Vite proxy
 
 ## Local development — senior-cashier-terminal
 
