@@ -1,77 +1,122 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Button, Input, Field, Label } from '@mercadia/ui';
+import { Button } from '@mercadia/ui';
 import {
   useListCashBalances,
   useListOpenStoreShifts,
+  useGetCredentialManagement,
   createCashMovement,
   getListCashBalancesQueryKey,
 } from '@mercadia/api-clients-store-edge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
-import {
-  actorsMustDiffer,
-  computeDenominationTotal,
-  formatMinor,
-  selectSuccessData,
-} from '@/lib/cash-utils.js';
+import { actorsMustDiffer, computeDenominationTotal, selectSuccessData } from '@/lib/cash-utils.js';
 import { useTopBarActions } from '@/lib/use-topbar-actions.js';
-import { DenominationInput } from '@/components/DenominationInput.js';
 import { CashierSelectModal } from '@/components/CashierSelectModal.js';
 import { TopBar } from '@/components/TopBar.js';
 
+import { DownArrowIcon } from './dashboard/icons.js';
+import { BeforeAfterPanel } from './cash-operations/BeforeAfterPanel.js';
+import { CashierIdentityBanner } from './cash-operations/CashierIdentityBanner.js';
+import { DenominationGrid } from './cash-operations/DenominationGrid.js';
+import { OperationChecklist } from './cash-operations/OperationChecklist.js';
+import {
+  findActorRole,
+  findContainerBalance,
+  findSafeBalance,
+  type CashBalanceForLookup,
+  type CredentialActorForRoleLookup,
+} from './cash-operations/cash-operations-data.js';
+import './cash-operations/CashOperations.css';
+
+// Stable empty-array fallbacks (module scope, never reassigned) so the
+// derived container/role lookups below don't see a fresh `[]` reference —
+// and therefore a false "changed" input — on every render while a query
+// hasn't resolved yet. Same convention as `dashboard-data.ts`'s
+// `EMPTY_SHIFTS`/`EMPTY_TERMINALS`/`EMPTY_ACTORS` (plan 021).
+const EMPTY_BALANCES: CashBalanceForLookup[] = [];
+const EMPTY_ACTORS: CredentialActorForRoleLookup[] = [];
+
+/**
+ * Redesigned Issue Change Fund page (plan 022, Phase 5; design screen 03a).
+ * A thin orchestrator delegating to the shared `pages/cash-operations/`
+ * components, same discipline as plan 021's `DashboardPage.tsx`.
+ *
+ * `actorId`/`approvedById` are auto-derived (plan 022 item 5) — no manual
+ * free-text inputs — since this page already has a `CashierSelectModal`:
+ * the cashier from `selectedShift.cashierId`, the approver from this
+ * terminal's own signed-in session (`useAuth()`'s `session.actorId`).
+ *
+ * No `MismatchDialog` — there is no "expected" figure to compare against
+ * for issuing change fund (an operator-decided amount). The design's "Не
+ * сошлось" note is kept as informational copy near the confirm button,
+ * not wired to a modal.
+ */
 export function IssueChangeFundPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { onHandover, onLock } = useTopBarActions();
+  const { session } = useAuth();
   const storeId = useMemo(() => getStoreId(), []);
 
   const { data: balancesResp } = useListCashBalances(storeId);
   const { data: shiftsResp } = useListOpenStoreShifts(storeId);
+  const { data: credentialsResp } = useGetCredentialManagement(storeId);
 
-  const balancesData = selectSuccessData<{
-    balances: { containerType: string; balanceMinor: number; containerId: string }[];
-  }>(balancesResp);
+  const balances =
+    selectSuccessData<{ balances: CashBalanceForLookup[] }>(balancesResp)?.balances ??
+    EMPTY_BALANCES;
   const shiftsData = selectSuccessData<{
-    shifts: { id: string; cashierId: string; drawerId: string; currentBalanceMinor?: number }[];
+    shifts: { id: string; cashierId: string; drawerId: string }[];
   }>(shiftsResp);
+  const actors =
+    selectSuccessData<{ actors: CredentialActorForRoleLookup[] }>(credentialsResp)?.actors ??
+    EMPTY_ACTORS;
 
   const [selectedShift, setSelectedShift] = useState<{
     id: string;
     cashierId?: string;
     drawerId?: string;
-    currentBalanceMinor?: number;
   } | null>(null);
-  const [denomValues, setDenomValues] = useState<Record<number, string>>({});
-  const [otherCoins, setOtherCoins] = useState(0);
-  const [actorId, setActorId] = useState('');
-  const [approvedById, setApprovedById] = useState('');
+  const [billValues, setBillValues] = useState<Record<number, string>>({});
+  const [coinsMinor, setCoinsMinor] = useState(0);
+  const [otherMinor, setOtherMinor] = useState(0);
   const [error, setError] = useState('');
 
   const countedMinor = useMemo(
-    () => computeDenominationTotal(denomValues, otherCoins),
-    [denomValues, otherCoins],
+    () => computeDenominationTotal(billValues, coinsMinor + otherMinor),
+    [billValues, coinsMinor, otherMinor],
   );
 
-  const safeBalance = useMemo(() => {
-    const safe = balancesData?.balances.find((b) => b.containerType === 'safe');
-    return safe?.balanceMinor ?? 0;
-  }, [balancesData]);
+  // Item 4 fix: the safe is looked up by containerType (there is exactly one
+  // safe per store), but the drawer MUST be looked up by the selected
+  // shift's own drawerId — never "first drawer found" — since more than one
+  // open shift means more than one drawer balance exists.
+  const safeBalance = useMemo(() => findSafeBalance(balances), [balances]);
+  const drawerBalance = useMemo(
+    () => findContainerBalance(balances, selectedShift?.drawerId),
+    [balances, selectedShift?.drawerId],
+  );
+  const role = useMemo(
+    () => findActorRole(actors, selectedShift?.cashierId),
+    [actors, selectedShift?.cashierId],
+  );
+
+  const actorId = selectedShift?.cashierId ?? '';
+  const approvedById = session?.actorId ?? '';
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const safeContainer = balancesData?.balances.find((b) => b.containerType === 'safe');
-      const drawerContainer = balancesData?.balances.find((b) => b.containerType === 'drawer');
-
       return createCashMovement(storeId, {
         type: 'change_fund',
         fromContainerType: 'safe',
-        fromContainerId: safeContainer?.containerId ?? 'safe-1',
+        fromContainerId: safeBalance?.containerId ?? 'safe-1',
         toContainerType: 'drawer',
-        toContainerId: selectedShift?.drawerId ?? drawerContainer?.containerId ?? 'drawer-1',
+        toContainerId: selectedShift?.drawerId ?? 'drawer-1',
         amountMinor: countedMinor || 1,
         actorId,
         approvedById,
@@ -122,48 +167,66 @@ export function IssueChangeFundPage() {
 
       <main className="sr-terminal-main">
         <h1 className="sr-page-title">{t('cash.changeFundTitle')}</h1>
+        <p className="sr-cash-op-intro">{t('cash.pageIntro.changeFund')}</p>
 
-        <form onSubmit={handleSubmit} className="sr-form">
-          <p className="muted">
-            {t('cash.sourceSafe')} → {t('cash.destinationDrawer')}
-          </p>
-          <p className="muted">
-            {t('dashboard.safeBalance')}:{' '}
-            {balancesData ? formatMinor(safeBalance) : t('common.loading')} ₽
-          </p>
-
+        <form onSubmit={handleSubmit} className="sr-cash-op-form">
           <CashierSelectModal
             shifts={shiftsData?.shifts ?? []}
             onSelect={setSelectedShift}
             triggerLabel={selectedShift ? selectedShift.cashierId : undefined}
           />
 
-          <DenominationInput
-            values={denomValues}
-            onChange={setDenomValues}
-            otherAmountMinor={otherCoins}
-            onOtherAmountChange={setOtherCoins}
-          />
-
-          <p className="muted">{t('cash.confirmTwoPerson')}</p>
-
-          <Field>
-            <Label>{t('cash.actorId')}</Label>
-            <Input value={actorId} onChange={(e) => setActorId(e.target.value)} required />
-          </Field>
-
-          <Field>
-            <Label>{t('cash.approvedById')}</Label>
-            <Input
-              value={approvedById}
-              onChange={(e) => setApprovedById(e.target.value)}
-              required
+          {selectedShift && (
+            <CashierIdentityBanner
+              icon={<DownArrowIcon />}
+              accent="green"
+              directionLabel={t('cash.identity.directionChangeFund')}
+              cashierId={selectedShift.cashierId ?? ''}
+              role={role}
             />
-          </Field>
+          )}
+
+          <div className="sr-cash-op-body">
+            <div className="sr-cash-op-main">
+              <DenominationGrid
+                variant="issue"
+                billValues={billValues}
+                onBillValuesChange={setBillValues}
+                coinsMinor={coinsMinor}
+                onCoinsMinorChange={setCoinsMinor}
+                otherMinor={otherMinor}
+                onOtherMinorChange={setOtherMinor}
+              />
+            </div>
+
+            <div className="sr-cash-op-side">
+              <BeforeAfterPanel
+                totalLabel={t('cash.beforeAfter.totalIssue')}
+                totalMinor={countedMinor}
+                containers={[
+                  { kind: 'safe', beforeMinor: safeBalance?.balanceMinor, direction: 'decrease' },
+                  {
+                    kind: 'drawer',
+                    beforeMinor: drawerBalance?.balanceMinor,
+                    direction: 'increase',
+                  },
+                ]}
+              />
+              <OperationChecklist
+                steps={[
+                  t('cash.checklist.changeFund1'),
+                  t('cash.checklist.changeFund2'),
+                  t('cash.checklist.changeFund3'),
+                ]}
+              />
+            </div>
+          </div>
+
+          <p className="muted">{t('cash.noExpectedAmountNote')}</p>
 
           {error && <p className="sr-field-error">{error}</p>}
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="sr-button-row">
             <Button type="button" variant="ghost" onClick={() => navigate('/dashboard')}>
               {t('common.cancel')}
             </Button>

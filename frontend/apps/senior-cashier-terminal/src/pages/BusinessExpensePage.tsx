@@ -3,17 +3,38 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, Field, Label } from '@mercadia/ui';
 import {
+  useListCashBalances,
   createBusinessExpense,
   getListCashBalancesQueryKey,
 } from '@mercadia/api-clients-store-edge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { getStoreId } from '@/api-client-config.js';
-import { actorsMustDiffer, computeDenominationTotal } from '@/lib/cash-utils.js';
+import { actorsMustDiffer, computeDenominationTotal, selectSuccessData } from '@/lib/cash-utils.js';
 import { useTopBarActions } from '@/lib/use-topbar-actions.js';
-import { DenominationInput } from '@/components/DenominationInput.js';
 import { TopBar } from '@/components/TopBar.js';
 
+import { BeforeAfterPanel } from './cash-operations/BeforeAfterPanel.js';
+import { DenominationGrid } from './cash-operations/DenominationGrid.js';
+import { OperationChecklist } from './cash-operations/OperationChecklist.js';
+import {
+  findSafeBalance,
+  type CashBalanceForLookup,
+} from './cash-operations/cash-operations-data.js';
+import './cash-operations/CashOperations.css';
+
+// Stable empty-array fallback (module scope, never reassigned) — same
+// convention as the other 4 cash-operation pages (see
+// `IssueChangeFundPage.tsx`'s doc comment on the same constant).
+const EMPTY_BALANCES: CashBalanceForLookup[] = [];
+
+/**
+ * Redesigned Business Expense page (plan 022, Phase 5). Same treatment as
+ * `BankCollectionPage` — `DenominationGrid` + `BeforeAfterPanel` (safe-only)
+ * + `OperationChecklist` — with `actorId`/`approvedById` staying manual
+ * free text, UNCHANGED (plan item 5): no shift/cashier context to derive
+ * from here either.
+ */
 export function BusinessExpensePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -21,23 +42,30 @@ export function BusinessExpensePage() {
   const { onHandover, onLock } = useTopBarActions();
   const storeId = useMemo(() => getStoreId(), []);
 
+  const { data: balancesResp } = useListCashBalances(storeId);
+  const balances =
+    selectSuccessData<{ balances: CashBalanceForLookup[] }>(balancesResp)?.balances ??
+    EMPTY_BALANCES;
+  const safeBalance = useMemo(() => findSafeBalance(balances), [balances]);
+
   const [recipient, setRecipient] = useState('');
   const [reason, setReason] = useState('');
-  const [denomValues, setDenomValues] = useState<Record<number, string>>({});
-  const [otherCoins, setOtherCoins] = useState(0);
+  const [billValues, setBillValues] = useState<Record<number, string>>({});
+  const [coinsMinor, setCoinsMinor] = useState(0);
+  const [otherMinor, setOtherMinor] = useState(0);
   const [actorId, setActorId] = useState('');
   const [approvedById, setApprovedById] = useState('');
   const [error, setError] = useState('');
 
   const countedMinor = useMemo(
-    () => computeDenominationTotal(denomValues, otherCoins),
-    [denomValues, otherCoins],
+    () => computeDenominationTotal(billValues, coinsMinor + otherMinor),
+    [billValues, coinsMinor, otherMinor],
   );
 
   const mutation = useMutation({
     mutationFn: async () => {
       return createBusinessExpense(storeId, {
-        safeId: 'safe-1',
+        safeId: safeBalance?.containerId ?? 'safe-1',
         payeeId: recipient,
         amountMinor: countedMinor,
         reason,
@@ -90,48 +118,76 @@ export function BusinessExpensePage() {
       <main className="sr-terminal-main">
         <h1 className="sr-page-title">{t('cash.expenseTitle')}</h1>
 
-        <form onSubmit={handleSubmit} className="sr-form">
-          <Field>
-            <Label>{t('cash.expenseRecipient')}</Label>
-            <Input value={recipient} onChange={(e) => setRecipient(e.target.value)} required />
-          </Field>
+        <form onSubmit={handleSubmit} className="sr-cash-op-form">
+          <div className="sr-cash-op-fields">
+            <Field>
+              <Label>{t('cash.expenseRecipient')}</Label>
+              <Input value={recipient} onChange={(e) => setRecipient(e.target.value)} required />
+            </Field>
 
-          <Field>
-            <Label>{t('cash.expenseReason')}</Label>
-            <Input
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder={t('cash.expenseReasonPlaceholder')}
-              required
-            />
-          </Field>
+            <Field>
+              <Label>{t('cash.expenseReason')}</Label>
+              <Input
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder={t('cash.expenseReasonPlaceholder')}
+                required
+              />
+            </Field>
+          </div>
 
-          <DenominationInput
-            values={denomValues}
-            onChange={setDenomValues}
-            otherAmountMinor={otherCoins}
-            onOtherAmountChange={setOtherCoins}
-          />
+          <div className="sr-cash-op-body">
+            <div className="sr-cash-op-main">
+              <DenominationGrid
+                variant="issue"
+                billValues={billValues}
+                onBillValuesChange={setBillValues}
+                coinsMinor={coinsMinor}
+                onCoinsMinorChange={setCoinsMinor}
+                otherMinor={otherMinor}
+                onOtherMinorChange={setOtherMinor}
+              />
+            </div>
+
+            <div className="sr-cash-op-side">
+              <BeforeAfterPanel
+                totalLabel={t('cash.beforeAfter.totalExpense')}
+                totalMinor={countedMinor}
+                containers={[
+                  { kind: 'safe', beforeMinor: safeBalance?.balanceMinor, direction: 'decrease' },
+                ]}
+              />
+              <OperationChecklist
+                steps={[
+                  t('cash.checklist.expense1'),
+                  t('cash.checklist.expense2'),
+                  t('cash.checklist.expense3'),
+                ]}
+              />
+            </div>
+          </div>
 
           <p className="muted">{t('cash.confirmTwoPerson')}</p>
 
-          <Field>
-            <Label>{t('cash.actorId')}</Label>
-            <Input value={actorId} onChange={(e) => setActorId(e.target.value)} required />
-          </Field>
+          <div className="sr-cash-op-fields">
+            <Field>
+              <Label>{t('cash.actorId')}</Label>
+              <Input value={actorId} onChange={(e) => setActorId(e.target.value)} required />
+            </Field>
 
-          <Field>
-            <Label>{t('cash.approvedById')}</Label>
-            <Input
-              value={approvedById}
-              onChange={(e) => setApprovedById(e.target.value)}
-              required
-            />
-          </Field>
+            <Field>
+              <Label>{t('cash.approvedById')}</Label>
+              <Input
+                value={approvedById}
+                onChange={(e) => setApprovedById(e.target.value)}
+                required
+              />
+            </Field>
+          </div>
 
           {error && <p className="sr-field-error">{error}</p>}
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="sr-button-row">
             <Button type="button" variant="ghost" onClick={() => navigate('/dashboard')}>
               {t('common.cancel')}
             </Button>
