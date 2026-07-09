@@ -144,7 +144,39 @@
     "expense": "Хоз. расход",
     "journal": "Журнал",
     "credentials": "Удостоверения сотрудников",
-    "handover": "Передача смены"
+    "handover": "Передача смены",
+    "eyebrow": "ЧТО НУЖНО СДЕЛАТЬ?",
+    "heading": "Операции с деньгами",
+    "sectionSafeOps": "ОПЕРАЦИИ С СЕЙФОМ",
+    "sectionSystem": "СИСТЕМА",
+    "cards": {
+      "changeFundTitle": "Выдать размен кассиру",
+      "changeFundSubtitle": "Из сейфа → в ящик кассы",
+      "receiveCashTitle": "Принять деньги от кассира",
+      "receiveCashSubtitle": "Ящик → сейф · покупюрно из ККМ",
+      "finalCollectionTitle": "Итоговая инкассация смены",
+      "finalCollectionSubtitle": "Закрытие кассира · пересчёт + документы",
+      "safeRecountSubtitle": "Пересчитать наличные в сейфе",
+      "bankCollectionSubtitle": "Передача наличных инкассатору",
+      "expenseSubtitle": "Списание наличных на хоз. нужды",
+      "monitoringTitle": "Мониторинг касс",
+      "monitoringSubtitle": "{{nodes}} узлов · {{alerts}} алерт",
+      "credentialsSubtitle": "Выдача и отзыв удостоверений сотрудников",
+      "journalTitle": "Журнал смены",
+      "journalSubtitle": "ваши {{count}} операций"
+    },
+    "cashiers": {
+      "drawerAmount": "в ящике"
+    },
+    "safeNow": {
+      "title": "Сейф · сейчас",
+      "updated": "обновлено {{label}}",
+      "balanceLabel": "В сейфе",
+      "freshnessSeconds": "{{count}}с назад",
+      "freshnessMinutes": "{{count}}м назад",
+      "freshnessHours": "{{count}}ч назад",
+      "freshnessUnknown": "нет данных"
+    }
   },
   "credentials": {
     "title": "Удостоверения сотрудников",

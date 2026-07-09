@@ -94,58 +94,6 @@ body,
   font-weight: 600;
 }
 
-.sr-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.sr-kpi-card {
-  background: var(--ui-surface);
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-lg);
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.sr-kpi-label {
-  font-size: 0.8rem;
-  color: var(--ui-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.sr-kpi-value {
-  font-size: 1.75rem;
-  font-weight: 700;
-}
-
-.sr-kpi-sub {
-  font-size: 0.85rem;
-  color: var(--ui-text-muted);
-}
-
-.sr-action-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-
-.sr-action-btn {
-  padding: 1rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  min-height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
 .sr-panel {
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);

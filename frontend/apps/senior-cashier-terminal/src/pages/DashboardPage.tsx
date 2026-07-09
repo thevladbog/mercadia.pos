@@ -1,151 +1,172 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@mercadia/ui';
+import { Badge } from '@mercadia/ui';
 import {
+  useGetCredentialManagement,
+  useGetStoreMonitoringSummary,
   useListCashBalances,
   useListOpenStoreShifts,
-  useListStoreTerminals,
+  useListOperationJournal,
+  useListStoreMonitoringTerminals,
 } from '@mercadia/api-clients-store-edge';
 
-import { useIdleTimerContext } from '@/auth/IdleTimerProvider.js';
+import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
-import { formatMinor, selectSuccessData } from '@/lib/cash-utils.js';
+import { selectSuccessData } from '@/lib/cash-utils.js';
+import { deriveLoginAt } from '@/lib/topbar-utils.js';
+import {
+  deriveAlertsCount,
+  deriveOperationsCount,
+  deriveTotalTerminalCount,
+  joinCashiersOnShift,
+  type AlertsSummaryForDerive,
+  type CredentialActorForJoin,
+  type MonitoringTerminalForJoin,
+  type OpenShiftForJoin,
+  type OperationJournalEntryForJoin,
+  type TerminalCountsSummaryForDerive,
+} from '@/lib/dashboard-data.js';
 import { useTopBarActions } from '@/lib/use-topbar-actions.js';
 import { TopBar } from '@/components/TopBar.js';
 
+import { CashierShiftRow } from './dashboard/CashierShiftRow.js';
+import { DashboardClock } from './dashboard/DashboardClock.js';
+import './dashboard/DashboardPage.css';
+import { PrimaryActionsRow } from './dashboard/PrimaryActionsRow.js';
+import { SafeNowPanel } from './dashboard/SafeNowPanel.js';
+import { SafeOpsRow } from './dashboard/SafeOpsRow.js';
+import { SystemRow } from './dashboard/SystemRow.js';
+
+type MonitoringSummary = AlertsSummaryForDerive & TerminalCountsSummaryForDerive;
+
+interface CashBalance {
+  balanceMinor: number;
+  containerType: string;
+  lastMovementAt: string;
+}
+
+// The API-enforced max (`ListOperationJournalParams`) — see
+// `deriveOperationsCount`'s doc comment for why this stays an approximation.
+const JOURNAL_FETCH_LIMIT = 100;
+
+// Stable empty-array fallbacks (module scope, never reassigned) so the
+// `cashiersOnShift` useMemo below doesn't see a fresh `[]` reference — and
+// therefore a false "changed" dependency — on every render while a query
+// hasn't resolved yet.
+const EMPTY_SHIFTS: OpenShiftForJoin[] = [];
+const EMPTY_TERMINALS: MonitoringTerminalForJoin[] = [];
+const EMPTY_ACTORS: CredentialActorForJoin[] = [];
+
+/**
+ * Redesigned senior-cashier dashboard (plan 021, Phase 4). A thin
+ * orchestrator: fetches the 6 read-only endpoints, derives everything via
+ * `lib/dashboard-data.ts`, and delegates all rendering to the row/panel
+ * components under `pages/dashboard/`. See plan 021's "Why this matters"
+ * for why several design-screen-02 elements are absent here (no
+ * return/cancel card, no EoD card, no safe limit/fill-bar, no register
+ * number, no last-recount timestamp) — every omission traces to a real
+ * backend gap, not a shortcut, and must not be silently re-added.
+ */
 export function DashboardPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { onHandover, onLock } = useTopBarActions();
-  const { remaining } = useIdleTimerContext();
+  const { session } = useAuth();
   const storeId = useMemo(() => getStoreId(), []);
 
-  const { data: balancesResp } = useListCashBalances(storeId);
   const { data: shiftsResp } = useListOpenStoreShifts(storeId);
-  const { data: terminalsResp } = useListStoreTerminals(storeId);
+  const { data: terminalsResp } = useListStoreMonitoringTerminals(storeId);
+  const { data: summaryResp } = useGetStoreMonitoringSummary(storeId);
+  const { data: credentialsResp } = useGetCredentialManagement(storeId);
+  const { data: balancesResp } = useListCashBalances(storeId);
+  const { data: journalResp } = useListOperationJournal(storeId, { limit: JOURNAL_FETCH_LIMIT });
 
-  const safeBalance = useMemo(() => {
-    const balances =
-      selectSuccessData<{ balances: { containerType: string; balanceMinor: number }[] }>(
-        balancesResp,
-      )?.balances ?? [];
-    const safe = balances.find((b) => b.containerType === 'safe');
-    return safe?.balanceMinor ?? 0;
-  }, [balancesResp]);
+  const shifts =
+    selectSuccessData<{ shifts: OpenShiftForJoin[] }>(shiftsResp)?.shifts ?? EMPTY_SHIFTS;
+  const terminals =
+    selectSuccessData<{ items: MonitoringTerminalForJoin[] }>(terminalsResp)?.items ??
+    EMPTY_TERMINALS;
+  const summary = selectSuccessData<MonitoringSummary>(summaryResp);
+  const actors =
+    selectSuccessData<{ actors: CredentialActorForJoin[] }>(credentialsResp)?.actors ??
+    EMPTY_ACTORS;
+  const balances = selectSuccessData<{ balances: CashBalance[] }>(balancesResp)?.balances ?? [];
+  const journalItems =
+    selectSuccessData<{ items: OperationJournalEntryForJoin[] }>(journalResp)?.items ?? [];
 
-  const drawerTotal = useMemo(() => {
-    const balances =
-      selectSuccessData<{ balances: { containerType: string; balanceMinor: number }[] }>(
-        balancesResp,
-      )?.balances ?? [];
-    return balances
-      .filter((b) => b.containerType === 'drawer')
-      .reduce((sum, b) => sum + (b.balanceMinor ?? 0), 0);
-  }, [balancesResp]);
+  const cashiersOnShift = useMemo(
+    () => joinCashiersOnShift(shifts, terminals, actors),
+    [shifts, terminals, actors],
+  );
+  const safeBalance = balances.find((balance) => balance.containerType === 'safe');
 
-  const balancesData = selectSuccessData<{
-    balances: { containerType: string; balanceMinor: number; containerId: string }[];
-  }>(balancesResp);
-  const shiftsData = selectSuccessData<{
-    shifts: { id: string; cashierId: string; drawerId: string; closingCashMinor: number }[];
-  }>(shiftsResp);
-  const terminalsData = selectSuccessData<{ items: { id: string }[] }>(terminalsResp);
-
-  const activeShifts = shiftsData?.shifts?.length ?? 0;
-  const activeTerminals = terminalsData?.items?.length ?? 0;
-
-  const formatRemaining = (ms: number) => {
-    const totalSec = Math.floor(ms / 1000);
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    return `${h}${t('dashboard.hours')} ${m}${t('dashboard.minutes')}`;
-  };
-
-  const actions = [
-    { label: t('dashboard.changeFund'), path: '/cash/change-fund', accent: true },
-    { label: t('dashboard.receiveCash'), path: '/cash/receive', accent: true },
-    { label: t('dashboard.finalCollection'), path: '/cash/final-collection', accent: true },
-    { label: t('dashboard.safeRecount'), path: '/cash/safe-recount', accent: false },
-    { label: t('dashboard.bankCollection'), path: '/cash/bank-collection', accent: false },
-    { label: t('dashboard.expense'), path: '/cash/expense', accent: false },
-    { label: t('dashboard.credentials'), path: '/credentials', accent: false },
-    { label: t('dashboard.journal'), path: '/journal', accent: false },
-    { label: t('dashboard.handover'), path: '/handover', accent: false },
-  ];
+  const operationsCount =
+    session && journalResp
+      ? deriveOperationsCount(
+          journalItems,
+          session.actorId,
+          new Date(deriveLoginAt(session.expiresAt)).toISOString(),
+        )
+      : undefined;
+  const alertsCount = summaryResp ? deriveAlertsCount(summary) : undefined;
+  const totalTerminals = deriveTotalTerminalCount(summary);
 
   return (
     <div className="sr-terminal-shell">
-      <TopBar onHandover={onHandover} onLock={onLock} />
+      <TopBar
+        onHandover={onHandover}
+        onLock={onLock}
+        operationsCount={operationsCount}
+        alertsCount={alertsCount}
+      />
 
       <main className="sr-terminal-main">
-        <h1 className="sr-page-title">{t('dashboard.title')}</h1>
-
-        <div className="sr-kpi-grid">
-          <div className="sr-kpi-card">
-            <span className="sr-kpi-label">{t('dashboard.safeBalance')}</span>
-            {balancesData && <span className="sr-kpi-value">{formatMinor(safeBalance)} ₽</span>}
+        <div className="sr-dashboard-header">
+          <div>
+            <span className="sr-dashboard-eyebrow">{t('dashboard.eyebrow')}</span>
+            <h1 className="sr-dashboard-heading">{t('dashboard.heading')}</h1>
           </div>
-          <div className="sr-kpi-card">
-            <span className="sr-kpi-label">{t('dashboard.drawerTotal')}</span>
-            {balancesData && <span className="sr-kpi-value">{formatMinor(drawerTotal)} ₽</span>}
-          </div>
-          <div className="sr-kpi-card">
-            <span className="sr-kpi-label">{t('dashboard.activeShifts')}</span>
-            <span className="sr-kpi-value">{activeShifts}</span>
-          </div>
-          <div className="sr-kpi-card">
-            <span className="sr-kpi-label">{t('dashboard.activeTerminals')}</span>
-            <span className="sr-kpi-value">{activeTerminals}</span>
-          </div>
+          <DashboardClock />
         </div>
 
-        <div className="sr-action-grid">
-          {actions.map((action) => (
-            <Button
-              key={action.path}
-              variant={action.accent ? 'primary' : 'secondary'}
-              className="sr-action-btn"
-              onClick={() => navigate(action.path)}
-            >
-              {action.label}
-            </Button>
-          ))}
-        </div>
+        <div className="sr-dashboard-body">
+          <div className="sr-dashboard-main-column">
+            <PrimaryActionsRow />
 
-        <div className="sr-panel">
-          <div className="sr-panel-header">
-            <h2 className="sr-panel-title">{t('dashboard.activeCashiers')}</h2>
-            <span className="muted" style={{ fontSize: '0.85rem' }}>
-              {t('dashboard.autoLockIn')}: {formatRemaining(remaining)}
-            </span>
+            <section>
+              <h2 className="sr-dashboard-section-title">{t('dashboard.sectionSafeOps')}</h2>
+              <SafeOpsRow />
+            </section>
+
+            <section>
+              <h2 className="sr-dashboard-section-title">{t('dashboard.sectionSystem')}</h2>
+              <SystemRow
+                totalTerminals={totalTerminals}
+                alertsCount={alertsCount}
+                operationsCount={operationsCount}
+              />
+            </section>
           </div>
-          {!shiftsResp && <p className="muted">{t('common.loading')}</p>}
-          {shiftsResp && activeShifts === 0 && <p className="muted">{t('dashboard.noShifts')}</p>}
-          {shiftsData?.shifts?.map((shift) => (
-            <div
-              key={shift.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: '0.5rem 0',
-                borderBottom: '1px solid var(--ui-border)',
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 500 }}>{shift.cashierId}</div>
-                <div className="muted" style={{ fontSize: '0.85rem' }}>
-                  {t('dashboard.drawer')}: {shift.drawerId}
-                </div>
+
+          <div className="sr-dashboard-side-column">
+            <div className="sr-panel">
+              <div className="sr-panel-header">
+                <h2 className="sr-panel-title">{t('dashboard.activeCashiers')}</h2>
+                <Badge variant="outline">{cashiersOnShift.length}</Badge>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 600 }}>{formatMinor(shift.closingCashMinor)} ₽</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--ui-text-muted)' }}>
-                  {t('dashboard.revenue')}
-                </div>
-              </div>
+              {!shiftsResp && <p className="muted">{t('common.loading')}</p>}
+              {shiftsResp && cashiersOnShift.length === 0 && (
+                <p className="muted">{t('dashboard.noShifts')}</p>
+              )}
+              {cashiersOnShift.map((shift) => (
+                <CashierShiftRow key={shift.shiftId} shift={shift} />
+              ))}
             </div>
-          ))}
+
+            <SafeNowPanel
+              balanceMinor={safeBalance?.balanceMinor}
+              lastMovementAtIso={safeBalance?.lastMovementAt}
+            />
+          </div>
         </div>
       </main>
     </div>

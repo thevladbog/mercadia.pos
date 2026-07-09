@@ -144,7 +144,39 @@
     "expense": "Business Expense",
     "journal": "Journal",
     "credentials": "Staff Credentials",
-    "handover": "Shift Handover"
+    "handover": "Shift Handover",
+    "eyebrow": "WHAT NEEDS TO BE DONE?",
+    "heading": "Money Operations",
+    "sectionSafeOps": "SAFE OPERATIONS",
+    "sectionSystem": "SYSTEM",
+    "cards": {
+      "changeFundTitle": "Issue Change Fund to Cashier",
+      "changeFundSubtitle": "Safe → cash drawer",
+      "receiveCashTitle": "Receive Cash from Cashier",
+      "receiveCashSubtitle": "Drawer → safe · by denomination from the till",
+      "finalCollectionTitle": "Final Shift Collection",
+      "finalCollectionSubtitle": "Cashier close-out · recount + documents",
+      "safeRecountSubtitle": "Recount the cash held in the safe",
+      "bankCollectionSubtitle": "Hand cash to the collection service",
+      "expenseSubtitle": "Cash outflow for business needs",
+      "monitoringTitle": "Terminal Monitoring",
+      "monitoringSubtitle": "{{nodes}} nodes · {{alerts}} alerts",
+      "credentialsSubtitle": "Issue and revoke staff credentials",
+      "journalTitle": "Shift Journal",
+      "journalSubtitle": "your {{count}} operations"
+    },
+    "cashiers": {
+      "drawerAmount": "in drawer"
+    },
+    "safeNow": {
+      "title": "Safe · Now",
+      "updated": "updated {{label}}",
+      "balanceLabel": "In Safe",
+      "freshnessSeconds": "{{count}}s ago",
+      "freshnessMinutes": "{{count}}m ago",
+      "freshnessHours": "{{count}}h ago",
+      "freshnessUnknown": "no data"
+    }
   },
   "credentials": {
     "title": "Staff Credentials",
