@@ -13,7 +13,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
-import { actorsMustDiffer, computeDenominationTotal, selectSuccessData } from '@/lib/cash-utils.js';
+import {
+  actorsMustDiffer,
+  computeDenominationTotal,
+  createIdempotencyHeaders,
+  selectSuccessData,
+} from '@/lib/cash-utils.js';
 import { useTopBarActions } from '@/lib/use-topbar-actions.js';
 import { CashierSelectModal } from '@/components/CashierSelectModal.js';
 import { TopBar } from '@/components/TopBar.js';
@@ -111,17 +116,21 @@ export function IssueChangeFundPage() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      return createCashMovement(storeId, {
-        type: 'change_fund',
-        fromContainerType: 'safe',
-        fromContainerId: safeBalance?.containerId ?? 'safe-1',
-        toContainerType: 'drawer',
-        toContainerId: selectedShift?.drawerId ?? 'drawer-1',
-        amountMinor: countedMinor || 1,
-        actorId,
-        approvedById,
-        reason: 'change_fund',
-      });
+      return createCashMovement(
+        storeId,
+        {
+          type: 'change_fund',
+          fromContainerType: 'safe',
+          fromContainerId: safeBalance?.containerId ?? 'safe-1',
+          toContainerType: 'drawer',
+          toContainerId: selectedShift?.drawerId ?? 'drawer-1',
+          amountMinor: countedMinor || 1,
+          actorId,
+          approvedById,
+          reason: 'change_fund',
+        },
+        { headers: createIdempotencyHeaders() },
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getListCashBalancesQueryKey(storeId) });

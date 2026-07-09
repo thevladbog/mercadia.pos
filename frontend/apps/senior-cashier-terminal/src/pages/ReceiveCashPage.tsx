@@ -13,7 +13,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
-import { actorsMustDiffer, computeDenominationTotal, selectSuccessData } from '@/lib/cash-utils.js';
+import {
+  actorsMustDiffer,
+  computeDenominationTotal,
+  createIdempotencyHeaders,
+  selectSuccessData,
+} from '@/lib/cash-utils.js';
 import { useTopBarActions } from '@/lib/use-topbar-actions.js';
 import { CashierSelectModal } from '@/components/CashierSelectModal.js';
 import { MismatchDialog } from '@/components/MismatchDialog.js';
@@ -113,17 +118,21 @@ export function ReceiveCashPage() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      return createCashMovement(storeId, {
-        type: 'cash_out',
-        fromContainerType: 'drawer',
-        fromContainerId: selectedShift?.drawerId ?? 'drawer-1',
-        toContainerType: 'safe',
-        toContainerId: safeBalance?.containerId ?? 'safe-1',
-        amountMinor: countedMinor || 1,
-        actorId,
-        approvedById,
-        reason: 'revenue_collection',
-      });
+      return createCashMovement(
+        storeId,
+        {
+          type: 'cash_out',
+          fromContainerType: 'drawer',
+          fromContainerId: selectedShift?.drawerId ?? 'drawer-1',
+          toContainerType: 'safe',
+          toContainerId: safeBalance?.containerId ?? 'safe-1',
+          amountMinor: countedMinor || 1,
+          actorId,
+          approvedById,
+          reason: 'revenue_collection',
+        },
+        { headers: createIdempotencyHeaders() },
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getListCashBalancesQueryKey(storeId) });

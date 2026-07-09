@@ -14,7 +14,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
-import { actorsMustDiffer, computeDenominationTotal, selectSuccessData } from '@/lib/cash-utils.js';
+import {
+  actorsMustDiffer,
+  computeDenominationTotal,
+  createIdempotencyHeaders,
+  selectSuccessData,
+} from '@/lib/cash-utils.js';
 import { useTopBarActions } from '@/lib/use-topbar-actions.js';
 import { CashierSelectModal } from '@/components/CashierSelectModal.js';
 import { MismatchDialog } from '@/components/MismatchDialog.js';
@@ -129,12 +134,16 @@ export function FinalCollectionPage() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      return closeShift(selectedShift!.id, {
-        closingCashMinor,
-        safeId: safeId || undefined,
-        actorId,
-        approvedById,
-      });
+      return closeShift(
+        selectedShift!.id,
+        {
+          closingCashMinor,
+          safeId: safeId || undefined,
+          actorId,
+          approvedById,
+        },
+        { headers: createIdempotencyHeaders() },
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getListOpenStoreShiftsQueryKey(storeId) });

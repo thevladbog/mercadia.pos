@@ -10,7 +10,12 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { getStoreId } from '@/api-client-config.js';
-import { actorsMustDiffer, computeDenominationTotal, selectSuccessData } from '@/lib/cash-utils.js';
+import {
+  actorsMustDiffer,
+  computeDenominationTotal,
+  createIdempotencyHeaders,
+  selectSuccessData,
+} from '@/lib/cash-utils.js';
 import { useTopBarActions } from '@/lib/use-topbar-actions.js';
 import { TopBar } from '@/components/TopBar.js';
 
@@ -64,14 +69,18 @@ export function BusinessExpensePage() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      return createBusinessExpense(storeId, {
-        safeId: safeBalance?.containerId ?? 'safe-1',
-        payeeId: recipient,
-        amountMinor: countedMinor,
-        reason,
-        actorId,
-        approvedById,
-      });
+      return createBusinessExpense(
+        storeId,
+        {
+          safeId: safeBalance?.containerId ?? 'safe-1',
+          payeeId: recipient,
+          amountMinor: countedMinor,
+          reason,
+          actorId,
+          approvedById,
+        },
+        { headers: createIdempotencyHeaders() },
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getListCashBalancesQueryKey(storeId) });
