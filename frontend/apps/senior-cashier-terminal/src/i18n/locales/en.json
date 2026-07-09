@@ -218,9 +218,6 @@
     "selectShift": "Select shift",
     "selectContainer": "Select container",
     "sourceSafe": "Source: safe",
-    "destinationDrawer": "Destination: drawer",
-    "sourceDrawer": "Source: drawer",
-    "destinationSafe": "Destination: safe",
     "expectedAmount": "Expected amount",
     "countedAmount": "Counted amount",
     "denominationBreakdown": "Denomination breakdown",
@@ -241,14 +238,64 @@
     "expenseReason": "Reason",
     "expenseReasonPlaceholder": "Expense reason",
     "supportingDoc": "Supporting document",
-    "closingCash": "Closing cash",
     "actorId": "Actor ID",
     "approvedById": "Approver ID",
     "actorSelfApproval": "Cannot approve your own operation",
     "confirmTwoPerson": "Two-person confirmation",
     "successTitle": "Operation completed",
     "successDesc": "Operation successfully registered",
-    "backToDashboard": "Back to dashboard"
+    "backToDashboard": "Back to dashboard",
+    "noExpectedAmountNote": "There is no expected amount to check against for this operation — recount carefully before confirming.",
+    "pageIntro": {
+      "changeFund": "Count the bills and coins from the safe and enter the quantity for each denomination on the left.",
+      "receiveCash": "Count the bills and coins received from the cashier and enter the quantity for each denomination on the left.",
+      "finalCollection": "Recount the drawer together with the cashier and enter the quantity for each denomination on the left."
+    },
+    "grid": {
+      "titleIssue": "Denomination composition to issue",
+      "titleReceive": "Denomination composition to receive",
+      "titleRecount": "Denomination composition to recount",
+      "billsCount": "{{count}} bills + coins",
+      "billsCount_one": "{{count}} bill + coins",
+      "bills": "bills",
+      "coins": "Coins",
+      "other": "Other"
+    },
+    "beforeAfter": {
+      "safeBefore": "Safe before",
+      "safeAfter": "Safe after",
+      "drawerBefore": "Drawer before",
+      "drawerAfter": "Drawer after",
+      "previewHint": "\"After\" figures are a live on-terminal estimate, not a server-confirmed balance — a concurrent operation could change the real balance first.",
+      "totalIssue": "Amount to issue",
+      "totalReceive": "Amount to receive",
+      "totalFinalCollection": "Collection amount",
+      "totalBankCollection": "Bank collection amount",
+      "totalExpense": "Expense amount"
+    },
+    "identity": {
+      "directionChangeFund": "Safe → Drawer",
+      "directionReceiveCash": "Drawer → Safe",
+      "directionFinalCollection": "Final collection"
+    },
+    "checklist": {
+      "title": "What to do",
+      "changeFund1": "Count the bills and coins from the safe according to the list on the left.",
+      "changeFund2": "Hand them to the cashier and ask them to recount.",
+      "changeFund3": "Confirm the issue — the operation will be recorded.",
+      "receiveCash1": "Accept the cash from the cashier.",
+      "receiveCash2": "Recount it and enter the quantity for each denomination.",
+      "receiveCash3": "Confirm receipt — the operation will be recorded.",
+      "finalCollection1": "Recount the drawer together with the cashier.",
+      "finalCollection2": "Compare the total against the expected drawer balance shown on the right.",
+      "finalCollection3": "Confirm to close the shift.",
+      "bankCollection1": "Count out the amount to be collected.",
+      "bankCollection2": "Fill in the collector's details and the bag/seal number.",
+      "bankCollection3": "Confirm — the cash has been handed to the collector.",
+      "expense1": "Fill in the recipient and the reason for the expense.",
+      "expense2": "Count out the amount being paid out.",
+      "expense3": "Confirm — the expense will be recorded."
+    }
   },
   "monitoring": {
     "title": "Terminal Monitoring",

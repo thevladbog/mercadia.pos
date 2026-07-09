@@ -3,28 +3,79 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, Field, Label } from '@mercadia/ui';
 import {
+  useListCashBalances,
   useListOpenStoreShifts,
+  useGetCredentialManagement,
   createCashMovement,
   getListCashBalancesQueryKey,
 } from '@mercadia/api-clients-store-edge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { useAuth } from '@/auth/AuthProvider.js';
 import { getStoreId } from '@/api-client-config.js';
-import { actorsMustDiffer, computeDenominationTotal, selectSuccessData } from '@/lib/cash-utils.js';
+import {
+  actorsMustDiffer,
+  computeDenominationTotal,
+  createIdempotencyHeaders,
+  selectSuccessData,
+} from '@/lib/cash-utils.js';
 import { useTopBarActions } from '@/lib/use-topbar-actions.js';
-import { DenominationInput } from '@/components/DenominationInput.js';
 import { CashierSelectModal } from '@/components/CashierSelectModal.js';
 import { MismatchDialog } from '@/components/MismatchDialog.js';
 import { TopBar } from '@/components/TopBar.js';
 
+import { UpArrowIcon } from './dashboard/icons.js';
+import { BeforeAfterPanel } from './cash-operations/BeforeAfterPanel.js';
+import { CashierIdentityBanner } from './cash-operations/CashierIdentityBanner.js';
+import { DenominationGrid } from './cash-operations/DenominationGrid.js';
+import { OperationChecklist } from './cash-operations/OperationChecklist.js';
+import {
+  findActorRole,
+  findContainerBalance,
+  findSafeBalance,
+  type CashBalanceForLookup,
+  type CredentialActorForRoleLookup,
+} from './cash-operations/cash-operations-data.js';
+import './cash-operations/CashOperations.css';
+
+// Stable empty-array fallbacks (module scope, never reassigned) so the
+// derived container/role lookups below don't see a fresh `[]` reference —
+// and therefore a false "changed" input — on every render while a query
+// hasn't resolved yet. Same convention as `dashboard-data.ts`'s
+// `EMPTY_SHIFTS`/`EMPTY_TERMINALS`/`EMPTY_ACTORS` (plan 021).
+const EMPTY_BALANCES: CashBalanceForLookup[] = [];
+const EMPTY_ACTORS: CredentialActorForRoleLookup[] = [];
+
+/**
+ * Redesigned Receive Cash page (plan 022, Phase 5; design screen 03b). Same
+ * shape as `IssueChangeFundPage`, plus the existing optional "expected
+ * amount" input and `MismatchDialog`, both reused unchanged.
+ *
+ * `actorId`/`approvedById` are auto-derived (plan 022 item 5), same as
+ * `IssueChangeFundPage` — see that file's doc comment.
+ *
+ * CodeRabbit fixes (PR #86): `handleSubmit` had no `countedMinor > 0` guard
+ * (unlike the other 4 cash-operation pages), so submitting with an empty
+ * denomination grid posted a real 1-minor movement via the `|| 1` fallback.
+ * Also added the same "block submit until the real safe balance resolves"
+ * guard `BankCollectionPage` now has, for the same
+ * `safeBalance?.containerId ?? 'safe-1'` placeholder-fallback risk.
+ */
 export function ReceiveCashPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { onHandover, onLock } = useTopBarActions();
+  const { session } = useAuth();
   const storeId = useMemo(() => getStoreId(), []);
 
+  const { data: balancesResp } = useListCashBalances(storeId);
   const { data: shiftsResp } = useListOpenStoreShifts(storeId);
+  const { data: credentialsResp } = useGetCredentialManagement(storeId);
+
+  const balances =
+    selectSuccessData<{ balances: CashBalanceForLookup[] }>(balancesResp)?.balances ??
+    EMPTY_BALANCES;
   const shiftsData = useMemo(
     () =>
       selectSuccessData<{ shifts: { id: string; cashierId: string; drawerId: string }[] }>(
@@ -32,6 +83,9 @@ export function ReceiveCashPage() {
       ),
     [shiftsResp],
   );
+  const actors =
+    selectSuccessData<{ actors: CredentialActorForRoleLookup[] }>(credentialsResp)?.actors ??
+    EMPTY_ACTORS;
 
   const [selectedShift, setSelectedShift] = useState<{
     id: string;
@@ -39,10 +93,9 @@ export function ReceiveCashPage() {
     drawerId?: string;
   } | null>(null);
   const [expectedInput, setExpectedInput] = useState('');
-  const [denomValues, setDenomValues] = useState<Record<number, string>>({});
-  const [otherCoins, setOtherCoins] = useState(0);
-  const [actorId, setActorId] = useState('');
-  const [approvedById, setApprovedById] = useState('');
+  const [billValues, setBillValues] = useState<Record<number, string>>({});
+  const [coinsMinor, setCoinsMinor] = useState(0);
+  const [otherMinor, setOtherMinor] = useState(0);
   const [error, setError] = useState('');
   const [showMismatch, setShowMismatch] = useState(false);
 
@@ -51,26 +104,42 @@ export function ReceiveCashPage() {
     [expectedInput],
   );
   const countedMinor = useMemo(
-    () => computeDenominationTotal(denomValues, otherCoins),
-    [denomValues, otherCoins],
+    () => computeDenominationTotal(billValues, coinsMinor + otherMinor),
+    [billValues, coinsMinor, otherMinor],
   );
+
+  // Item 4 fix: drawer balance must come from the selected shift's own
+  // drawerId, never "first drawer found" (see IssueChangeFundPage).
+  const safeBalance = useMemo(() => findSafeBalance(balances), [balances]);
+  const drawerBalance = useMemo(
+    () => findContainerBalance(balances, selectedShift?.drawerId),
+    [balances, selectedShift?.drawerId],
+  );
+  const role = useMemo(
+    () => findActorRole(actors, selectedShift?.cashierId),
+    [actors, selectedShift?.cashierId],
+  );
+
+  const actorId = selectedShift?.cashierId ?? '';
+  const approvedById = session?.actorId ?? '';
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const fromContainers = [{ containerId: selectedShift?.drawerId ?? 'drawer-1' }];
-      const toContainers = [{ containerId: 'safe-1' }];
-
-      return createCashMovement(storeId, {
-        type: 'cash_out',
-        fromContainerType: 'drawer',
-        fromContainerId: fromContainers[0].containerId,
-        toContainerType: 'safe',
-        toContainerId: toContainers[0].containerId,
-        amountMinor: countedMinor || 1,
-        actorId,
-        approvedById,
-        reason: 'revenue_collection',
-      });
+      return createCashMovement(
+        storeId,
+        {
+          type: 'cash_out',
+          fromContainerType: 'drawer',
+          fromContainerId: selectedShift?.drawerId ?? 'drawer-1',
+          toContainerType: 'safe',
+          toContainerId: safeBalance!.containerId,
+          amountMinor: countedMinor,
+          actorId,
+          approvedById,
+          reason: 'revenue_collection',
+        },
+        { headers: createIdempotencyHeaders() },
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getListCashBalancesQueryKey(storeId) });
@@ -86,6 +155,14 @@ export function ReceiveCashPage() {
 
       if (!selectedShift) {
         setError(t('cash.selectCashier'));
+        return;
+      }
+      if (!safeBalance) {
+        setError(t('common.loading'));
+        return;
+      }
+      if (!countedMinor || countedMinor <= 0) {
+        setError(t('validation.mustBePositive', { field: t('cash.countedAmount') }));
         return;
       }
       if (!actorId || !approvedById) {
@@ -104,7 +181,7 @@ export function ReceiveCashPage() {
 
       mutation.mutate();
     },
-    [selectedShift, actorId, approvedById, expectedMinor, countedMinor, mutation, t],
+    [selectedShift, safeBalance, countedMinor, actorId, approvedById, expectedMinor, mutation, t],
   );
 
   const handleResolveMismatch = useCallback(() => {
@@ -118,19 +195,26 @@ export function ReceiveCashPage() {
 
       <main className="sr-terminal-main">
         <h1 className="sr-page-title">{t('cash.receiveCashTitle')}</h1>
+        <p className="sr-cash-op-intro">{t('cash.pageIntro.receiveCash')}</p>
 
-        <form onSubmit={handleSubmit} className="sr-form">
-          <p className="muted">
-            {t('cash.sourceDrawer')} → {t('cash.destinationSafe')}
-          </p>
-
+        <form onSubmit={handleSubmit} className="sr-cash-op-form">
           <CashierSelectModal
             shifts={shiftsData?.shifts ?? []}
             onSelect={setSelectedShift}
             triggerLabel={selectedShift ? selectedShift.cashierId : undefined}
           />
 
-          <Field>
+          {selectedShift && (
+            <CashierIdentityBanner
+              icon={<UpArrowIcon />}
+              accent="blue"
+              directionLabel={t('cash.identity.directionReceiveCash')}
+              cashierId={selectedShift.cashierId ?? ''}
+              role={role}
+            />
+          )}
+
+          <Field className="sr-cash-op-fields">
             <Label>{t('cash.expectedAmount')}</Label>
             <Input
               type="number"
@@ -142,35 +226,54 @@ export function ReceiveCashPage() {
             />
           </Field>
 
-          <DenominationInput
-            values={denomValues}
-            onChange={setDenomValues}
-            otherAmountMinor={otherCoins}
-            onOtherAmountChange={setOtherCoins}
-          />
+          <div className="sr-cash-op-body">
+            <div className="sr-cash-op-main">
+              <DenominationGrid
+                variant="receive"
+                billValues={billValues}
+                onBillValuesChange={setBillValues}
+                coinsMinor={coinsMinor}
+                onCoinsMinorChange={setCoinsMinor}
+                otherMinor={otherMinor}
+                onOtherMinorChange={setOtherMinor}
+              />
+            </div>
 
-          <Field>
-            <Label>{t('cash.actorId')}</Label>
-            <Input value={actorId} onChange={(e) => setActorId(e.target.value)} required />
-          </Field>
-
-          <Field>
-            <Label>{t('cash.approvedById')}</Label>
-            <Input
-              value={approvedById}
-              onChange={(e) => setApprovedById(e.target.value)}
-              required
-            />
-          </Field>
+            <div className="sr-cash-op-side">
+              <BeforeAfterPanel
+                totalLabel={t('cash.beforeAfter.totalReceive')}
+                totalMinor={countedMinor}
+                containers={[
+                  {
+                    kind: 'drawer',
+                    beforeMinor: drawerBalance?.balanceMinor,
+                    direction: 'decrease',
+                  },
+                  { kind: 'safe', beforeMinor: safeBalance?.balanceMinor, direction: 'increase' },
+                ]}
+              />
+              <OperationChecklist
+                steps={[
+                  t('cash.checklist.receiveCash1'),
+                  t('cash.checklist.receiveCash2'),
+                  t('cash.checklist.receiveCash3'),
+                ]}
+              />
+            </div>
+          </div>
 
           {error && <p className="sr-field-error">{error}</p>}
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="sr-button-row">
             <Button type="button" variant="ghost" onClick={() => navigate('/dashboard')}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? t('common.submitting') : t('common.confirm')}
+            <Button type="submit" disabled={mutation.isPending || !safeBalance}>
+              {mutation.isPending
+                ? t('common.submitting')
+                : !safeBalance
+                  ? t('common.loading')
+                  : t('common.confirm')}
             </Button>
           </div>
         </form>
