@@ -39,6 +39,11 @@ const EMPTY_BALANCES: CashBalanceForLookup[] = [];
  * + `OperationChecklist` — with `actorId`/`approvedById` staying manual
  * free text, UNCHANGED (plan item 5): no shift/cashier context to derive
  * from here either.
+ *
+ * CodeRabbit fix (PR #86): submission is now blocked until the real safe
+ * balance resolves — same guard `BankCollectionPage`/`ReceiveCashPage`/
+ * `IssueChangeFundPage` now have for the same
+ * `safeBalance?.containerId ?? 'safe-1'` placeholder-fallback risk.
  */
 export function BusinessExpensePage() {
   const { t } = useTranslation();
@@ -72,7 +77,7 @@ export function BusinessExpensePage() {
       return createBusinessExpense(
         storeId,
         {
-          safeId: safeBalance?.containerId ?? 'safe-1',
+          safeId: safeBalance!.containerId,
           payeeId: recipient,
           amountMinor: countedMinor,
           reason,
@@ -106,6 +111,10 @@ export function BusinessExpensePage() {
         setError(t('validation.mustBePositive', { field: t('cash.countedAmount') }));
         return;
       }
+      if (!safeBalance) {
+        setError(t('common.loading'));
+        return;
+      }
       if (!actorId || !approvedById) {
         setError(t('cash.actorSelfApproval'));
         return;
@@ -117,7 +126,7 @@ export function BusinessExpensePage() {
 
       mutation.mutate();
     },
-    [recipient, reason, countedMinor, actorId, approvedById, mutation, t],
+    [recipient, reason, countedMinor, safeBalance, actorId, approvedById, mutation, t],
   );
 
   return (
@@ -200,8 +209,12 @@ export function BusinessExpensePage() {
             <Button type="button" variant="ghost" onClick={() => navigate('/dashboard')}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? t('common.submitting') : t('common.confirm')}
+            <Button type="submit" disabled={mutation.isPending || !safeBalance}>
+              {mutation.isPending
+                ? t('common.submitting')
+                : !safeBalance
+                  ? t('common.loading')
+                  : t('common.confirm')}
             </Button>
           </div>
         </form>

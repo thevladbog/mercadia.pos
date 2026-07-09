@@ -238,7 +238,6 @@
     "expenseReason": "Основание",
     "expenseReasonPlaceholder": "Назначение расхода",
     "supportingDoc": "Подтверждающий документ",
-    "closingCash": "Остаток в кассе",
     "actorId": "ID сотрудника",
     "approvedById": "ID подтверждающего",
     "actorSelfApproval": "Нельзя подтвердить собственную операцию",
@@ -257,6 +256,9 @@
       "titleReceive": "Покупюрный состав к приёму",
       "titleRecount": "Покупюрный состав к пересчёту",
       "billsCount": "{{count}} купюр + монеты",
+      "billsCount_one": "{{count}} купюра + монеты",
+      "billsCount_few": "{{count}} купюры + монеты",
+      "billsCount_many": "{{count}} купюр + монеты",
       "bills": "купюр",
       "coins": "Монеты",
       "other": "Другое"

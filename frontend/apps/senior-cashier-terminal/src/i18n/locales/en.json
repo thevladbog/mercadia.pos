@@ -238,7 +238,6 @@
     "expenseReason": "Reason",
     "expenseReasonPlaceholder": "Expense reason",
     "supportingDoc": "Supporting document",
-    "closingCash": "Closing cash",
     "actorId": "Actor ID",
     "approvedById": "Approver ID",
     "actorSelfApproval": "Cannot approve your own operation",
@@ -257,6 +256,7 @@
       "titleReceive": "Denomination composition to receive",
       "titleRecount": "Denomination composition to recount",
       "billsCount": "{{count}} bills + coins",
+      "billsCount_one": "{{count}} bill + coins",
       "bills": "bills",
       "coins": "Coins",
       "other": "Other"

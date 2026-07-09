@@ -59,6 +59,11 @@ const EMPTY_ACTORS: CredentialActorForRoleLookup[] = [];
  * for issuing change fund (an operator-decided amount). The design's "Не
  * сошлось" note is kept as informational copy near the confirm button,
  * not wired to a modal.
+ *
+ * CodeRabbit fix (PR #86): submission is now blocked until the real safe
+ * balance resolves — same "don't let `safeBalance?.containerId ?? 'safe-1'`
+ * post against the placeholder id" guard `BankCollectionPage`/
+ * `ReceiveCashPage` now have.
  */
 export function IssueChangeFundPage() {
   const { t } = useTranslation();
@@ -121,10 +126,10 @@ export function IssueChangeFundPage() {
         {
           type: 'change_fund',
           fromContainerType: 'safe',
-          fromContainerId: safeBalance?.containerId ?? 'safe-1',
+          fromContainerId: safeBalance!.containerId,
           toContainerType: 'drawer',
           toContainerId: selectedShift?.drawerId ?? 'drawer-1',
-          amountMinor: countedMinor || 1,
+          amountMinor: countedMinor,
           actorId,
           approvedById,
           reason: 'change_fund',
@@ -152,6 +157,10 @@ export function IssueChangeFundPage() {
         setError(t('cash.selectShift'));
         return;
       }
+      if (!safeBalance) {
+        setError(t('common.loading'));
+        return;
+      }
       if (!countedMinor || countedMinor <= 0) {
         setError(t('validation.mustBePositive', { field: t('cash.countedAmount') }));
         return;
@@ -167,7 +176,7 @@ export function IssueChangeFundPage() {
 
       mutation.mutate();
     },
-    [selectedShift, countedMinor, actorId, approvedById, mutation, t],
+    [selectedShift, safeBalance, countedMinor, actorId, approvedById, mutation, t],
   );
 
   return (
@@ -239,8 +248,12 @@ export function IssueChangeFundPage() {
             <Button type="button" variant="ghost" onClick={() => navigate('/dashboard')}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? t('common.submitting') : t('common.confirm')}
+            <Button type="submit" disabled={mutation.isPending || !safeBalance}>
+              {mutation.isPending
+                ? t('common.submitting')
+                : !safeBalance
+                  ? t('common.loading')
+                  : t('common.confirm')}
             </Button>
           </div>
         </form>

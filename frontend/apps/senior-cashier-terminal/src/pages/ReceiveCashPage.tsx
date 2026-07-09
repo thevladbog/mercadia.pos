@@ -53,6 +53,13 @@ const EMPTY_ACTORS: CredentialActorForRoleLookup[] = [];
  *
  * `actorId`/`approvedById` are auto-derived (plan 022 item 5), same as
  * `IssueChangeFundPage` — see that file's doc comment.
+ *
+ * CodeRabbit fixes (PR #86): `handleSubmit` had no `countedMinor > 0` guard
+ * (unlike the other 4 cash-operation pages), so submitting with an empty
+ * denomination grid posted a real 1-minor movement via the `|| 1` fallback.
+ * Also added the same "block submit until the real safe balance resolves"
+ * guard `BankCollectionPage` now has, for the same
+ * `safeBalance?.containerId ?? 'safe-1'` placeholder-fallback risk.
  */
 export function ReceiveCashPage() {
   const { t } = useTranslation();
@@ -125,8 +132,8 @@ export function ReceiveCashPage() {
           fromContainerType: 'drawer',
           fromContainerId: selectedShift?.drawerId ?? 'drawer-1',
           toContainerType: 'safe',
-          toContainerId: safeBalance?.containerId ?? 'safe-1',
-          amountMinor: countedMinor || 1,
+          toContainerId: safeBalance!.containerId,
+          amountMinor: countedMinor,
           actorId,
           approvedById,
           reason: 'revenue_collection',
@@ -150,6 +157,14 @@ export function ReceiveCashPage() {
         setError(t('cash.selectCashier'));
         return;
       }
+      if (!safeBalance) {
+        setError(t('common.loading'));
+        return;
+      }
+      if (!countedMinor || countedMinor <= 0) {
+        setError(t('validation.mustBePositive', { field: t('cash.countedAmount') }));
+        return;
+      }
       if (!actorId || !approvedById) {
         setError(t('cash.actorSelfApproval'));
         return;
@@ -166,7 +181,7 @@ export function ReceiveCashPage() {
 
       mutation.mutate();
     },
-    [selectedShift, actorId, approvedById, expectedMinor, countedMinor, mutation, t],
+    [selectedShift, safeBalance, countedMinor, actorId, approvedById, expectedMinor, mutation, t],
   );
 
   const handleResolveMismatch = useCallback(() => {
@@ -253,8 +268,12 @@ export function ReceiveCashPage() {
             <Button type="button" variant="ghost" onClick={() => navigate('/dashboard')}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? t('common.submitting') : t('common.confirm')}
+            <Button type="submit" disabled={mutation.isPending || !safeBalance}>
+              {mutation.isPending
+                ? t('common.submitting')
+                : !safeBalance
+                  ? t('common.loading')
+                  : t('common.confirm')}
             </Button>
           </div>
         </form>

@@ -67,6 +67,16 @@ const EMPTY_ACTORS: CredentialActorForRoleLookup[] = [];
  *
  * `actorId`/`approvedById` are auto-derived (plan 022 item 5), same as the
  * other 2 shift-based pages.
+ *
+ * CodeRabbit fix (PR #86): `closeShift` used to submit a separate, freely
+ * typed "Остаток в кассе" field (`closingCashInput`) instead of `countedMinor`
+ * — the actual recount total the mismatch check above just validated. An
+ * operator could recount correctly, pass the mismatch check, then submit an
+ * unrelated number. Fixed: `closeShift` now sends `countedMinor` directly;
+ * the redundant manual field is removed. Submission is also now blocked
+ * until `drawerBalance` itself resolves (not just the balances query as a
+ * whole) — a shift whose drawer has no balance entry yet would otherwise
+ * fall back to comparing against `0` again, the same bug class item 3 fixed.
  */
 export function FinalCollectionPage() {
   const { t } = useTranslation();
@@ -102,7 +112,6 @@ export function FinalCollectionPage() {
   const [billValues, setBillValues] = useState<Record<number, string>>({});
   const [coinsMinor, setCoinsMinor] = useState(0);
   const [otherMinor, setOtherMinor] = useState(0);
-  const [closingCashInput, setClosingCashInput] = useState('');
   const [safeId, setSafeId] = useState('');
   const [error, setError] = useState('');
   const [showMismatch, setShowMismatch] = useState(false);
@@ -110,10 +119,6 @@ export function FinalCollectionPage() {
   const countedMinor = useMemo(
     () => computeDenominationTotal(billValues, coinsMinor + otherMinor),
     [billValues, coinsMinor, otherMinor],
-  );
-  const closingCashMinor = useMemo(
-    () => Math.round(parseFloat(closingCashInput || '0') * 100),
-    [closingCashInput],
   );
 
   const safeBalance = useMemo(() => findSafeBalance(balances), [balances]);
@@ -127,6 +132,11 @@ export function FinalCollectionPage() {
   );
 
   const balancesLoaded = balancesResp !== undefined;
+  // Trivially "resolved" before a shift is even selected — this only gates
+  // the button/handleSubmit once a shift is picked but its own drawer
+  // container hasn't shown up in `balances` yet (see this file's top doc
+  // comment on the CodeRabbit fix).
+  const drawerBalanceResolved = !selectedShift || drawerBalance !== undefined;
   const expectedMinor = drawerBalance?.balanceMinor ?? 0;
 
   const actorId = selectedShift?.cashierId ?? '';
@@ -137,7 +147,7 @@ export function FinalCollectionPage() {
       return closeShift(
         selectedShift!.id,
         {
-          closingCashMinor,
+          closingCashMinor: countedMinor,
           safeId: safeId || undefined,
           actorId,
           approvedById,
@@ -162,7 +172,7 @@ export function FinalCollectionPage() {
         setError(t('cash.selectShift'));
         return;
       }
-      if (!balancesLoaded) {
+      if (!balancesLoaded || !drawerBalanceResolved) {
         setError(t('common.loading'));
         return;
       }
@@ -185,6 +195,7 @@ export function FinalCollectionPage() {
     [
       selectedShift,
       balancesLoaded,
+      drawerBalanceResolved,
       actorId,
       approvedById,
       countedMinor,
@@ -237,18 +248,6 @@ export function FinalCollectionPage() {
               />
 
               <Field className="sr-cash-op-fields">
-                <Label>{t('cash.closingCash')}</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={closingCashInput}
-                  onChange={(e) => setClosingCashInput(e.target.value)}
-                  placeholder="0.00"
-                />
-              </Field>
-
-              <Field className="sr-cash-op-fields">
                 <Label>{t('cash.sourceSafe')}</Label>
                 <Input
                   value={safeId}
@@ -287,10 +286,13 @@ export function FinalCollectionPage() {
             <Button type="button" variant="ghost" onClick={() => navigate('/dashboard')}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={mutation.isPending || !balancesLoaded}>
+            <Button
+              type="submit"
+              disabled={mutation.isPending || !balancesLoaded || !drawerBalanceResolved}
+            >
               {mutation.isPending
                 ? t('common.submitting')
-                : !balancesLoaded
+                : !balancesLoaded || !drawerBalanceResolved
                   ? t('common.loading')
                   : t('common.confirm')}
             </Button>

@@ -33,6 +33,12 @@ import './cash-operations/CashOperations.css';
 // `IssueChangeFundPage.tsx`'s doc comment on the same constant).
 const EMPTY_BALANCES: CashBalanceForLookup[] = [];
 
+// One bank-in-transit container per store, matching the `safe-1`/`drawer-1`
+// convention already used elsewhere in this codebase — see this file's top
+// doc comment on why this must stay stable rather than being derived from
+// the operator-typed contract number.
+const BANK_CONTAINER_ID = 'bank-1';
+
 /**
  * Redesigned Bank Collection page (plan 022, Phase 5). Gets the same
  * `DenominationGrid` + `BeforeAfterPanel` (safe-only, no drawer pair) +
@@ -41,6 +47,24 @@ const EMPTY_BALANCES: CashBalanceForLookup[] = [];
  * item 5) — this page has no shift/cashier selection at all (it's a
  * safe-only operation against an external collection service), so there is
  * no session-derived value for either field.
+ *
+ * CodeRabbit fixes (PR #86):
+ * - Submission used to be reachable before `useListCashBalances` resolved,
+ *   letting `safeId: safeBalance?.containerId ?? 'safe-1'` post against the
+ *   placeholder id instead of the real safe. Submission is now blocked until
+ *   `safeBalance` itself resolves — same pattern `FinalCollectionPage` uses
+ *   for its drawer balance.
+ * - `bankContainerId` used to be `contractNumber || 'bank-1'` — conflating
+ *   the collector's contract number (business metadata the operator types)
+ *   with the technical container id the backend uses to track "cash in
+ *   transit to the bank." A different contract number per collection would
+ *   silently create a NEW bank container each time, fragmenting the
+ *   balance. Fixed: `bankContainerId` is now the stable `'bank-1'` id (same
+ *   one-container-per-store convention `safe-1`/`drawer-1` already use
+ *   elsewhere in this codebase); the collector name/contract/bag-seal
+ *   number the operator enters are now composed into `reason` instead of
+ *   being silently discarded (they were validated as required but never
+ *   actually sent to the backend before this fix).
  */
 export function BankCollectionPage() {
   const { t } = useTranslation();
@@ -75,9 +99,10 @@ export function BankCollectionPage() {
       return createBankCollection(
         storeId,
         {
-          safeId: safeBalance?.containerId ?? 'safe-1',
-          bankContainerId: contractNumber || 'bank-1',
-          amountMinor: countedMinor || 1,
+          safeId: safeBalance!.containerId,
+          bankContainerId: BANK_CONTAINER_ID,
+          amountMinor: countedMinor,
+          reason: `${collectorName} · ${contractNumber} · ${bagSealNumber}`,
           actorId,
           approvedById,
         },
@@ -112,6 +137,10 @@ export function BankCollectionPage() {
         setError(t('validation.mustBePositive', { field: t('cash.countedAmount') }));
         return;
       }
+      if (!safeBalance) {
+        setError(t('common.loading'));
+        return;
+      }
       if (!actorId || !approvedById) {
         setError(t('cash.actorSelfApproval'));
         return;
@@ -128,6 +157,7 @@ export function BankCollectionPage() {
       contractNumber,
       bagSealNumber,
       countedMinor,
+      safeBalance,
       actorId,
       approvedById,
       mutation,
@@ -229,8 +259,12 @@ export function BankCollectionPage() {
             <Button type="button" variant="ghost" onClick={() => navigate('/dashboard')}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? t('common.submitting') : t('common.confirm')}
+            <Button type="submit" disabled={mutation.isPending || !safeBalance}>
+              {mutation.isPending
+                ? t('common.submitting')
+                : !safeBalance
+                  ? t('common.loading')
+                  : t('common.confirm')}
             </Button>
           </div>
         </form>
