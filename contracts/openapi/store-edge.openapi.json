@@ -9357,6 +9357,10 @@
                           "minimum": 30,
                           "type": "integer"
                         },
+                        "safeCashLimitMinor": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
                         "storeId": {
                           "type": "string"
                         },
@@ -9371,7 +9375,8 @@
                         "storeId",
                         "failedAttemptLimit",
                         "lockoutDurationSeconds",
-                        "posAutoLockSeconds"
+                        "posAutoLockSeconds",
+                        "safeCashLimitMinor"
                       ],
                       "type": "object"
                     }
@@ -9476,12 +9481,17 @@
                     "maximum": 86400,
                     "minimum": 30,
                     "type": "integer"
+                  },
+                  "safeCashLimitMinor": {
+                    "minimum": 0,
+                    "type": "integer"
                   }
                 },
                 "required": [
                   "failedAttemptLimit",
                   "lockoutDurationSeconds",
-                  "posAutoLockSeconds"
+                  "posAutoLockSeconds",
+                  "safeCashLimitMinor"
                 ],
                 "type": "object"
               }
@@ -9515,6 +9525,10 @@
                           "minimum": 30,
                           "type": "integer"
                         },
+                        "safeCashLimitMinor": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
                         "storeId": {
                           "type": "string"
                         },
@@ -9529,7 +9543,8 @@
                         "storeId",
                         "failedAttemptLimit",
                         "lockoutDurationSeconds",
-                        "posAutoLockSeconds"
+                        "posAutoLockSeconds",
+                        "safeCashLimitMinor"
                       ],
                       "type": "object"
                     }

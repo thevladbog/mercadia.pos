@@ -58,6 +58,7 @@ type StoreAuthSettingsResult struct {
 	FailedAttemptLimit     int
 	LockoutDurationSeconds int
 	POSAutoLockSeconds     int
+	SafeCashLimitMinor     int64
 	UpdatedByID            string
 	UpdatedAt              time.Time
 }
@@ -69,6 +70,7 @@ type SetStoreAuthSettingsCommand struct {
 	FailedAttemptLimit     int
 	LockoutDurationSeconds int
 	POSAutoLockSeconds     int
+	SafeCashLimitMinor     int64
 }
 
 type AuthAttemptFilter struct {
@@ -173,8 +175,8 @@ func (s *StoreAuthSettingsService) SetStoreAuthSettings(ctx context.Context, com
 	if err := CheckPermission(manager.Roles, PermissionStoreSettingsManage); err != nil {
 		return StoreAuthSettingsResult{}, err
 	}
-	fingerprint := fmt.Sprintf("%s|%s|%d|%d|%d", command.StoreID, command.ManagerID,
-		command.FailedAttemptLimit, command.LockoutDurationSeconds, command.POSAutoLockSeconds)
+	fingerprint := fmt.Sprintf("%s|%s|%d|%d|%d|%d", command.StoreID, command.ManagerID,
+		command.FailedAttemptLimit, command.LockoutDurationSeconds, command.POSAutoLockSeconds, command.SafeCashLimitMinor)
 	if result, found, err := s.findStoreAuthSettingsIdempotency(ctx, command.IdempotencyKey, command.StoreID, fingerprint); err != nil || found {
 		return result, err
 	}
@@ -183,6 +185,7 @@ func (s *StoreAuthSettingsService) SetStoreAuthSettings(ctx context.Context, com
 		FailedAttemptLimit:     command.FailedAttemptLimit,
 		LockoutDurationSeconds: command.LockoutDurationSeconds,
 		POSAutoLockSeconds:     command.POSAutoLockSeconds,
+		SafeCashLimitMinor:     command.SafeCashLimitMinor,
 		UpdatedByID:            command.ManagerID,
 		Now:                    s.now(),
 	})
@@ -330,6 +333,7 @@ func storeAuthSettingsResult(settings domain.StoreAuthSettings) StoreAuthSetting
 		FailedAttemptLimit:     settings.FailedAttemptLimit,
 		LockoutDurationSeconds: settings.LockoutDurationSeconds,
 		POSAutoLockSeconds:     settings.POSAutoLockSeconds,
+		SafeCashLimitMinor:     settings.SafeCashLimitMinor,
 		UpdatedByID:            settings.UpdatedByID,
 		UpdatedAt:              settings.UpdatedAt,
 	}

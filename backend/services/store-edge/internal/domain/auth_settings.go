@@ -24,6 +24,7 @@ type StoreAuthSettings struct {
 	FailedAttemptLimit     int
 	LockoutDurationSeconds int
 	POSAutoLockSeconds     int
+	SafeCashLimitMinor     int64
 	UpdatedByID            string
 	UpdatedAt              time.Time
 }
@@ -33,6 +34,7 @@ type CreateStoreAuthSettingsInput struct {
 	FailedAttemptLimit     int
 	LockoutDurationSeconds int
 	POSAutoLockSeconds     int
+	SafeCashLimitMinor     int64
 	UpdatedByID            string
 	Now                    time.Time
 }
@@ -43,6 +45,7 @@ func DefaultStoreAuthSettings(storeID string) StoreAuthSettings {
 		FailedAttemptLimit:     DefaultFailedAttemptLimit,
 		LockoutDurationSeconds: DefaultLockoutDurationSeconds,
 		POSAutoLockSeconds:     DefaultPOSAutoLockSeconds,
+		SafeCashLimitMinor:     0,
 	}
 }
 
@@ -50,7 +53,8 @@ func NewStoreAuthSettings(input CreateStoreAuthSettingsInput) (StoreAuthSettings
 	if input.StoreID == "" || input.UpdatedByID == "" ||
 		input.FailedAttemptLimit < MinFailedAttemptLimit || input.FailedAttemptLimit > MaxFailedAttemptLimit ||
 		input.LockoutDurationSeconds < MinLockoutDurationSeconds || input.LockoutDurationSeconds > MaxLockoutDurationSeconds ||
-		input.POSAutoLockSeconds < MinPOSAutoLockSeconds || input.POSAutoLockSeconds > MaxPOSAutoLockSeconds {
+		input.POSAutoLockSeconds < MinPOSAutoLockSeconds || input.POSAutoLockSeconds > MaxPOSAutoLockSeconds ||
+		input.SafeCashLimitMinor < 0 {
 		return StoreAuthSettings{}, ErrInvalidStoreAuthSettingsInput
 	}
 	if input.Now.IsZero() {
@@ -61,6 +65,7 @@ func NewStoreAuthSettings(input CreateStoreAuthSettingsInput) (StoreAuthSettings
 		FailedAttemptLimit:     input.FailedAttemptLimit,
 		LockoutDurationSeconds: input.LockoutDurationSeconds,
 		POSAutoLockSeconds:     input.POSAutoLockSeconds,
+		SafeCashLimitMinor:     input.SafeCashLimitMinor,
 		UpdatedByID:            input.UpdatedByID,
 		UpdatedAt:              input.Now,
 	}, nil

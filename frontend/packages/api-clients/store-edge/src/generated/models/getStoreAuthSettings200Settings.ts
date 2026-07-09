@@ -22,6 +22,8 @@ export type GetStoreAuthSettings200Settings = {
      * @maximum 86400
      */
   posAutoLockSeconds: number;
+  /** @minimum 0 */
+  safeCashLimitMinor: number;
   storeId: string;
   updatedAt?: string;
   updatedById?: string;

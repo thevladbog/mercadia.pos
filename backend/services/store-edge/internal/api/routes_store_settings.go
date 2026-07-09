@@ -14,14 +14,16 @@ type StoreAuthSettingsResponse struct {
 	FailedAttemptLimit     int        `json:"failedAttemptLimit"`
 	LockoutDurationSeconds int        `json:"lockoutDurationSeconds"`
 	POSAutoLockSeconds     int        `json:"posAutoLockSeconds"`
+	SafeCashLimitMinor     int64      `json:"safeCashLimitMinor"`
 	UpdatedByID            string     `json:"updatedById,omitempty"`
 	UpdatedAt              *time.Time `json:"updatedAt,omitempty"`
 }
 
 type SetStoreAuthSettingsRequest struct {
-	FailedAttemptLimit     int `json:"failedAttemptLimit"`
-	LockoutDurationSeconds int `json:"lockoutDurationSeconds"`
-	POSAutoLockSeconds     int `json:"posAutoLockSeconds"`
+	FailedAttemptLimit     int   `json:"failedAttemptLimit"`
+	LockoutDurationSeconds int   `json:"lockoutDurationSeconds"`
+	POSAutoLockSeconds     int   `json:"posAutoLockSeconds"`
+	SafeCashLimitMinor     int64 `json:"safeCashLimitMinor"`
 }
 
 type ResetAuthLockoutRequest struct {
@@ -242,6 +244,7 @@ func mountStoreSettingsRoutes(mux *http.ServeMux, spec *httpapi.Spec, auth *app.
 			FailedAttemptLimit:     request.FailedAttemptLimit,
 			LockoutDurationSeconds: request.LockoutDurationSeconds,
 			POSAutoLockSeconds:     request.POSAutoLockSeconds,
+			SafeCashLimitMinor:     request.SafeCashLimitMinor,
 		})
 		if err != nil {
 			writeAppError(w, err)
@@ -274,6 +277,7 @@ func storeAuthSettingsResponse(result app.StoreAuthSettingsResult) StoreAuthSett
 		FailedAttemptLimit:     result.FailedAttemptLimit,
 		LockoutDurationSeconds: result.LockoutDurationSeconds,
 		POSAutoLockSeconds:     result.POSAutoLockSeconds,
+		SafeCashLimitMinor:     result.SafeCashLimitMinor,
 		UpdatedByID:            result.UpdatedByID,
 		UpdatedAt:              updatedAt,
 	}
@@ -331,9 +335,10 @@ func storeAuthSettingsResponseSchema() httpapi.Schema {
 		"failedAttemptLimit":     {"type": "integer", "minimum": 1, "maximum": 20},
 		"lockoutDurationSeconds": {"type": "integer", "minimum": 60, "maximum": 86400},
 		"posAutoLockSeconds":     {"type": "integer", "minimum": 30, "maximum": 86400},
+		"safeCashLimitMinor":     {"type": "integer", "minimum": 0},
 		"updatedById":            httpapi.StringSchema(),
 		"updatedAt":              httpapi.StringSchema(),
-	}, "storeId", "failedAttemptLimit", "lockoutDurationSeconds", "posAutoLockSeconds")
+	}, "storeId", "failedAttemptLimit", "lockoutDurationSeconds", "posAutoLockSeconds", "safeCashLimitMinor")
 }
 
 func setStoreAuthSettingsRequestSchema() httpapi.Schema {
@@ -341,7 +346,8 @@ func setStoreAuthSettingsRequestSchema() httpapi.Schema {
 		"failedAttemptLimit":     {"type": "integer", "minimum": 1, "maximum": 20},
 		"lockoutDurationSeconds": {"type": "integer", "minimum": 60, "maximum": 86400},
 		"posAutoLockSeconds":     {"type": "integer", "minimum": 30, "maximum": 86400},
-	}, "failedAttemptLimit", "lockoutDurationSeconds", "posAutoLockSeconds")
+		"safeCashLimitMinor":     {"type": "integer", "minimum": 0},
+	}, "failedAttemptLimit", "lockoutDurationSeconds", "posAutoLockSeconds", "safeCashLimitMinor")
 }
 
 func authAttemptsResponseSchema() httpapi.Schema {

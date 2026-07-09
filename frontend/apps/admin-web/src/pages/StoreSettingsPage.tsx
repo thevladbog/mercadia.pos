@@ -26,12 +26,14 @@ type SettingsDraft = {
   failedAttemptLimit: string;
   lockoutDurationSeconds: string;
   posAutoLockSeconds: string;
+  safeCashLimitMinor: number;
 };
 
 const DEFAULT_DRAFT: SettingsDraft = {
   failedAttemptLimit: '5',
   lockoutDurationSeconds: '900',
   posAutoLockSeconds: '300',
+  safeCashLimitMinor: 0,
 };
 
 function parsePositiveInteger(value: string): number | null {
@@ -54,22 +56,30 @@ function draftToBody(draft: SettingsDraft): SetStoreAuthSettingsBody | null {
     lockoutDurationSeconds > 86400 ||
     posAutoLockSeconds === null ||
     posAutoLockSeconds < 30 ||
-    posAutoLockSeconds > 86400
+    posAutoLockSeconds > 86400 ||
+    draft.safeCashLimitMinor < 0
   ) {
     return null;
   }
-  return { failedAttemptLimit, lockoutDurationSeconds, posAutoLockSeconds };
+  return {
+    failedAttemptLimit,
+    lockoutDurationSeconds,
+    posAutoLockSeconds,
+    safeCashLimitMinor: draft.safeCashLimitMinor,
+  };
 }
 
 function settingsToDraft(settings: {
   failedAttemptLimit: number;
   lockoutDurationSeconds: number;
   posAutoLockSeconds: number;
+  safeCashLimitMinor: number;
 }): SettingsDraft {
   return {
     failedAttemptLimit: String(settings.failedAttemptLimit),
     lockoutDurationSeconds: String(settings.lockoutDurationSeconds),
     posAutoLockSeconds: String(settings.posAutoLockSeconds),
+    safeCashLimitMinor: settings.safeCashLimitMinor,
   };
 }
 
