@@ -5,10 +5,12 @@
  * Store-local operational API for POS, SCO/KSO, senior cashier, assistant, and store admin clients.
  * OpenAPI spec version: 0.1.0
  */
+import type { ListCashRecounts200ItemsItemBreakdown } from './listCashRecounts200ItemsItemBreakdown.ts';
 
 export type ListCashRecounts200ItemsItem = {
   actorId: string;
   approvedById?: string;
+  breakdown?: ListCashRecounts200ItemsItemBreakdown;
   containerId: string;
   containerType: string;
   countedMinor: number;

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"mercadia.dev/pos/platform/httpapi"
@@ -244,37 +245,59 @@ type FiscalDocumentResponse struct {
 	CreatedAt    time.Time                   `json:"createdAt"`
 }
 
+// DenominationBreakdownRequest is the HTTP-layer shape of a bill/coin count
+// breakdown submitted on a cash operation. Bills uses string keys (JSON
+// object keys must be strings; OpenAPI/JSON Schema has no native
+// integer-keyed-map concept) that are converted to the domain layer's
+// map[int64]int at the boundary via denominationBreakdownFromRequest.
+type DenominationBreakdownRequest struct {
+	Bills      map[string]int `json:"bills,omitempty"`
+	CoinsMinor int64          `json:"coinsMinor,omitempty"`
+	OtherMinor int64          `json:"otherMinor,omitempty"`
+}
+
+// DenominationBreakdownResponse is the response-side counterpart of
+// DenominationBreakdownRequest, populated via denominationBreakdownResponse.
+type DenominationBreakdownResponse struct {
+	Bills      map[string]int `json:"bills,omitempty"`
+	CoinsMinor int64          `json:"coinsMinor,omitempty"`
+	OtherMinor int64          `json:"otherMinor,omitempty"`
+}
+
 type CreateCashMovementRequest struct {
-	Type              domain.CashMovementType  `json:"type"`
-	FromContainerID   string                   `json:"fromContainerId"`
-	FromContainerType domain.CashContainerType `json:"fromContainerType"`
-	ToContainerID     string                   `json:"toContainerId"`
-	ToContainerType   domain.CashContainerType `json:"toContainerType"`
-	AmountMinor       int64                    `json:"amountMinor"`
-	Currency          string                   `json:"currency,omitempty"`
-	Reason            string                   `json:"reason,omitempty"`
-	ActorID           string                   `json:"actorId"`
-	ApprovedByID      string                   `json:"approvedById,omitempty"`
+	Type              domain.CashMovementType       `json:"type"`
+	FromContainerID   string                        `json:"fromContainerId"`
+	FromContainerType domain.CashContainerType      `json:"fromContainerType"`
+	ToContainerID     string                        `json:"toContainerId"`
+	ToContainerType   domain.CashContainerType      `json:"toContainerType"`
+	AmountMinor       int64                         `json:"amountMinor"`
+	Currency          string                        `json:"currency,omitempty"`
+	Reason            string                        `json:"reason,omitempty"`
+	ActorID           string                        `json:"actorId"`
+	ApprovedByID      string                        `json:"approvedById,omitempty"`
+	Breakdown         *DenominationBreakdownRequest `json:"breakdown,omitempty"`
 }
 
 type CreateBankCollectionRequest struct {
-	SafeID          string `json:"safeId"`
-	BankContainerID string `json:"bankContainerId"`
-	AmountMinor     int64  `json:"amountMinor"`
-	Currency        string `json:"currency,omitempty"`
-	Reason          string `json:"reason,omitempty"`
-	ActorID         string `json:"actorId"`
-	ApprovedByID    string `json:"approvedById"`
+	SafeID          string                        `json:"safeId"`
+	BankContainerID string                        `json:"bankContainerId"`
+	AmountMinor     int64                         `json:"amountMinor"`
+	Currency        string                        `json:"currency,omitempty"`
+	Reason          string                        `json:"reason,omitempty"`
+	ActorID         string                        `json:"actorId"`
+	ApprovedByID    string                        `json:"approvedById"`
+	Breakdown       *DenominationBreakdownRequest `json:"breakdown,omitempty"`
 }
 
 type CreateBusinessExpenseRequest struct {
-	SafeID       string `json:"safeId"`
-	PayeeID      string `json:"payeeId"`
-	AmountMinor  int64  `json:"amountMinor"`
-	Currency     string `json:"currency,omitempty"`
-	Reason       string `json:"reason"`
-	ActorID      string `json:"actorId"`
-	ApprovedByID string `json:"approvedById"`
+	SafeID       string                        `json:"safeId"`
+	PayeeID      string                        `json:"payeeId"`
+	AmountMinor  int64                         `json:"amountMinor"`
+	Currency     string                        `json:"currency,omitempty"`
+	Reason       string                        `json:"reason"`
+	ActorID      string                        `json:"actorId"`
+	ApprovedByID string                        `json:"approvedById"`
+	Breakdown    *DenominationBreakdownRequest `json:"breakdown,omitempty"`
 }
 
 type CashMovementAcceptedResponse struct {
@@ -290,13 +313,14 @@ type CashBalancesResponse struct {
 }
 
 type CreateCashRecountRequest struct {
-	ContainerID   string                   `json:"containerId"`
-	ContainerType domain.CashContainerType `json:"containerType"`
-	Currency      string                   `json:"currency,omitempty"`
-	CountedMinor  int64                    `json:"countedMinor"`
-	Reason        string                   `json:"reason,omitempty"`
-	ActorID       string                   `json:"actorId"`
-	ApprovedByID  string                   `json:"approvedById,omitempty"`
+	ContainerID   string                        `json:"containerId"`
+	ContainerType domain.CashContainerType      `json:"containerType"`
+	Currency      string                        `json:"currency,omitempty"`
+	CountedMinor  int64                         `json:"countedMinor"`
+	Reason        string                        `json:"reason,omitempty"`
+	ActorID       string                        `json:"actorId"`
+	ApprovedByID  string                        `json:"approvedById,omitempty"`
+	Breakdown     *DenominationBreakdownRequest `json:"breakdown,omitempty"`
 }
 
 type CashRecountAcceptedResponse struct {
@@ -314,20 +338,21 @@ type CashRecountsResponse struct {
 }
 
 type CashMovementResponse struct {
-	ID                string                    `json:"id"`
-	StoreID           string                    `json:"storeId"`
-	Type              domain.CashMovementType   `json:"type"`
-	FromContainerID   string                    `json:"fromContainerId"`
-	FromContainerType domain.CashContainerType  `json:"fromContainerType"`
-	ToContainerID     string                    `json:"toContainerId"`
-	ToContainerType   domain.CashContainerType  `json:"toContainerType"`
-	AmountMinor       int64                     `json:"amountMinor"`
-	Currency          string                    `json:"currency"`
-	Reason            string                    `json:"reason,omitempty"`
-	ActorID           string                    `json:"actorId"`
-	ApprovedByID      string                    `json:"approvedById,omitempty"`
-	Status            domain.CashMovementStatus `json:"status"`
-	CreatedAt         time.Time                 `json:"createdAt"`
+	ID                string                         `json:"id"`
+	StoreID           string                         `json:"storeId"`
+	Type              domain.CashMovementType        `json:"type"`
+	FromContainerID   string                         `json:"fromContainerId"`
+	FromContainerType domain.CashContainerType       `json:"fromContainerType"`
+	ToContainerID     string                         `json:"toContainerId"`
+	ToContainerType   domain.CashContainerType       `json:"toContainerType"`
+	AmountMinor       int64                          `json:"amountMinor"`
+	Currency          string                         `json:"currency"`
+	Reason            string                         `json:"reason,omitempty"`
+	ActorID           string                         `json:"actorId"`
+	ApprovedByID      string                         `json:"approvedById,omitempty"`
+	Status            domain.CashMovementStatus      `json:"status"`
+	CreatedAt         time.Time                      `json:"createdAt"`
+	Breakdown         *DenominationBreakdownResponse `json:"breakdown,omitempty"`
 }
 
 type CashBalanceResponse struct {
@@ -358,6 +383,7 @@ type CashRecountResponse struct {
 	ResolvedByID     string                             `json:"resolvedById,omitempty"`
 	ResolvedAt       time.Time                          `json:"resolvedAt,omitempty"`
 	CreatedAt        time.Time                          `json:"createdAt"`
+	Breakdown        *DenominationBreakdownResponse     `json:"breakdown,omitempty"`
 }
 
 type OpenShiftRequest struct {
@@ -370,10 +396,11 @@ type OpenShiftRequest struct {
 }
 
 type CloseShiftRequest struct {
-	ClosingCashMinor int64  `json:"closingCashMinor"`
-	SafeID           string `json:"safeId,omitempty"`
-	ActorID          string `json:"actorId,omitempty"`
-	ApprovedByID     string `json:"approvedById,omitempty"`
+	ClosingCashMinor int64                         `json:"closingCashMinor"`
+	SafeID           string                        `json:"safeId,omitempty"`
+	ActorID          string                        `json:"actorId,omitempty"`
+	ApprovedByID     string                        `json:"approvedById,omitempty"`
+	Breakdown        *DenominationBreakdownRequest `json:"breakdown,omitempty"`
 }
 
 type ShiftCashInRequest struct {
@@ -1173,6 +1200,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 			SafeID:           request.SafeID,
 			ActorID:          request.ActorID,
 			ApprovedByID:     request.ApprovedByID,
+			Breakdown:        domainDenominationBreakdown(request.Breakdown),
 		})
 		if err != nil {
 			writeAppError(w, err)
@@ -1443,6 +1471,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 			Reason:            request.Reason,
 			ActorID:           request.ActorID,
 			ApprovedByID:      request.ApprovedByID,
+			Breakdown:         domainDenominationBreakdown(request.Breakdown),
 		})
 		if err != nil {
 			writeAppError(w, err)
@@ -1490,6 +1519,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 			Reason:          request.Reason,
 			ActorID:         request.ActorID,
 			ApprovedByID:    request.ApprovedByID,
+			Breakdown:       domainDenominationBreakdown(request.Breakdown),
 		})
 		if err != nil {
 			writeAppError(w, err)
@@ -1537,6 +1567,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 			Reason:         request.Reason,
 			ActorID:        request.ActorID,
 			ApprovedByID:   request.ApprovedByID,
+			Breakdown:      domainDenominationBreakdown(request.Breakdown),
 		})
 		if err != nil {
 			writeAppError(w, err)
@@ -1635,6 +1666,7 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 			Reason:         request.Reason,
 			ActorID:        request.ActorID,
 			ApprovedByID:   request.ApprovedByID,
+			Breakdown:      domainDenominationBreakdown(request.Breakdown),
 		})
 		if err != nil {
 			writeAppError(w, err)
@@ -2230,6 +2262,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_cash_movement_command", "Invalid cash movement command", err.Error())
 	case errors.Is(err, app.ErrInvalidCashRecountCommand), errors.Is(err, domain.ErrInvalidCashRecountInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_cash_recount_command", "Invalid cash recount command", err.Error())
+	case errors.Is(err, domain.ErrDenominationBreakdownMismatch):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "denomination_breakdown_mismatch", "Denomination breakdown does not match operation total", err.Error())
 	case errors.Is(err, app.ErrInvalidShiftCommand), errors.Is(err, domain.ErrInvalidShiftInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_shift_command", "Invalid shift command", err.Error())
 	case errors.Is(err, app.ErrInvalidOperationalDayCommand), errors.Is(err, domain.ErrInvalidOperationalDayInput):
@@ -2443,6 +2477,50 @@ func fiscalDocumentResponses(documents []domain.FiscalDocument) []FiscalDocument
 	return result
 }
 
+// domainDenominationBreakdown converts the HTTP-layer request shape (string
+// bill keys, since JSON object keys must be strings) into the domain layer's
+// map[int64]int. Keys that fail to parse as an integer are mapped to the
+// invalid denomination 0, which domain.validateDenominationBreakdown always
+// rejects (denomination <= 0) — so a malformed key surfaces as the same 400
+// denomination_breakdown_mismatch response as any other invalid breakdown,
+// without this conversion needing its own parallel error path.
+func domainDenominationBreakdown(request *DenominationBreakdownRequest) *domain.DenominationBreakdown {
+	if request == nil {
+		return nil
+	}
+	bills := make(map[int64]int, len(request.Bills))
+	for key, count := range request.Bills {
+		denomination, err := strconv.ParseInt(key, 10, 64)
+		if err != nil {
+			denomination = 0
+		}
+		bills[denomination] = count
+	}
+	return &domain.DenominationBreakdown{
+		Bills:      bills,
+		CoinsMinor: request.CoinsMinor,
+		OtherMinor: request.OtherMinor,
+	}
+}
+
+// denominationBreakdownResponse is the read-side counterpart of
+// domainDenominationBreakdown, converting the domain's integer-keyed map
+// back to string keys for the wire.
+func denominationBreakdownResponse(breakdown *domain.DenominationBreakdown) *DenominationBreakdownResponse {
+	if breakdown == nil {
+		return nil
+	}
+	bills := make(map[string]int, len(breakdown.Bills))
+	for denomination, count := range breakdown.Bills {
+		bills[strconv.FormatInt(denomination, 10)] = count
+	}
+	return &DenominationBreakdownResponse{
+		Bills:      bills,
+		CoinsMinor: breakdown.CoinsMinor,
+		OtherMinor: breakdown.OtherMinor,
+	}
+}
+
 func cashMovementResponse(movement domain.CashMovement) CashMovementResponse {
 	return CashMovementResponse{
 		ID:                movement.ID,
@@ -2459,6 +2537,7 @@ func cashMovementResponse(movement domain.CashMovement) CashMovementResponse {
 		ApprovedByID:      movement.ApprovedByID,
 		Status:            movement.Status,
 		CreatedAt:         movement.CreatedAt,
+		Breakdown:         denominationBreakdownResponse(movement.Breakdown),
 	}
 }
 
@@ -2509,6 +2588,7 @@ func cashRecountResponse(recount domain.CashRecount) CashRecountResponse {
 		ResolvedByID:     recount.ResolvedByID,
 		ResolvedAt:       recount.ResolvedAt,
 		CreatedAt:        recount.CreatedAt,
+		Breakdown:        denominationBreakdownResponse(recount.Breakdown),
 	}
 }
 
@@ -2792,6 +2872,7 @@ func closeShiftRequestSchema() httpapi.Schema {
 		"safeId":           httpapi.StringSchema(),
 		"actorId":          httpapi.StringSchema(),
 		"approvedById":     httpapi.StringSchema(),
+		"breakdown":        denominationBreakdownRequestSchema(),
 	}, "closingCashMinor")
 }
 
@@ -2879,6 +2960,26 @@ func createFiscalDocumentRequestSchema() httpapi.Schema {
 	}, "deviceId")
 }
 
+// denominationBreakdownRequestSchema describes the optional bill/coin count
+// breakdown accepted on cash operations. bills is a genuine string-keyed
+// dictionary (denomination minor-value -> count), built with the new
+// httpapi.MapSchema helper rather than a fixed ObjectSchema property set.
+func denominationBreakdownRequestSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"bills":      httpapi.MapSchema(httpapi.Schema{"type": "integer", "minimum": 0}),
+		"coinsMinor": {"type": "integer", "minimum": 0},
+		"otherMinor": {"type": "integer", "minimum": 0},
+	})
+}
+
+func denominationBreakdownResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"bills":      httpapi.MapSchema(httpapi.Schema{"type": "integer"}),
+		"coinsMinor": {"type": "integer"},
+		"otherMinor": {"type": "integer"},
+	})
+}
+
 func createCashMovementRequestSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"type":              httpapi.StringSchema(),
@@ -2891,6 +2992,7 @@ func createCashMovementRequestSchema() httpapi.Schema {
 		"reason":            httpapi.StringSchema(),
 		"actorId":           httpapi.StringSchema(),
 		"approvedById":      httpapi.StringSchema(),
+		"breakdown":         denominationBreakdownRequestSchema(),
 	}, "type", "fromContainerId", "fromContainerType", "toContainerId", "toContainerType", "amountMinor", "actorId")
 }
 
@@ -2903,6 +3005,7 @@ func createBankCollectionRequestSchema() httpapi.Schema {
 		"reason":          httpapi.StringSchema(),
 		"actorId":         httpapi.StringSchema(),
 		"approvedById":    httpapi.StringSchema(),
+		"breakdown":       denominationBreakdownRequestSchema(),
 	}, "safeId", "bankContainerId", "amountMinor", "actorId", "approvedById")
 }
 
@@ -2915,6 +3018,7 @@ func createBusinessExpenseRequestSchema() httpapi.Schema {
 		"reason":       httpapi.StringSchema(),
 		"actorId":      httpapi.StringSchema(),
 		"approvedById": httpapi.StringSchema(),
+		"breakdown":    denominationBreakdownRequestSchema(),
 	}, "safeId", "payeeId", "amountMinor", "reason", "actorId", "approvedById")
 }
 
@@ -2927,6 +3031,7 @@ func createCashRecountRequestSchema() httpapi.Schema {
 		"reason":        httpapi.StringSchema(),
 		"actorId":       httpapi.StringSchema(),
 		"approvedById":  httpapi.StringSchema(),
+		"breakdown":     denominationBreakdownRequestSchema(),
 	}, "containerId", "containerType", "countedMinor", "actorId")
 }
 
@@ -3148,6 +3253,7 @@ func cashMovementResponseSchema() httpapi.Schema {
 		"approvedById":      httpapi.StringSchema(),
 		"status":            httpapi.StringSchema(),
 		"createdAt":         httpapi.DateTimeSchema(),
+		"breakdown":         denominationBreakdownResponseSchema(),
 	}, "id", "storeId", "type", "fromContainerId", "fromContainerType", "toContainerId", "toContainerType", "amountMinor", "currency", "actorId", "status", "createdAt")
 }
 
@@ -3181,5 +3287,6 @@ func cashRecountResponseSchema() httpapi.Schema {
 		"resolvedById":     httpapi.StringSchema(),
 		"resolvedAt":       httpapi.DateTimeSchema(),
 		"createdAt":        httpapi.DateTimeSchema(),
+		"breakdown":        denominationBreakdownResponseSchema(),
 	}, "id", "storeId", "containerId", "containerType", "currency", "expectedMinor", "countedMinor", "discrepancyMinor", "actorId", "status", "resolutionStatus", "createdAt")
 }

@@ -212,6 +212,18 @@ func ArraySchema(item Schema) Schema {
 	}
 }
 
+// MapSchema describes a genuine dictionary/map: an object whose keys are
+// unconstrained strings, each holding a value matching valueSchema. Unlike
+// ObjectSchema, this intentionally has no fixed "properties" set and no
+// "additionalProperties": false — the whole point is an open-ended set of
+// keys (e.g. denomination minor-value -> count).
+func MapSchema(valueSchema Schema) Schema {
+	return Schema{
+		"type":                 "object",
+		"additionalProperties": valueSchema,
+	}
+}
+
 func StringSchema() Schema {
 	return Schema{"type": "string"}
 }

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -99,6 +100,7 @@ type CreateCashMovementCommand struct {
 	Reason            string
 	ActorID           string
 	ApprovedByID      string
+	Breakdown         *domain.DenominationBreakdown
 }
 
 type CashMovementResult struct {
@@ -115,6 +117,7 @@ type CreateBankCollectionCommand struct {
 	Reason          string
 	ActorID         string
 	ApprovedByID    string
+	Breakdown       *domain.DenominationBreakdown
 }
 
 type CreateBusinessExpenseCommand struct {
@@ -127,6 +130,7 @@ type CreateBusinessExpenseCommand struct {
 	Reason         string
 	ActorID        string
 	ApprovedByID   string
+	Breakdown      *domain.DenominationBreakdown
 }
 
 type CreateCashRecountCommand struct {
@@ -140,6 +144,7 @@ type CreateCashRecountCommand struct {
 	Reason         string
 	ActorID        string
 	ApprovedByID   string
+	Breakdown      *domain.DenominationBreakdown
 }
 
 type ResolveCashRecountCommand struct {
@@ -168,7 +173,7 @@ func (s *CashService) CreateCashMovement(ctx context.Context, command CreateCash
 	}
 
 	const operation = "cash.create_cash_movement"
-	fingerprint := fmt.Sprintf("%s|%s|%s|%s|%s|%s|%d|%s|%s|%s|%s",
+	fingerprint := fmt.Sprintf("%s|%s|%s|%s|%s|%s|%d|%s|%s|%s|%s|%s",
 		command.StoreID,
 		command.Type,
 		command.FromContainerID,
@@ -180,6 +185,7 @@ func (s *CashService) CreateCashMovement(ctx context.Context, command CreateCash
 		command.Reason,
 		command.ActorID,
 		command.ApprovedByID,
+		denominationBreakdownFingerprint(command.Breakdown),
 	)
 	if result, found, err := s.findCashIdempotency(ctx, operation, command.IdempotencyKey, command.StoreID, fingerprint); err != nil || found {
 		return result, err
@@ -196,6 +202,7 @@ func (s *CashService) CreateCashMovement(ctx context.Context, command CreateCash
 		AmountMinor:       command.AmountMinor,
 		Currency:          command.Currency,
 		Reason:            command.Reason,
+		Breakdown:         command.Breakdown,
 		ActorID:           command.ActorID,
 		ApprovedByID:      command.ApprovedByID,
 		Now:               s.now(),
@@ -266,6 +273,7 @@ func (s *CashService) CreateBankCollection(ctx context.Context, command CreateBa
 		Reason:            reason,
 		ActorID:           command.ActorID,
 		ApprovedByID:      command.ApprovedByID,
+		Breakdown:         command.Breakdown,
 	})
 }
 
@@ -294,6 +302,7 @@ func (s *CashService) CreateBusinessExpense(ctx context.Context, command CreateB
 		Reason:            command.Reason,
 		ActorID:           command.ActorID,
 		ApprovedByID:      command.ApprovedByID,
+		Breakdown:         command.Breakdown,
 	})
 }
 
@@ -310,7 +319,7 @@ func (s *CashService) CreateCashRecount(ctx context.Context, command CreateCashR
 	}
 
 	const operation = "cash.create_cash_recount"
-	fingerprint := fmt.Sprintf("%s|%s|%s|%s|%d|%s|%s|%s",
+	fingerprint := fmt.Sprintf("%s|%s|%s|%s|%d|%s|%s|%s|%s",
 		command.StoreID,
 		command.ContainerID,
 		command.ContainerType,
@@ -319,6 +328,7 @@ func (s *CashService) CreateCashRecount(ctx context.Context, command CreateCashR
 		command.Reason,
 		command.ActorID,
 		command.ApprovedByID,
+		denominationBreakdownFingerprint(command.Breakdown),
 	)
 	if result, found, err := s.findCashRecountIdempotency(ctx, operation, command.IdempotencyKey, command.StoreID, fingerprint); err != nil || found {
 		return result, err
@@ -345,6 +355,7 @@ func (s *CashService) CreateCashRecount(ctx context.Context, command CreateCashR
 		ActorID:       command.ActorID,
 		ApprovedByID:  command.ApprovedByID,
 		Now:           s.now(),
+		Breakdown:     command.Breakdown,
 	})
 	if err != nil {
 		return CashRecountResult{}, err
@@ -528,6 +539,26 @@ func (s *CashService) expectedBalance(ctx context.Context, storeID string, conta
 		}
 	}
 	return 0, nil
+}
+
+// denominationBreakdownFingerprint renders a breakdown into a deterministic
+// string for inclusion in idempotency fingerprints, so that replaying an
+// idempotency key with a *different* breakdown is correctly detected as a
+// conflict rather than silently treated as identical. encoding/json sorts
+// map keys (including integer keys, which it renders as decimal strings)
+// before marshaling, so this is stable across calls. Returns "" for nil,
+// distinct from any real breakdown's JSON encoding.
+func denominationBreakdownFingerprint(breakdown *domain.DenominationBreakdown) string {
+	if breakdown == nil {
+		return ""
+	}
+	encoded, err := json.Marshal(breakdown)
+	if err != nil {
+		// DenominationBreakdown has no unmarshalable field types (map[int64]int
+		// and two int64s), so this branch is unreachable in practice.
+		return fmt.Sprintf("%+v", *breakdown)
+	}
+	return string(encoded)
 }
 
 func applyCashBalanceDelta(balances map[string]domain.CashBalance, storeID string, containerID string, containerType domain.CashContainerType, currency string, deltaMinor int64, movementAt time.Time) {
