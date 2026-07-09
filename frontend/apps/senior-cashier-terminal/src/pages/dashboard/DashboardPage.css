@@ -1,0 +1,275 @@
+/**
+ * Redesigned dashboard layout (plan 021, Phase 4). Colocated with
+ * `pages/dashboard/` rather than appended to the app-wide `index.css`, same
+ * colocation convention as `pages/login/LoginPage.css` (plan 020).
+ *
+ * Reuses `index.css`'s existing `.sr-panel`/`.sr-panel-header`/
+ * `.sr-panel-title` rules for both right-column panels — only the
+ * grid/card/row layout that doesn't already exist there is added here.
+ */
+
+.sr-dashboard-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.sr-dashboard-eyebrow {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ui-text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.sr-dashboard-heading {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.sr-dashboard-datetime {
+  font-size: 0.9rem;
+  color: var(--ui-text-muted);
+  white-space: nowrap;
+}
+
+.sr-dashboard-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .sr-dashboard-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sr-dashboard-main-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.sr-dashboard-side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.sr-dashboard-section-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ui-text-muted);
+}
+
+/* --- Action grids/cards, shared by all 3 rows --- */
+
+.sr-dashboard-action-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.sr-dashboard-action-grid--primary {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.sr-dashboard-action-grid--secondary {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+@media (max-width: 640px) {
+  .sr-dashboard-action-grid--primary {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sr-action-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  padding: 1.25rem;
+}
+
+.sr-action-card:hover {
+  border-color: var(--ui-accent);
+}
+
+.sr-action-card:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
+}
+
+.sr-action-card--primary {
+  min-height: 150px;
+  padding: 1.5rem;
+  justify-content: flex-end;
+}
+
+.sr-action-card--secondary {
+  min-height: 110px;
+  justify-content: flex-end;
+}
+
+.sr-action-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ui-radius-md);
+  flex-shrink: 0;
+}
+
+.sr-action-card--primary .sr-action-card-icon {
+  width: 48px;
+  height: 48px;
+}
+
+.sr-action-card--secondary .sr-action-card-icon {
+  width: 40px;
+  height: 40px;
+}
+
+/* Icon-tile accent colors reuse the existing semantic tokens (no new
+   hardcoded colors) — see `ActionCard.tsx`'s `ActionCardAccent` doc comment
+   for what each color means. Dark-on-light foreground reads better against
+   these pastel semantic tokens than white would. */
+.sr-action-card-icon--green {
+  background: var(--ui-success);
+  color: var(--ui-bg);
+}
+
+.sr-action-card-icon--blue {
+  background: var(--ui-info);
+  color: var(--ui-bg);
+}
+
+.sr-action-card-icon--red {
+  background: var(--ui-danger);
+  color: var(--ui-bg);
+}
+
+.sr-action-card-icon--neutral {
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-muted);
+}
+
+.sr-action-card-title {
+  font-weight: 700;
+}
+
+.sr-action-card--primary .sr-action-card-title {
+  font-size: 1.1rem;
+}
+
+.sr-action-card--secondary .sr-action-card-title {
+  font-size: 0.95rem;
+}
+
+.sr-action-card-subtitle {
+  font-size: 0.8rem;
+  color: var(--ui-text-muted);
+}
+
+.sr-action-card-badge {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+}
+
+/* --- "Кассиры на смене" rows --- */
+
+.sr-cashier-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.sr-cashier-row:last-child {
+  border-bottom: none;
+}
+
+.sr-cashier-row-identity {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.sr-cashier-row-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sr-cashier-row-meta {
+  font-size: 0.8rem;
+}
+
+.sr-cashier-row-figures {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.sr-cashier-row-revenue {
+  font-weight: 600;
+}
+
+.sr-cashier-row-figure-label {
+  font-weight: 400;
+}
+
+.sr-cashier-row-drawer {
+  font-size: 0.78rem;
+}
+
+/* --- "Сейф · сейчас" panel --- */
+
+.sr-safe-now-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: var(--ui-surface-elevated);
+  border-radius: var(--ui-radius-md);
+  padding: 1rem;
+}
+
+.sr-safe-now-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ui-text-muted);
+}
+
+.sr-safe-now-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
