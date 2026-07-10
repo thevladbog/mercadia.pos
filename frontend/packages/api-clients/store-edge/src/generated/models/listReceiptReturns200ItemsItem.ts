@@ -10,6 +10,7 @@ import type { ListReceiptReturns200ItemsItemLinesItem } from './listReceiptRetur
 export type ListReceiptReturns200ItemsItem = {
   actorId: string;
   approvedById?: string;
+  confirmedAt?: string;
   createdAt: string;
   id: string;
   kind: string;

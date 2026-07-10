@@ -25,6 +25,12 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ConfirmReturn202,
+  ConfirmReturn400,
+  ConfirmReturn403,
+  ConfirmReturn404,
+  ConfirmReturn409,
+  ConfirmReturnBody,
   CreateNoReceiptReturn202,
   CreateNoReceiptReturn400,
   CreateNoReceiptReturn403,
@@ -431,7 +437,112 @@ export function useGetReturn<TData = Awaited<ReturnType<typeof getReturn>>, TErr
 
 
 
-export type settleReturnResponse202 = {
+export type confirmReturnResponse202 = {
+  data: ConfirmReturn202
+  status: 202
+}
+
+export type confirmReturnResponse400 = {
+  data: ConfirmReturn400
+  status: 400
+}
+
+export type confirmReturnResponse403 = {
+  data: ConfirmReturn403
+  status: 403
+}
+
+export type confirmReturnResponse404 = {
+  data: ConfirmReturn404
+  status: 404
+}
+
+export type confirmReturnResponse409 = {
+  data: ConfirmReturn409
+  status: 409
+}
+
+export type confirmReturnResponseSuccess = (confirmReturnResponse202) & {
+  headers: Headers;
+};
+export type confirmReturnResponseError = (confirmReturnResponse400 | confirmReturnResponse403 | confirmReturnResponse404 | confirmReturnResponse409) & {
+  headers: Headers;
+};
+
+export type confirmReturnResponse = (confirmReturnResponseSuccess | confirmReturnResponseError)
+
+export const getConfirmReturnUrl = (returnId: string,) => {
+
+
+
+
+  return `/v1/returns/${returnId}/confirm`
+}
+
+/**
+ * @summary Confirm a no-receipt return that is pending approval
+ */
+export const confirmReturn = async (returnId: string,
+    confirmReturnBody: ConfirmReturnBody, options?: RequestInit): Promise<confirmReturnResponse> => {
+
+  return customFetch<confirmReturnResponse>(getConfirmReturnUrl(returnId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(confirmReturnBody)
+  }
+);}
+
+
+
+
+
+export const getConfirmReturnMutationOptions = <TError = ConfirmReturn400 | ConfirmReturn403 | ConfirmReturn404 | ConfirmReturn409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmReturn>>, TError,{returnId: string;data: ConfirmReturnBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmReturn>>, TError,{returnId: string;data: ConfirmReturnBody}, TContext> => {
+
+const mutationKey = ['confirmReturn'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmReturn>>, {returnId: string;data: ConfirmReturnBody}> = (props) => {
+          const {returnId,data} = props ?? {};
+
+          return  confirmReturn(returnId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmReturnMutationResult = NonNullable<Awaited<ReturnType<typeof confirmReturn>>>
+    export type ConfirmReturnMutationBody = ConfirmReturnBody
+    export type ConfirmReturnMutationError = ConfirmReturn400 | ConfirmReturn403 | ConfirmReturn404 | ConfirmReturn409
+
+    /**
+ * @summary Confirm a no-receipt return that is pending approval
+ */
+export const useConfirmReturn = <TError = ConfirmReturn400 | ConfirmReturn403 | ConfirmReturn404 | ConfirmReturn409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmReturn>>, TError,{returnId: string;data: ConfirmReturnBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmReturn>>,
+        TError,
+        {returnId: string;data: ConfirmReturnBody},
+        TContext
+      > => {
+      return useMutation(getConfirmReturnMutationOptions(options), queryClient);
+    }
+    export type settleReturnResponse202 = {
   data: SettleReturn202
   status: 202
 }

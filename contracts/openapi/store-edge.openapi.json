@@ -4835,6 +4835,10 @@
                           "approvedById": {
                             "type": "string"
                           },
+                          "confirmedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
                           "createdAt": {
                             "format": "date-time",
                             "type": "string"
@@ -5053,6 +5057,10 @@
                           "type": "string"
                         },
                         "approvedById": {
+                          "type": "string"
+                        },
+                        "confirmedAt": {
+                          "format": "date-time",
                           "type": "string"
                         },
                         "createdAt": {
@@ -5614,6 +5622,10 @@
                         "approvedById": {
                           "type": "string"
                         },
+                        "confirmedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "createdAt": {
                           "format": "date-time",
                           "type": "string"
@@ -5732,6 +5744,294 @@
           }
         },
         "summary": "Get return",
+        "tags": [
+          "returns"
+        ]
+      }
+    },
+    "/v1/returns/{returnId}/confirm": {
+      "post": {
+        "operationId": "confirmReturn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "returnId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "actorId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Return confirmation command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "return": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "actorId": {
+                          "type": "string"
+                        },
+                        "approvedById": {
+                          "type": "string"
+                        },
+                        "confirmedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "lineId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "productId": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "totalMinor": {
+                                "type": "integer"
+                              },
+                              "unitPriceMinor": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "quantity",
+                              "unitPriceMinor",
+                              "totalMinor"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "receiptId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "totalMinor": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "kind",
+                        "lines",
+                        "reason",
+                        "actorId",
+                        "totalMinor",
+                        "status",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "return"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return confirmed"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid confirm command"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Permission denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Return confirmation conflict"
+          }
+        },
+        "summary": "Confirm a no-receipt return that is pending approval",
         "tags": [
           "returns"
         ]
@@ -6203,6 +6503,10 @@
                           "type": "string"
                         },
                         "approvedById": {
+                          "type": "string"
+                        },
+                        "confirmedAt": {
+                          "format": "date-time",
                           "type": "string"
                         },
                         "createdAt": {
@@ -12802,6 +13106,10 @@
                           "approvedById": {
                             "type": "string"
                           },
+                          "confirmedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
                           "createdAt": {
                             "format": "date-time",
                             "type": "string"
@@ -13002,8 +13310,7 @@
                 "required": [
                   "lines",
                   "reason",
-                  "actorId",
-                  "approvedById"
+                  "actorId"
                 ],
                 "type": "object"
               }
@@ -13026,6 +13333,10 @@
                           "type": "string"
                         },
                         "approvedById": {
+                          "type": "string"
+                        },
+                        "confirmedAt": {
+                          "format": "date-time",
                           "type": "string"
                         },
                         "createdAt": {

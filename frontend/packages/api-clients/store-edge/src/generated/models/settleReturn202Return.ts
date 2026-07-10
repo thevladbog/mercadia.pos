@@ -10,6 +10,7 @@ import type { SettleReturn202ReturnLinesItem } from './settleReturn202ReturnLine
 export type SettleReturn202Return = {
   actorId: string;
   approvedById?: string;
+  confirmedAt?: string;
   createdAt: string;
   id: string;
   kind: string;

@@ -141,6 +141,10 @@ type SettleReturnRequest struct {
 	DrawerID string `json:"drawerId,omitempty"`
 }
 
+type ConfirmReturnRequest struct {
+	ActorID string `json:"actorId"`
+}
+
 type ReturnSettledResponse struct {
 	Return   ReturnResponse    `json:"return"`
 	Payments []PaymentResponse `json:"payments"`
@@ -158,6 +162,7 @@ type ReturnResponse struct {
 	TotalMinor   int64                `json:"totalMinor"`
 	Status       domain.ReturnStatus  `json:"status"`
 	CreatedAt    time.Time            `json:"createdAt"`
+	ConfirmedAt  time.Time            `json:"confirmedAt,omitempty"`
 }
 
 type ReturnLineResponse struct {
@@ -398,6 +403,47 @@ func mountDomainRoutes(
 			Return:   returnResponse(result.Return),
 			Payments: paymentResponses(result.Payments),
 		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:              http.MethodPost,
+		Path:                "/v1/returns/{returnId}/confirm",
+		OperationID:         "confirmReturn",
+		Summary:             "Confirm a no-receipt return that is pending approval",
+		Tags:                []string{"returns"},
+		RequiresIdempotency: true,
+		RequestBody: &httpapi.BodySpec{
+			Description: "Return confirmation command",
+			Required:    true,
+			Schema:      confirmReturnRequestSchema(),
+		},
+		Responses: map[string]httpapi.ResponseSpec{
+			"202": {Description: "Return confirmed", Schema: returnAcceptedResponseSchema()},
+			"400": {Description: "Invalid confirm command", Schema: httpapi.ProblemSchema()},
+			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Return was not found", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Return confirmation conflict", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
+			return
+		}
+		var request ConfirmReturnRequest
+		if err := httpapi.DecodeJSON(r, &request); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_json", "Invalid JSON", err.Error())
+			return
+		}
+		result, err := returns.ConfirmReturn(r.Context(), app.ConfirmReturnCommand{
+			IdempotencyKey: r.Header.Get("Idempotency-Key"),
+			ReturnID:       r.PathValue("returnId"),
+			ActorID:        request.ActorID,
+		})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusAccepted, ReturnAcceptedResponse{Return: returnResponse(result.Return)})
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
@@ -686,6 +732,7 @@ func returnResponse(ret domain.Return) ReturnResponse {
 		TotalMinor:   ret.TotalMinor,
 		Status:       ret.Status,
 		CreatedAt:    ret.CreatedAt,
+		ConfirmedAt:  ret.ConfirmedAt,
 	}
 }
 
@@ -772,7 +819,7 @@ func createNoReceiptReturnRequestSchema() httpapi.Schema {
 		"reason":       httpapi.StringSchema(),
 		"actorId":      httpapi.StringSchema(),
 		"approvedById": httpapi.StringSchema(),
-	}, "lines", "reason", "actorId", "approvedById")
+	}, "lines", "reason", "actorId")
 }
 
 func returnLineRequestSchema() httpapi.Schema {
@@ -806,6 +853,12 @@ func settleReturnRequestSchema() httpapi.Schema {
 	})
 }
 
+func confirmReturnRequestSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"actorId": httpapi.StringSchema(),
+	}, "actorId")
+}
+
 func returnSettledResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"return":   returnResponseSchema(),
@@ -826,6 +879,7 @@ func returnResponseSchema() httpapi.Schema {
 		"totalMinor":   {"type": "integer"},
 		"status":       httpapi.StringSchema(),
 		"createdAt":    httpapi.DateTimeSchema(),
+		"confirmedAt":  httpapi.DateTimeSchema(),
 	}, "id", "storeId", "kind", "lines", "reason", "actorId", "totalMinor", "status", "createdAt")
 }
 

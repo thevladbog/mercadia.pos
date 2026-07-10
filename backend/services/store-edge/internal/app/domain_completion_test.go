@@ -261,20 +261,26 @@ func TestReceiptReturnRequiresFiscalizedReceipt(t *testing.T) {
 	}
 }
 
-func TestNoReceiptReturnRequiresApproval(t *testing.T) {
+func TestNoReceiptReturnWithoutApproverIsPendingApproval(t *testing.T) {
 	store := memory.NewStore(memory.WithDemoActors())
 	auth := app.NewAuthService(store, store, store, store)
 	returns := app.NewReturnsService(store, store, store, auth)
 
-	_, err := returns.CreateNoReceiptReturn(context.Background(), app.CreateNoReceiptReturnCommand{
+	pending, err := returns.CreateNoReceiptReturn(context.Background(), app.CreateNoReceiptReturnCommand{
 		IdempotencyKey: "ret-2",
 		StoreID:        "store-1",
 		Lines:          []app.ReturnLineCommand{{ProductID: "sku-1", Name: "Milk", Quantity: 1, UnitPriceMinor: 1000}},
 		Reason:         "No receipt",
 		ActorID:        "senior-1",
 	})
-	if !errors.Is(err, app.ErrInvalidReturnCommand) {
-		t.Fatalf("expected invalid return command, got %v", err)
+	if err != nil {
+		t.Fatalf("create no-receipt return without approver: %v", err)
+	}
+	if pending.Return.Status != domain.ReturnStatusPendingApproval {
+		t.Fatalf("return status = %s", pending.Return.Status)
+	}
+	if pending.Return.ApprovedByID != "" {
+		t.Fatalf("return approvedById = %s", pending.Return.ApprovedByID)
 	}
 
 	result, err := returns.CreateNoReceiptReturn(context.Background(), app.CreateNoReceiptReturnCommand{

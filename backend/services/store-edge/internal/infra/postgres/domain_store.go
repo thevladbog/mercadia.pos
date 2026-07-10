@@ -573,8 +573,8 @@ func (s *Store) SaveReturn(ctx context.Context, ret domain.Return) error {
 	_, err = s.conn(ctx).Exec(ctx, `
 		INSERT INTO returns (
 			id, store_id, receipt_id, kind, lines, reason, actor_id, approved_by_id,
-			total_minor, status, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			total_minor, status, created_at, confirmed_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		ON CONFLICT (id) DO UPDATE SET
 			store_id = EXCLUDED.store_id,
 			receipt_id = EXCLUDED.receipt_id,
@@ -585,9 +585,10 @@ func (s *Store) SaveReturn(ctx context.Context, ret domain.Return) error {
 			approved_by_id = EXCLUDED.approved_by_id,
 			total_minor = EXCLUDED.total_minor,
 			status = EXCLUDED.status,
-			created_at = EXCLUDED.created_at
+			created_at = EXCLUDED.created_at,
+			confirmed_at = EXCLUDED.confirmed_at
 	`, ret.ID, ret.StoreID, ret.ReceiptID, ret.Kind, lines, ret.Reason, ret.ActorID,
-		ret.ApprovedByID, ret.TotalMinor, ret.Status, ret.CreatedAt)
+		ret.ApprovedByID, ret.TotalMinor, ret.Status, ret.CreatedAt, nullTime(ret.ConfirmedAt))
 	if err != nil {
 		return fmt.Errorf("save return: %w", err)
 	}
@@ -597,7 +598,7 @@ func (s *Store) SaveReturn(ctx context.Context, ret domain.Return) error {
 func (s *Store) FindReturn(ctx context.Context, returnID string) (domain.Return, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT id, store_id, receipt_id, kind, lines, reason, actor_id, approved_by_id,
-			total_minor, status, created_at
+			total_minor, status, created_at, confirmed_at
 		FROM returns WHERE id = $1
 	`, returnID)
 	return scanReturn(row)
@@ -606,7 +607,7 @@ func (s *Store) FindReturn(ctx context.Context, returnID string) (domain.Return,
 func (s *Store) ListReturnsByReceipt(ctx context.Context, receiptID string) ([]domain.Return, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, store_id, receipt_id, kind, lines, reason, actor_id, approved_by_id,
-			total_minor, status, created_at
+			total_minor, status, created_at, confirmed_at
 		FROM returns WHERE receipt_id = $1
 		ORDER BY created_at
 	`, receiptID)
@@ -632,7 +633,7 @@ func (s *Store) ListReturnsByReceipt(ctx context.Context, receiptID string) ([]d
 func (s *Store) ListReturnsByStore(ctx context.Context, storeID string) ([]domain.Return, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, store_id, receipt_id, kind, lines, reason, actor_id, approved_by_id,
-			total_minor, status, created_at
+			total_minor, status, created_at, confirmed_at
 		FROM returns WHERE store_id = $1
 		ORDER BY created_at DESC, id DESC
 	`, storeID)
@@ -711,14 +712,19 @@ func (s *Store) ListOperationJournalEntries(ctx context.Context, storeID string,
 func scanReturn(row rowScanner) (domain.Return, error) {
 	var ret domain.Return
 	var linesJSON []byte
+	var confirmedAt *time.Time
 	if err := row.Scan(
 		&ret.ID, &ret.StoreID, &ret.ReceiptID, &ret.Kind, &linesJSON, &ret.Reason,
 		&ret.ActorID, &ret.ApprovedByID, &ret.TotalMinor, &ret.Status, &ret.CreatedAt,
+		&confirmedAt,
 	); err != nil {
 		return domain.Return{}, err
 	}
 	if err := json.Unmarshal(linesJSON, &ret.Lines); err != nil {
 		return domain.Return{}, fmt.Errorf("decode return lines: %w", err)
+	}
+	if confirmedAt != nil {
+		ret.ConfirmedAt = *confirmedAt
 	}
 	return ret, nil
 }

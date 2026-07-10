@@ -15,8 +15,9 @@ const (
 type ReturnStatus string
 
 const (
-	ReturnStatusCompleted ReturnStatus = "completed"
-	ReturnStatusSettled   ReturnStatus = "settled"
+	ReturnStatusCompleted       ReturnStatus = "completed"
+	ReturnStatusSettled         ReturnStatus = "settled"
+	ReturnStatusPendingApproval ReturnStatus = "pending_approval"
 )
 
 var (
@@ -26,6 +27,7 @@ var (
 	ErrReturnQuantityExceeded     = errors.New("return quantity exceeds line quantity")
 	ErrReturnAlreadySettled       = errors.New("return is already settled")
 	ErrReturnSettlementNotAllowed = errors.New("return settlement is not allowed")
+	ErrReturnNotPendingApproval   = errors.New("return is not pending approval")
 )
 
 type ReturnLine struct {
@@ -49,6 +51,7 @@ type Return struct {
 	TotalMinor   int64
 	Status       ReturnStatus
 	CreatedAt    time.Time
+	ConfirmedAt  time.Time
 }
 
 type ReturnLineInput struct {
@@ -81,10 +84,7 @@ func NewReturn(input CreateReturnInput) (Return, error) {
 	if input.Kind == ReturnKindWithReceipt && input.ReceiptID == "" {
 		return Return{}, ErrInvalidReturnInput
 	}
-	if input.Kind == ReturnKindNoReceipt && input.ApprovedByID == "" {
-		return Return{}, ErrInvalidReturnInput
-	}
-	if input.Kind == ReturnKindNoReceipt && input.ApprovedByID == input.ActorID {
+	if input.Kind == ReturnKindNoReceipt && input.ApprovedByID != "" && input.ApprovedByID == input.ActorID {
 		return Return{}, ErrInvalidReturnInput
 	}
 	if len(input.Lines) == 0 {
@@ -118,6 +118,11 @@ func NewReturn(input CreateReturnInput) (Return, error) {
 		total += lineTotal
 	}
 
+	status := ReturnStatusCompleted
+	if input.Kind == ReturnKindNoReceipt && input.ApprovedByID == "" {
+		status = ReturnStatusPendingApproval
+	}
+
 	return Return{
 		ID:           input.ID,
 		StoreID:      input.StoreID,
@@ -128,7 +133,7 @@ func NewReturn(input CreateReturnInput) (Return, error) {
 		ActorID:      input.ActorID,
 		ApprovedByID: input.ApprovedByID,
 		TotalMinor:   total,
-		Status:       ReturnStatusCompleted,
+		Status:       status,
 		CreatedAt:    input.Now,
 	}, nil
 }
@@ -202,5 +207,21 @@ func (r *Return) MarkSettled(now time.Time) error {
 	}
 	_ = now
 	r.Status = ReturnStatusSettled
+	return nil
+}
+
+func (r *Return) ConfirmPendingApproval(approvedByID string, now time.Time) error {
+	if r.Status != ReturnStatusPendingApproval {
+		return ErrReturnNotPendingApproval
+	}
+	if approvedByID == "" || approvedByID == r.ActorID {
+		return ErrInvalidReturnInput
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	r.ApprovedByID = approvedByID
+	r.Status = ReturnStatusCompleted
+	r.ConfirmedAt = now
 	return nil
 }

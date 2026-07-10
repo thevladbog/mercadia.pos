@@ -971,6 +971,21 @@ func decodeIdempotencyResult(operation string, data []byte) (any, error) {
 			}
 			return result, nil
 		}
+	case strings.HasPrefix(operation, "returns."):
+		switch operation {
+		case "returns.settle":
+			var result app.SettleReturnResult
+			if err := json.Unmarshal(data, &result); err != nil {
+				return nil, err
+			}
+			return result, nil
+		default:
+			var result app.ReturnResult
+			if err := json.Unmarshal(data, &result); err != nil {
+				return nil, err
+			}
+			return result, nil
+		}
 	case strings.HasPrefix(operation, "operational_days."):
 		var result app.OperationalDayResult
 		if err := json.Unmarshal(data, &result); err != nil {

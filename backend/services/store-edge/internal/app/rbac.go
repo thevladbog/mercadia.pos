@@ -10,6 +10,7 @@ type Permission string
 
 const (
 	PermissionReturnsCreate       Permission = "returns.create"
+	PermissionReturnsApprove      Permission = "returns.approve"
 	PermissionDiscountApply       Permission = "discount.apply"
 	PermissionRecountApprove      Permission = "recount.approve"
 	PermissionCredentialsManage   Permission = "credentials.manage"
@@ -18,8 +19,8 @@ const (
 
 var rolePermissions = map[domain.Role][]Permission{
 	domain.RoleCashier:       {},
-	domain.RoleSeniorCashier: {PermissionReturnsCreate, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage, PermissionStoreSettingsManage},
-	domain.RoleAdmin:         {PermissionReturnsCreate, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage, PermissionStoreSettingsManage},
+	domain.RoleSeniorCashier: {PermissionReturnsCreate, PermissionReturnsApprove, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage, PermissionStoreSettingsManage},
+	domain.RoleAdmin:         {PermissionReturnsCreate, PermissionReturnsApprove, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage, PermissionStoreSettingsManage},
 }
 
 type ActorRoleLookup interface {
