@@ -9,19 +9,20 @@ import (
 type Permission string
 
 const (
-	PermissionReturnsCreate       Permission = "returns.create"
-	PermissionReturnsApprove      Permission = "returns.approve"
-	PermissionDiscountApply       Permission = "discount.apply"
-	PermissionRecountApprove      Permission = "recount.approve"
-	PermissionCredentialsManage   Permission = "credentials.manage"
-	PermissionStoreSettingsManage Permission = "store_settings.manage"
-	PermissionShiftCloseConfirm   Permission = "shift.close.confirm"
+	PermissionReturnsCreate            Permission = "returns.create"
+	PermissionReturnsApprove           Permission = "returns.approve"
+	PermissionDiscountApply            Permission = "discount.apply"
+	PermissionRecountApprove           Permission = "recount.approve"
+	PermissionCredentialsManage        Permission = "credentials.manage"
+	PermissionStoreSettingsManage      Permission = "store_settings.manage"
+	PermissionShiftCloseConfirm        Permission = "shift.close.confirm"
+	PermissionChangeFundRequestFulfill Permission = "change_fund_request.fulfill"
 )
 
 var rolePermissions = map[domain.Role][]Permission{
 	domain.RoleCashier:       {},
-	domain.RoleSeniorCashier: {PermissionReturnsCreate, PermissionReturnsApprove, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage, PermissionStoreSettingsManage, PermissionShiftCloseConfirm},
-	domain.RoleAdmin:         {PermissionReturnsCreate, PermissionReturnsApprove, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage, PermissionStoreSettingsManage, PermissionShiftCloseConfirm},
+	domain.RoleSeniorCashier: {PermissionReturnsCreate, PermissionReturnsApprove, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage, PermissionStoreSettingsManage, PermissionShiftCloseConfirm, PermissionChangeFundRequestFulfill},
+	domain.RoleAdmin:         {PermissionReturnsCreate, PermissionReturnsApprove, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage, PermissionStoreSettingsManage, PermissionShiftCloseConfirm, PermissionChangeFundRequestFulfill},
 }
 
 type ActorRoleLookup interface {

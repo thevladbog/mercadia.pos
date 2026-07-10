@@ -337,6 +337,45 @@ type CashRecountsResponse struct {
 	Recounts []CashRecountResponse `json:"recounts"`
 }
 
+type CreateChangeFundRequestRequest struct {
+	AmountMinor int64                         `json:"amountMinor"`
+	Currency    string                        `json:"currency,omitempty"`
+	Reason      string                        `json:"reason,omitempty"`
+	ActorID     string                        `json:"actorId"`
+	Breakdown   *DenominationBreakdownRequest `json:"breakdown,omitempty"`
+}
+
+type FulfillChangeFundRequestRequest struct {
+	ActorID string `json:"actorId"`
+	SafeID  string `json:"safeId"`
+}
+
+type ChangeFundRequestResponse struct {
+	ID             string                         `json:"id"`
+	StoreID        string                         `json:"storeId"`
+	ShiftID        string                         `json:"shiftId"`
+	ActorID        string                         `json:"actorId"`
+	AmountMinor    int64                          `json:"amountMinor"`
+	Currency       string                         `json:"currency"`
+	Reason         string                         `json:"reason,omitempty"`
+	Breakdown      *DenominationBreakdownResponse `json:"breakdown,omitempty"`
+	Status         domain.ChangeFundRequestStatus `json:"status"`
+	FulfilledByID  string                         `json:"fulfilledById,omitempty"`
+	SafeID         string                         `json:"safeId,omitempty"`
+	CashMovementID string                         `json:"cashMovementId,omitempty"`
+	CreatedAt      time.Time                      `json:"createdAt"`
+	FulfilledAt    time.Time                      `json:"fulfilledAt,omitempty"`
+}
+
+type ChangeFundRequestAcceptedResponse struct {
+	Request ChangeFundRequestResponse `json:"request"`
+}
+
+type PaginatedChangeFundRequestsResponse struct {
+	Items      []ChangeFundRequestResponse `json:"items"`
+	TotalCount int                         `json:"totalCount"`
+}
+
 type CashMovementResponse struct {
 	ID                string                         `json:"id"`
 	StoreID           string                         `json:"storeId"`
@@ -707,6 +746,7 @@ type storeRepositories interface {
 	app.AuthAttemptRepository
 	app.ReturnRepository
 	app.OperationJournalRepository
+	app.ChangeFundRequestRepository
 }
 
 type wireConfig struct {
@@ -791,6 +831,11 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 		app.WithDiscountTransactionRunner(store),
 	)
 	marking := app.NewMarkingService(store)
+	changeFundRequests := app.NewChangeFundRequestService(store, store, store, store, auth,
+		app.WithChangeFundRequestJournal(journal),
+		app.WithChangeFundRequestOutbox(outbox),
+		app.WithChangeFundRequestTransactionRunner(store),
+	)
 
 	info := httpapi.ServiceInfo{
 		Name:        "store-edge",
@@ -802,7 +847,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 	mux := http.NewServeMux()
 	spec := httpapi.NewSpec(info)
 	httpapi.MountSystemRoutes(mux, spec, info, systemOptions...)
-	mountRoutes(mux, spec, outbox, config.brokerConnected, operationalDays, checkout, catalog, payments, fiscalization, cash, shifts, terminals)
+	mountRoutes(mux, spec, outbox, config.brokerConnected, operationalDays, checkout, catalog, payments, fiscalization, cash, shifts, terminals, changeFundRequests)
 	mountMonitoringRoutes(mux, spec, terminalMonitoring)
 	mountDomainRoutes(mux, spec, auth, returns, returnSettlement, fiscalization, discounts, marking, journal)
 	mountCredentialRoutes(mux, spec, auth, credentials)
@@ -819,7 +864,7 @@ type OutboxStatusResponse struct {
 	BrokerConnected bool  `json:"brokerConnected"`
 }
 
-func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxService, brokerConnected func() bool, operationalDays *app.OperationalDayService, checkout *app.CheckoutService, catalog *app.CatalogService, payments *app.PaymentService, fiscalization *app.FiscalizationService, cash *app.CashService, shifts *app.ShiftService, terminals *app.TerminalService) {
+func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxService, brokerConnected func() bool, operationalDays *app.OperationalDayService, checkout *app.CheckoutService, catalog *app.CatalogService, payments *app.PaymentService, fiscalization *app.FiscalizationService, cash *app.CashService, shifts *app.ShiftService, terminals *app.TerminalService, changeFundRequests *app.ChangeFundRequestService) {
 	httpapi.Register(mux, spec, httpapi.Operation{
 		Method:      http.MethodGet,
 		Path:        "/v1/store-edge/sync/outbox-status",
@@ -1351,6 +1396,141 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 		}
 		httpapi.WriteJSON(w, http.StatusAccepted, CashMovementAcceptedResponse{
 			Movement: cashMovementResponse(result.Movement),
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:              http.MethodPost,
+		Path:                "/v1/shifts/{shiftId}/change-fund-requests",
+		OperationID:         "createChangeFundRequest",
+		Summary:             "Request more change fund for a shift drawer",
+		Tags:                []string{"store-operations", "cash-office"},
+		RequiresIdempotency: true,
+		RequestBody: &httpapi.BodySpec{
+			Description: "Change fund request command",
+			Required:    true,
+			Schema:      createChangeFundRequestRequestSchema(),
+		},
+		Responses: map[string]httpapi.ResponseSpec{
+			"202": {Description: "Change fund requested", Schema: changeFundRequestAcceptedResponseSchema()},
+			"400": {Description: "Invalid change fund request command", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Shift was not found", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Shift or idempotency conflict", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
+			return
+		}
+		var request CreateChangeFundRequestRequest
+		if err := httpapi.DecodeJSON(r, &request); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_json", "Invalid JSON", err.Error())
+			return
+		}
+		result, err := changeFundRequests.CreateChangeFundRequest(r.Context(), app.CreateChangeFundRequestCommand{
+			IdempotencyKey: r.Header.Get("Idempotency-Key"),
+			ShiftID:        r.PathValue("shiftId"),
+			ActorID:        request.ActorID,
+			AmountMinor:    request.AmountMinor,
+			Currency:       request.Currency,
+			Reason:         request.Reason,
+			Breakdown:      domainDenominationBreakdown(request.Breakdown),
+		})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusAccepted, ChangeFundRequestAcceptedResponse{
+			Request: changeFundRequestResponse(result.Request),
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:          http.MethodGet,
+		Path:            "/v1/stores/{storeId}/change-fund-requests",
+		OperationID:     "listStoreChangeFundRequests",
+		Summary:         "List change fund requests for store",
+		Tags:            []string{"store-operations", "cash-office"},
+		QueryParameters: paginationQueryParams(),
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Change fund requests", Schema: paginatedChangeFundRequestsResponseSchema()},
+			"400": {Description: "Invalid change fund request query", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		params := app.ParsePageParams(r.URL.Query().Get("limit"), r.URL.Query().Get("offset"))
+		result, err := changeFundRequests.ListChangeFundRequestsByStore(r.Context(), r.PathValue("storeId"), params)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, PaginatedChangeFundRequestsResponse{
+			Items:      changeFundRequestResponses(result.Items),
+			TotalCount: result.TotalCount,
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:      http.MethodGet,
+		Path:        "/v1/change-fund-requests/{requestId}",
+		OperationID: "getChangeFundRequest",
+		Summary:     "Get change fund request",
+		Tags:        []string{"store-operations", "cash-office"},
+		Responses: map[string]httpapi.ResponseSpec{
+			"200": {Description: "Change fund request", Schema: changeFundRequestAcceptedResponseSchema()},
+			"404": {Description: "Change fund request was not found", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		result, err := changeFundRequests.GetChangeFundRequest(r.Context(), r.PathValue("requestId"))
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusOK, ChangeFundRequestAcceptedResponse{
+			Request: changeFundRequestResponse(result.Request),
+		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:              http.MethodPost,
+		Path:                "/v1/change-fund-requests/{requestId}/fulfill",
+		OperationID:         "fulfillChangeFundRequest",
+		Summary:             "Fulfill a change fund request from a safe",
+		Tags:                []string{"store-operations", "cash-office"},
+		RequiresIdempotency: true,
+		RequestBody: &httpapi.BodySpec{
+			Description: "Change fund request fulfillment command",
+			Required:    true,
+			Schema:      fulfillChangeFundRequestRequestSchema(),
+		},
+		Responses: map[string]httpapi.ResponseSpec{
+			"202": {Description: "Change fund request fulfilled", Schema: changeFundRequestAcceptedResponseSchema()},
+			"400": {Description: "Invalid change fund request fulfillment command", Schema: httpapi.ProblemSchema()},
+			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Change fund request was not found", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Change fund request fulfillment conflict", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
+			return
+		}
+		var request FulfillChangeFundRequestRequest
+		if err := httpapi.DecodeJSON(r, &request); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_json", "Invalid JSON", err.Error())
+			return
+		}
+		result, err := changeFundRequests.FulfillChangeFundRequest(r.Context(), app.FulfillChangeFundRequestCommand{
+			IdempotencyKey: r.Header.Get("Idempotency-Key"),
+			RequestID:      r.PathValue("requestId"),
+			ActorID:        request.ActorID,
+			SafeID:         request.SafeID,
+		})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusAccepted, ChangeFundRequestAcceptedResponse{
+			Request: changeFundRequestResponse(result.Request),
 		})
 	})
 
@@ -2232,6 +2412,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusNotFound, "shift_not_found", "Shift was not found", err.Error())
 	case errors.Is(err, app.ErrCashRecountNotFound):
 		httpapi.WriteProblem(w, http.StatusNotFound, "cash_recount_not_found", "Cash recount was not found", err.Error())
+	case errors.Is(err, app.ErrChangeFundRequestNotFound):
+		httpapi.WriteProblem(w, http.StatusNotFound, "change_fund_request_not_found", "Change fund request was not found", err.Error())
 	case errors.Is(err, app.ErrOperationalDayNotFound):
 		httpapi.WriteProblem(w, http.StatusNotFound, "operational_day_not_found", "Operational day was not found", err.Error())
 	case errors.Is(err, app.ErrActorNotFound):
@@ -2314,6 +2496,10 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_cash_movement_command", "Invalid cash movement command", err.Error())
 	case errors.Is(err, app.ErrInvalidCashRecountCommand), errors.Is(err, domain.ErrInvalidCashRecountInput):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_cash_recount_command", "Invalid cash recount command", err.Error())
+	case errors.Is(err, app.ErrInvalidChangeFundRequestCommand), errors.Is(err, domain.ErrInvalidChangeFundRequestInput):
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_change_fund_request_command", "Invalid change fund request command", err.Error())
+	case errors.Is(err, app.ErrChangeFundRequestAlreadyFulfilled):
+		httpapi.WriteProblem(w, http.StatusConflict, "change_fund_request_already_fulfilled", "Change fund request is already fulfilled", err.Error())
 	case errors.Is(err, domain.ErrDenominationBreakdownMismatch):
 		httpapi.WriteProblem(w, http.StatusBadRequest, "denomination_breakdown_mismatch", "Denomination breakdown does not match operation total", err.Error())
 	case errors.Is(err, app.ErrInvalidShiftCommand), errors.Is(err, domain.ErrInvalidShiftInput):
@@ -2650,6 +2836,33 @@ func cashRecountResponses(recounts []domain.CashRecount) []CashRecountResponse {
 	result := make([]CashRecountResponse, 0, len(recounts))
 	for _, recount := range recounts {
 		result = append(result, cashRecountResponse(recount))
+	}
+	return result
+}
+
+func changeFundRequestResponse(request domain.ChangeFundRequest) ChangeFundRequestResponse {
+	return ChangeFundRequestResponse{
+		ID:             request.ID,
+		StoreID:        request.StoreID,
+		ShiftID:        request.ShiftID,
+		ActorID:        request.ActorID,
+		AmountMinor:    request.AmountMinor,
+		Currency:       request.Currency,
+		Reason:         request.Reason,
+		Breakdown:      denominationBreakdownResponse(request.Breakdown),
+		Status:         request.Status,
+		FulfilledByID:  request.FulfilledByID,
+		SafeID:         request.SafeID,
+		CashMovementID: request.CashMovementID,
+		CreatedAt:      request.CreatedAt,
+		FulfilledAt:    request.FulfilledAt,
+	}
+}
+
+func changeFundRequestResponses(requests []domain.ChangeFundRequest) []ChangeFundRequestResponse {
+	result := make([]ChangeFundRequestResponse, 0, len(requests))
+	for _, request := range requests {
+		result = append(result, changeFundRequestResponse(request))
 	}
 	return result
 }
@@ -3105,6 +3318,55 @@ func resolveCashRecountRequestSchema() httpapi.Schema {
 		"actorId":        httpapi.StringSchema(),
 		"approvedById":   httpapi.StringSchema(),
 	}, "resolutionNote", "actorId", "approvedById")
+}
+
+func createChangeFundRequestRequestSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"amountMinor": {"type": "integer", "minimum": 1},
+		"currency":    httpapi.StringSchema(),
+		"reason":      httpapi.StringSchema(),
+		"actorId":     httpapi.StringSchema(),
+		"breakdown":   denominationBreakdownRequestSchema(),
+	}, "amountMinor", "actorId")
+}
+
+func fulfillChangeFundRequestRequestSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"actorId": httpapi.StringSchema(),
+		"safeId":  httpapi.StringSchema(),
+	}, "actorId", "safeId")
+}
+
+func changeFundRequestResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"id":             httpapi.StringSchema(),
+		"storeId":        httpapi.StringSchema(),
+		"shiftId":        httpapi.StringSchema(),
+		"actorId":        httpapi.StringSchema(),
+		"amountMinor":    {"type": "integer"},
+		"currency":       httpapi.StringSchema(),
+		"reason":         httpapi.StringSchema(),
+		"breakdown":      denominationBreakdownResponseSchema(),
+		"status":         httpapi.StringSchema(),
+		"fulfilledById":  httpapi.StringSchema(),
+		"safeId":         httpapi.StringSchema(),
+		"cashMovementId": httpapi.StringSchema(),
+		"createdAt":      httpapi.DateTimeSchema(),
+		"fulfilledAt":    httpapi.DateTimeSchema(),
+	}, "id", "storeId", "shiftId", "actorId", "amountMinor", "currency", "status", "createdAt")
+}
+
+func changeFundRequestAcceptedResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"request": changeFundRequestResponseSchema(),
+	}, "request")
+}
+
+func paginatedChangeFundRequestsResponseSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"items":      httpapi.ArraySchema(changeFundRequestResponseSchema()),
+		"totalCount": {"type": "integer"},
+	}, "items", "totalCount")
 }
 
 func receiptResponseSchema() httpapi.Schema {

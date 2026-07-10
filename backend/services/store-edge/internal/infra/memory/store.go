@@ -12,71 +12,75 @@ import (
 )
 
 type Store struct {
-	mu                 sync.RWMutex
-	receipts           map[string]domain.Receipt
-	terminals          map[string]domain.Terminal
-	products           map[string]domain.Product
-	barcodes           map[string]string
-	payments           map[string]domain.Payment
-	paymentsByReceipt  map[string][]string
-	fiscalDocuments    map[string]domain.FiscalDocument
-	fiscalByReceipt    map[string][]string
-	fiscalByReturn     map[string]string
-	cashMovements      map[string]domain.CashMovement
-	cashByStore        map[string][]string
-	cashRecounts       map[string]domain.CashRecount
-	recountsByStore    map[string][]string
-	shifts             map[string]domain.Shift
-	shiftsByStore      map[string][]string
-	operationalDays    map[string]domain.OperationalDay
-	daysByStore        map[string][]string
-	idempotency        map[string]app.IdempotencyRecord
-	outboxEvents       map[string]domain.OutboxEvent
-	actors             map[string]domain.Actor
-	credentialPolicies map[string]domain.CredentialPolicy
-	authSettings       map[string]domain.StoreAuthSettings
-	authAttempts       []domain.AuthAttempt
-	sessions           map[string]domain.Session
-	returns            map[string]domain.Return
-	returnsByStore     map[string][]string
-	journalEntries     map[string]domain.OperationJournalEntry
-	journalByStore     map[string][]string
-	catalogSyncState   map[string]time.Time
+	mu                        sync.RWMutex
+	receipts                  map[string]domain.Receipt
+	terminals                 map[string]domain.Terminal
+	products                  map[string]domain.Product
+	barcodes                  map[string]string
+	payments                  map[string]domain.Payment
+	paymentsByReceipt         map[string][]string
+	fiscalDocuments           map[string]domain.FiscalDocument
+	fiscalByReceipt           map[string][]string
+	fiscalByReturn            map[string]string
+	cashMovements             map[string]domain.CashMovement
+	cashByStore               map[string][]string
+	cashRecounts              map[string]domain.CashRecount
+	recountsByStore           map[string][]string
+	changeFundRequests        map[string]domain.ChangeFundRequest
+	changeFundRequestsByStore map[string][]string
+	shifts                    map[string]domain.Shift
+	shiftsByStore             map[string][]string
+	operationalDays           map[string]domain.OperationalDay
+	daysByStore               map[string][]string
+	idempotency               map[string]app.IdempotencyRecord
+	outboxEvents              map[string]domain.OutboxEvent
+	actors                    map[string]domain.Actor
+	credentialPolicies        map[string]domain.CredentialPolicy
+	authSettings              map[string]domain.StoreAuthSettings
+	authAttempts              []domain.AuthAttempt
+	sessions                  map[string]domain.Session
+	returns                   map[string]domain.Return
+	returnsByStore            map[string][]string
+	journalEntries            map[string]domain.OperationJournalEntry
+	journalByStore            map[string][]string
+	catalogSyncState          map[string]time.Time
 }
 
 type StoreOption func(*Store)
 
 func NewStore(options ...StoreOption) *Store {
 	store := &Store{
-		receipts:           map[string]domain.Receipt{},
-		terminals:          map[string]domain.Terminal{},
-		products:           map[string]domain.Product{},
-		barcodes:           map[string]string{},
-		payments:           map[string]domain.Payment{},
-		paymentsByReceipt:  map[string][]string{},
-		fiscalDocuments:    map[string]domain.FiscalDocument{},
-		fiscalByReceipt:    map[string][]string{},
-		fiscalByReturn:     map[string]string{},
-		cashMovements:      map[string]domain.CashMovement{},
-		cashByStore:        map[string][]string{},
-		cashRecounts:       map[string]domain.CashRecount{},
-		recountsByStore:    map[string][]string{},
-		shifts:             map[string]domain.Shift{},
-		shiftsByStore:      map[string][]string{},
-		operationalDays:    map[string]domain.OperationalDay{},
-		daysByStore:        map[string][]string{},
-		idempotency:        map[string]app.IdempotencyRecord{},
-		outboxEvents:       map[string]domain.OutboxEvent{},
-		actors:             map[string]domain.Actor{},
-		credentialPolicies: map[string]domain.CredentialPolicy{},
-		authSettings:       map[string]domain.StoreAuthSettings{},
-		authAttempts:       []domain.AuthAttempt{},
-		sessions:           map[string]domain.Session{},
-		returns:            map[string]domain.Return{},
-		returnsByStore:     map[string][]string{},
-		journalEntries:     map[string]domain.OperationJournalEntry{},
-		journalByStore:     map[string][]string{},
-		catalogSyncState:   map[string]time.Time{},
+		receipts:                  map[string]domain.Receipt{},
+		terminals:                 map[string]domain.Terminal{},
+		products:                  map[string]domain.Product{},
+		barcodes:                  map[string]string{},
+		payments:                  map[string]domain.Payment{},
+		paymentsByReceipt:         map[string][]string{},
+		fiscalDocuments:           map[string]domain.FiscalDocument{},
+		fiscalByReceipt:           map[string][]string{},
+		fiscalByReturn:            map[string]string{},
+		cashMovements:             map[string]domain.CashMovement{},
+		cashByStore:               map[string][]string{},
+		cashRecounts:              map[string]domain.CashRecount{},
+		recountsByStore:           map[string][]string{},
+		changeFundRequests:        map[string]domain.ChangeFundRequest{},
+		changeFundRequestsByStore: map[string][]string{},
+		shifts:                    map[string]domain.Shift{},
+		shiftsByStore:             map[string][]string{},
+		operationalDays:           map[string]domain.OperationalDay{},
+		daysByStore:               map[string][]string{},
+		idempotency:               map[string]app.IdempotencyRecord{},
+		outboxEvents:              map[string]domain.OutboxEvent{},
+		actors:                    map[string]domain.Actor{},
+		credentialPolicies:        map[string]domain.CredentialPolicy{},
+		authSettings:              map[string]domain.StoreAuthSettings{},
+		authAttempts:              []domain.AuthAttempt{},
+		sessions:                  map[string]domain.Session{},
+		returns:                   map[string]domain.Return{},
+		returnsByStore:            map[string][]string{},
+		journalEntries:            map[string]domain.OperationJournalEntry{},
+		journalByStore:            map[string][]string{},
+		catalogSyncState:          map[string]time.Time{},
 	}
 	for _, option := range options {
 		option(store)
@@ -411,6 +415,43 @@ func (s *Store) ListCashRecounts(ctx context.Context, storeID string) ([]domain.
 		}
 	}
 	return recounts, nil
+}
+
+func (s *Store) SaveChangeFundRequest(ctx context.Context, request domain.ChangeFundRequest) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.changeFundRequests[request.ID]; !exists {
+		s.changeFundRequestsByStore[request.StoreID] = append(s.changeFundRequestsByStore[request.StoreID], request.ID)
+	}
+	s.changeFundRequests[request.ID] = request
+	return nil
+}
+
+func (s *Store) FindChangeFundRequest(ctx context.Context, requestID string) (domain.ChangeFundRequest, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	request, ok := s.changeFundRequests[requestID]
+	if !ok {
+		return domain.ChangeFundRequest{}, app.ErrChangeFundRequestNotFound
+	}
+	return request, nil
+}
+
+func (s *Store) ListChangeFundRequestsByStore(ctx context.Context, storeID string) ([]domain.ChangeFundRequest, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	requestIDs := s.changeFundRequestsByStore[storeID]
+	requests := make([]domain.ChangeFundRequest, 0, len(requestIDs))
+	for _, requestID := range requestIDs {
+		request, ok := s.changeFundRequests[requestID]
+		if ok {
+			requests = append(requests, request)
+		}
+	}
+	return requests, nil
 }
 
 func (s *Store) ListCashRecountsByStoreAndBusinessDate(ctx context.Context, storeID string, businessDate string) ([]domain.CashRecount, error) {

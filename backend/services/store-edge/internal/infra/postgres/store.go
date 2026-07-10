@@ -642,6 +642,71 @@ func (s *Store) ListUnresolvedCashRecountDiscrepanciesByStoreAndBusinessDate(ctx
 	return scanCashRecounts(rows)
 }
 
+func (s *Store) SaveChangeFundRequest(ctx context.Context, request domain.ChangeFundRequest) error {
+	breakdown, err := marshalDenominationBreakdown(request.Breakdown)
+	if err != nil {
+		return err
+	}
+	_, err = s.conn(ctx).Exec(ctx, `
+		INSERT INTO change_fund_requests (
+			id, store_id, shift_id, actor_id, amount_minor, currency, reason, status,
+			fulfilled_by_id, safe_id, cash_movement_id, denomination_breakdown, created_at, fulfilled_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		ON CONFLICT (id) DO UPDATE SET
+			store_id = EXCLUDED.store_id,
+			shift_id = EXCLUDED.shift_id,
+			actor_id = EXCLUDED.actor_id,
+			amount_minor = EXCLUDED.amount_minor,
+			currency = EXCLUDED.currency,
+			reason = EXCLUDED.reason,
+			status = EXCLUDED.status,
+			fulfilled_by_id = EXCLUDED.fulfilled_by_id,
+			safe_id = EXCLUDED.safe_id,
+			cash_movement_id = EXCLUDED.cash_movement_id,
+			denomination_breakdown = EXCLUDED.denomination_breakdown,
+			fulfilled_at = EXCLUDED.fulfilled_at
+	`, request.ID, request.StoreID, request.ShiftID, request.ActorID, request.AmountMinor,
+		request.Currency, request.Reason, string(request.Status), request.FulfilledByID,
+		request.SafeID, request.CashMovementID, breakdown, request.CreatedAt, nullTime(request.FulfilledAt))
+	return err
+}
+
+func (s *Store) FindChangeFundRequest(ctx context.Context, requestID string) (domain.ChangeFundRequest, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT id, store_id, shift_id, actor_id, amount_minor, currency, reason, status,
+			fulfilled_by_id, safe_id, cash_movement_id, denomination_breakdown, created_at, fulfilled_at
+		FROM change_fund_requests WHERE id = $1
+	`, requestID)
+	request, err := scanChangeFundRequest(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ChangeFundRequest{}, app.ErrChangeFundRequestNotFound
+	}
+	return request, err
+}
+
+func (s *Store) ListChangeFundRequestsByStore(ctx context.Context, storeID string) ([]domain.ChangeFundRequest, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, store_id, shift_id, actor_id, amount_minor, currency, reason, status,
+			fulfilled_by_id, safe_id, cash_movement_id, denomination_breakdown, created_at, fulfilled_at
+		FROM change_fund_requests WHERE store_id = $1
+		ORDER BY created_at DESC, id DESC
+	`, storeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]domain.ChangeFundRequest, 0)
+	for rows.Next() {
+		request, err := scanChangeFundRequest(rows)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, request)
+	}
+	return result, rows.Err()
+}
+
 func (s *Store) SaveShift(ctx context.Context, shift domain.Shift) error {
 	_, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO shifts (
@@ -1000,6 +1065,12 @@ func decodeIdempotencyResult(operation string, data []byte) (any, error) {
 			}
 			return result, nil
 		}
+	case strings.HasPrefix(operation, "change_fund_requests."):
+		var result app.ChangeFundRequestResult
+		if err := json.Unmarshal(data, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
 	case strings.HasPrefix(operation, "operational_days."):
 		var result app.OperationalDayResult
 		if err := json.Unmarshal(data, &result); err != nil {
@@ -1371,6 +1442,32 @@ func scanCashRecounts(rows pgx.Rows) ([]domain.CashRecount, error) {
 		recounts = append(recounts, recount)
 	}
 	return recounts, rows.Err()
+}
+
+func scanChangeFundRequest(row rowScanner) (domain.ChangeFundRequest, error) {
+	var request domain.ChangeFundRequest
+	var status string
+	var fulfilledAt *time.Time
+	var breakdownJSON []byte
+
+	err := row.Scan(
+		&request.ID, &request.StoreID, &request.ShiftID, &request.ActorID, &request.AmountMinor,
+		&request.Currency, &request.Reason, &status, &request.FulfilledByID, &request.SafeID,
+		&request.CashMovementID, &breakdownJSON, &request.CreatedAt, &fulfilledAt,
+	)
+	if err != nil {
+		return domain.ChangeFundRequest{}, err
+	}
+	request.Status = domain.ChangeFundRequestStatus(status)
+	if fulfilledAt != nil {
+		request.FulfilledAt = *fulfilledAt
+	}
+	breakdown, err := unmarshalDenominationBreakdown(breakdownJSON)
+	if err != nil {
+		return domain.ChangeFundRequest{}, err
+	}
+	request.Breakdown = breakdown
+	return request, nil
 }
 
 func scanShift(row rowScanner) (domain.Shift, error) {

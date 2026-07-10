@@ -464,6 +464,436 @@
         ]
       }
     },
+    "/v1/change-fund-requests/{requestId}": {
+      "get": {
+        "operationId": "getChangeFundRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "request": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "actorId": {
+                          "type": "string"
+                        },
+                        "amountMinor": {
+                          "type": "integer"
+                        },
+                        "breakdown": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bills": {
+                              "additionalProperties": {
+                                "type": "integer"
+                              },
+                              "type": "object"
+                            },
+                            "coinsMinor": {
+                              "type": "integer"
+                            },
+                            "otherMinor": {
+                              "type": "integer"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "cashMovementId": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "fulfilledAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "fulfilledById": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "safeId": {
+                          "type": "string"
+                        },
+                        "shiftId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "shiftId",
+                        "actorId",
+                        "amountMinor",
+                        "currency",
+                        "status",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "request"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Change fund request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Change fund request was not found"
+          }
+        },
+        "summary": "Get change fund request",
+        "tags": [
+          "store-operations",
+          "cash-office"
+        ]
+      }
+    },
+    "/v1/change-fund-requests/{requestId}/fulfill": {
+      "post": {
+        "operationId": "fulfillChangeFundRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "safeId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "actorId",
+                  "safeId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Change fund request fulfillment command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "request": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "actorId": {
+                          "type": "string"
+                        },
+                        "amountMinor": {
+                          "type": "integer"
+                        },
+                        "breakdown": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bills": {
+                              "additionalProperties": {
+                                "type": "integer"
+                              },
+                              "type": "object"
+                            },
+                            "coinsMinor": {
+                              "type": "integer"
+                            },
+                            "otherMinor": {
+                              "type": "integer"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "cashMovementId": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "fulfilledAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "fulfilledById": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "safeId": {
+                          "type": "string"
+                        },
+                        "shiftId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "shiftId",
+                        "actorId",
+                        "amountMinor",
+                        "currency",
+                        "status",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "request"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Change fund request fulfilled"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid change fund request fulfillment command"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Permission denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Change fund request was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Change fund request fulfillment conflict"
+          }
+        },
+        "summary": "Fulfill a change fund request from a safe",
+        "tags": [
+          "store-operations",
+          "cash-office"
+        ]
+      }
+    },
     "/v1/operational-days": {
       "post": {
         "operationId": "openOperationalDay",
@@ -7604,6 +8034,283 @@
         ]
       }
     },
+    "/v1/shifts/{shiftId}/change-fund-requests": {
+      "post": {
+        "operationId": "createChangeFundRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shiftId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  },
+                  "amountMinor": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "breakdown": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "bills": {
+                        "additionalProperties": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "type": "object"
+                      },
+                      "coinsMinor": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "otherMinor": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amountMinor",
+                  "actorId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Change fund request command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "request": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "actorId": {
+                          "type": "string"
+                        },
+                        "amountMinor": {
+                          "type": "integer"
+                        },
+                        "breakdown": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bills": {
+                              "additionalProperties": {
+                                "type": "integer"
+                              },
+                              "type": "object"
+                            },
+                            "coinsMinor": {
+                              "type": "integer"
+                            },
+                            "otherMinor": {
+                              "type": "integer"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "cashMovementId": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "fulfilledAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "fulfilledById": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "safeId": {
+                          "type": "string"
+                        },
+                        "shiftId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "shiftId",
+                        "actorId",
+                        "amountMinor",
+                        "currency",
+                        "status",
+                        "createdAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "request"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Change fund requested"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid change fund request command"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Shift was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Shift or idempotency conflict"
+          }
+        },
+        "summary": "Request more change fund for a shift drawer",
+        "tags": [
+          "store-operations",
+          "cash-office"
+        ]
+      }
+    },
     "/v1/shifts/{shiftId}/close": {
       "post": {
         "operationId": "closeShift",
@@ -12296,6 +13003,181 @@
         "summary": "Pull catalog changes from central backend",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/v1/stores/{storeId}/change-fund-requests": {
+      "get": {
+        "operationId": "listStoreChangeFundRequests",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of items to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "actorId": {
+                            "type": "string"
+                          },
+                          "amountMinor": {
+                            "type": "integer"
+                          },
+                          "breakdown": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "bills": {
+                                "additionalProperties": {
+                                  "type": "integer"
+                                },
+                                "type": "object"
+                              },
+                              "coinsMinor": {
+                                "type": "integer"
+                              },
+                              "otherMinor": {
+                                "type": "integer"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "cashMovementId": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "fulfilledAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "fulfilledById": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "safeId": {
+                            "type": "string"
+                          },
+                          "shiftId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "storeId": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storeId",
+                          "shiftId",
+                          "actorId",
+                          "amountMinor",
+                          "currency",
+                          "status",
+                          "createdAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "totalCount": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "totalCount"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Change fund requests"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid change fund request query"
+          }
+        },
+        "summary": "List change fund requests for store",
+        "tags": [
+          "store-operations",
+          "cash-office"
         ]
       }
     },
