@@ -15,12 +15,13 @@ const (
 	PermissionRecountApprove      Permission = "recount.approve"
 	PermissionCredentialsManage   Permission = "credentials.manage"
 	PermissionStoreSettingsManage Permission = "store_settings.manage"
+	PermissionShiftCloseConfirm   Permission = "shift.close.confirm"
 )
 
 var rolePermissions = map[domain.Role][]Permission{
 	domain.RoleCashier:       {},
-	domain.RoleSeniorCashier: {PermissionReturnsCreate, PermissionReturnsApprove, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage, PermissionStoreSettingsManage},
-	domain.RoleAdmin:         {PermissionReturnsCreate, PermissionReturnsApprove, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage, PermissionStoreSettingsManage},
+	domain.RoleSeniorCashier: {PermissionReturnsCreate, PermissionReturnsApprove, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage, PermissionStoreSettingsManage, PermissionShiftCloseConfirm},
+	domain.RoleAdmin:         {PermissionReturnsCreate, PermissionReturnsApprove, PermissionDiscountApply, PermissionRecountApprove, PermissionCredentialsManage, PermissionStoreSettingsManage, PermissionShiftCloseConfirm},
 }
 
 type ActorRoleLookup interface {

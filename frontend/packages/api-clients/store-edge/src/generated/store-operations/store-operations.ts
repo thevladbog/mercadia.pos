@@ -39,6 +39,12 @@ import type {
   CloseShift404,
   CloseShift409,
   CloseShiftBody,
+  ConfirmCloseShift202,
+  ConfirmCloseShift400,
+  ConfirmCloseShift403,
+  ConfirmCloseShift404,
+  ConfirmCloseShift409,
+  ConfirmCloseShiftBody,
   GetCurrentOperationalDay200,
   GetCurrentOperationalDay404,
   GetOperationalDay200,
@@ -1287,6 +1293,111 @@ export const useCloseShift = <TError = CloseShift400 | CloseShift404 | CloseShif
         TContext
       > => {
       return useMutation(getCloseShiftMutationOptions(options), queryClient);
+    }
+    export type confirmCloseShiftResponse202 = {
+  data: ConfirmCloseShift202
+  status: 202
+}
+
+export type confirmCloseShiftResponse400 = {
+  data: ConfirmCloseShift400
+  status: 400
+}
+
+export type confirmCloseShiftResponse403 = {
+  data: ConfirmCloseShift403
+  status: 403
+}
+
+export type confirmCloseShiftResponse404 = {
+  data: ConfirmCloseShift404
+  status: 404
+}
+
+export type confirmCloseShiftResponse409 = {
+  data: ConfirmCloseShift409
+  status: 409
+}
+
+export type confirmCloseShiftResponseSuccess = (confirmCloseShiftResponse202) & {
+  headers: Headers;
+};
+export type confirmCloseShiftResponseError = (confirmCloseShiftResponse400 | confirmCloseShiftResponse403 | confirmCloseShiftResponse404 | confirmCloseShiftResponse409) & {
+  headers: Headers;
+};
+
+export type confirmCloseShiftResponse = (confirmCloseShiftResponseSuccess | confirmCloseShiftResponseError)
+
+export const getConfirmCloseShiftUrl = (shiftId: string,) => {
+
+
+
+
+  return `/v1/shifts/${shiftId}/confirm-close`
+}
+
+/**
+ * @summary Confirm a shift close that is awaiting senior-cashier confirmation
+ */
+export const confirmCloseShift = async (shiftId: string,
+    confirmCloseShiftBody: ConfirmCloseShiftBody, options?: RequestInit): Promise<confirmCloseShiftResponse> => {
+
+  return customFetch<confirmCloseShiftResponse>(getConfirmCloseShiftUrl(shiftId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(confirmCloseShiftBody)
+  }
+);}
+
+
+
+
+
+export const getConfirmCloseShiftMutationOptions = <TError = ConfirmCloseShift400 | ConfirmCloseShift403 | ConfirmCloseShift404 | ConfirmCloseShift409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmCloseShift>>, TError,{shiftId: string;data: ConfirmCloseShiftBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmCloseShift>>, TError,{shiftId: string;data: ConfirmCloseShiftBody}, TContext> => {
+
+const mutationKey = ['confirmCloseShift'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmCloseShift>>, {shiftId: string;data: ConfirmCloseShiftBody}> = (props) => {
+          const {shiftId,data} = props ?? {};
+
+          return  confirmCloseShift(shiftId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmCloseShiftMutationResult = NonNullable<Awaited<ReturnType<typeof confirmCloseShift>>>
+    export type ConfirmCloseShiftMutationBody = ConfirmCloseShiftBody
+    export type ConfirmCloseShiftMutationError = ConfirmCloseShift400 | ConfirmCloseShift403 | ConfirmCloseShift404 | ConfirmCloseShift409
+
+    /**
+ * @summary Confirm a shift close that is awaiting senior-cashier confirmation
+ */
+export const useConfirmCloseShift = <TError = ConfirmCloseShift400 | ConfirmCloseShift403 | ConfirmCloseShift404 | ConfirmCloseShift409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmCloseShift>>, TError,{shiftId: string;data: ConfirmCloseShiftBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmCloseShift>>,
+        TError,
+        {shiftId: string;data: ConfirmCloseShiftBody},
+        TContext
+      > => {
+      return useMutation(getConfirmCloseShiftMutationOptions(options), queryClient);
     }
     export type getStoreEdgeStatusResponse200 = {
   data: GetStoreEdgeStatus200

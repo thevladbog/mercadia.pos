@@ -646,8 +646,9 @@ func (s *Store) SaveShift(ctx context.Context, shift domain.Shift) error {
 	_, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO shifts (
 			id, store_id, operational_day_id, business_date, terminal_id, cashier_id, drawer_id,
-			status, opening_cash_minor, closing_cash_minor, opened_at, closed_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			status, opening_cash_minor, closing_cash_minor, opened_at, closed_at, updated_at,
+			closing_actor_id, closing_safe_id, closing_approved_by_id, awaiting_confirmation_since
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 		ON CONFLICT (id) DO UPDATE SET
 			store_id = EXCLUDED.store_id,
 			operational_day_id = EXCLUDED.operational_day_id,
@@ -659,7 +660,11 @@ func (s *Store) SaveShift(ctx context.Context, shift domain.Shift) error {
 			opening_cash_minor = EXCLUDED.opening_cash_minor,
 			closing_cash_minor = EXCLUDED.closing_cash_minor,
 			closed_at = EXCLUDED.closed_at,
-			updated_at = EXCLUDED.updated_at
+			updated_at = EXCLUDED.updated_at,
+			closing_actor_id = EXCLUDED.closing_actor_id,
+			closing_safe_id = EXCLUDED.closing_safe_id,
+			closing_approved_by_id = EXCLUDED.closing_approved_by_id,
+			awaiting_confirmation_since = EXCLUDED.awaiting_confirmation_since
 	`,
 		shift.ID,
 		shift.StoreID,
@@ -674,6 +679,10 @@ func (s *Store) SaveShift(ctx context.Context, shift domain.Shift) error {
 		shift.OpenedAt,
 		nullTime(shift.ClosedAt),
 		shift.UpdatedAt,
+		shift.ClosingActorID,
+		shift.ClosingSafeID,
+		shift.ClosingApprovedByID,
+		nullTime(shift.AwaitingConfirmationSince),
 	)
 	return err
 }
@@ -681,7 +690,8 @@ func (s *Store) SaveShift(ctx context.Context, shift domain.Shift) error {
 func (s *Store) FindShift(ctx context.Context, shiftID string) (domain.Shift, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT id, store_id, operational_day_id, business_date, terminal_id, cashier_id, drawer_id,
-			status, opening_cash_minor, closing_cash_minor, opened_at, closed_at, updated_at
+			status, opening_cash_minor, closing_cash_minor, opened_at, closed_at, updated_at,
+			closing_actor_id, closing_safe_id, closing_approved_by_id, awaiting_confirmation_since
 		FROM shifts
 		WHERE id = $1
 	`, shiftID)
@@ -696,11 +706,12 @@ func (s *Store) FindShift(ctx context.Context, shiftID string) (domain.Shift, er
 func (s *Store) FindOpenShiftByTerminal(ctx context.Context, terminalID string) (domain.Shift, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT id, store_id, operational_day_id, business_date, terminal_id, cashier_id, drawer_id,
-			status, opening_cash_minor, closing_cash_minor, opened_at, closed_at, updated_at
+			status, opening_cash_minor, closing_cash_minor, opened_at, closed_at, updated_at,
+			closing_actor_id, closing_safe_id, closing_approved_by_id, awaiting_confirmation_since
 		FROM shifts
-		WHERE terminal_id = $1 AND status = $2
+		WHERE terminal_id = $1 AND status = ANY($2)
 		LIMIT 1
-	`, terminalID, string(domain.ShiftStatusOpen))
+	`, terminalID, []string{string(domain.ShiftStatusOpen), string(domain.ShiftStatusAwaitingCloseConfirmation)})
 
 	shift, err := scanShift(row)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -712,11 +723,12 @@ func (s *Store) FindOpenShiftByTerminal(ctx context.Context, terminalID string) 
 func (s *Store) FindOpenShiftByCashier(ctx context.Context, cashierID string) (domain.Shift, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT id, store_id, operational_day_id, business_date, terminal_id, cashier_id, drawer_id,
-			status, opening_cash_minor, closing_cash_minor, opened_at, closed_at, updated_at
+			status, opening_cash_minor, closing_cash_minor, opened_at, closed_at, updated_at,
+			closing_actor_id, closing_safe_id, closing_approved_by_id, awaiting_confirmation_since
 		FROM shifts
-		WHERE cashier_id = $1 AND status = $2
+		WHERE cashier_id = $1 AND status = ANY($2)
 		LIMIT 1
-	`, cashierID, string(domain.ShiftStatusOpen))
+	`, cashierID, []string{string(domain.ShiftStatusOpen), string(domain.ShiftStatusAwaitingCloseConfirmation)})
 
 	shift, err := scanShift(row)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -728,11 +740,12 @@ func (s *Store) FindOpenShiftByCashier(ctx context.Context, cashierID string) (d
 func (s *Store) ListOpenShiftsByStore(ctx context.Context, storeID string) ([]domain.Shift, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, store_id, operational_day_id, business_date, terminal_id, cashier_id, drawer_id,
-			status, opening_cash_minor, closing_cash_minor, opened_at, closed_at, updated_at
+			status, opening_cash_minor, closing_cash_minor, opened_at, closed_at, updated_at,
+			closing_actor_id, closing_safe_id, closing_approved_by_id, awaiting_confirmation_since
 		FROM shifts
-		WHERE store_id = $1 AND status = $2
+		WHERE store_id = $1 AND status = ANY($2)
 		ORDER BY opened_at
-	`, storeID, string(domain.ShiftStatusOpen))
+	`, storeID, []string{string(domain.ShiftStatusOpen), string(domain.ShiftStatusAwaitingCloseConfirmation)})
 	if err != nil {
 		return nil, err
 	}
@@ -744,7 +757,8 @@ func (s *Store) ListOpenShiftsByStore(ctx context.Context, storeID string) ([]do
 func (s *Store) ListShiftsByOperationalDay(ctx context.Context, operationalDayID string) ([]domain.Shift, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, store_id, operational_day_id, business_date, terminal_id, cashier_id, drawer_id,
-			status, opening_cash_minor, closing_cash_minor, opened_at, closed_at, updated_at
+			status, opening_cash_minor, closing_cash_minor, opened_at, closed_at, updated_at,
+			closing_actor_id, closing_safe_id, closing_approved_by_id, awaiting_confirmation_since
 		FROM shifts
 		WHERE operational_day_id = $1
 		ORDER BY opened_at
@@ -1363,6 +1377,7 @@ func scanShift(row rowScanner) (domain.Shift, error) {
 	var shift domain.Shift
 	var status string
 	var closedAt *time.Time
+	var awaitingConfirmationSince *time.Time
 
 	err := row.Scan(
 		&shift.ID,
@@ -1378,6 +1393,10 @@ func scanShift(row rowScanner) (domain.Shift, error) {
 		&shift.OpenedAt,
 		&closedAt,
 		&shift.UpdatedAt,
+		&shift.ClosingActorID,
+		&shift.ClosingSafeID,
+		&shift.ClosingApprovedByID,
+		&awaitingConfirmationSince,
 	)
 	if err != nil {
 		return domain.Shift{}, err
@@ -1386,6 +1405,9 @@ func scanShift(row rowScanner) (domain.Shift, error) {
 	shift.Status = domain.ShiftStatus(status)
 	if closedAt != nil {
 		shift.ClosedAt = *closedAt
+	}
+	if awaitingConfirmationSince != nil {
+		shift.AwaitingConfirmationSince = *awaitingConfirmationSince
 	}
 	return shift, nil
 }

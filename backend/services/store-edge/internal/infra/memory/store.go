@@ -487,7 +487,7 @@ func (s *Store) FindOpenShiftByTerminal(ctx context.Context, terminalID string) 
 	defer s.mu.RUnlock()
 
 	for _, shift := range s.shifts {
-		if shift.TerminalID == terminalID && shift.Status == domain.ShiftStatusOpen {
+		if shift.TerminalID == terminalID && (shift.Status == domain.ShiftStatusOpen || shift.Status == domain.ShiftStatusAwaitingCloseConfirmation) {
 			return shift, nil
 		}
 	}
@@ -499,7 +499,7 @@ func (s *Store) FindOpenShiftByCashier(ctx context.Context, cashierID string) (d
 	defer s.mu.RUnlock()
 
 	for _, shift := range s.shifts {
-		if shift.CashierID == cashierID && shift.Status == domain.ShiftStatusOpen {
+		if shift.CashierID == cashierID && (shift.Status == domain.ShiftStatusOpen || shift.Status == domain.ShiftStatusAwaitingCloseConfirmation) {
 			return shift, nil
 		}
 	}
@@ -514,7 +514,7 @@ func (s *Store) ListOpenShiftsByStore(ctx context.Context, storeID string) ([]do
 	shifts := make([]domain.Shift, 0, len(shiftIDs))
 	for _, shiftID := range shiftIDs {
 		shift, ok := s.shifts[shiftID]
-		if ok && shift.Status == domain.ShiftStatusOpen {
+		if ok && (shift.Status == domain.ShiftStatusOpen || shift.Status == domain.ShiftStatusAwaitingCloseConfirmation) {
 			shifts = append(shifts, shift)
 		}
 	}

@@ -1496,6 +1496,10 @@
                       "items": {
                         "additionalProperties": false,
                         "properties": {
+                          "awaitingConfirmationSince": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
                           "businessDate": {
                             "type": "string"
                           },
@@ -1506,8 +1510,17 @@
                             "format": "date-time",
                             "type": "string"
                           },
+                          "closingActorId": {
+                            "type": "string"
+                          },
+                          "closingApprovedById": {
+                            "type": "string"
+                          },
                           "closingCashMinor": {
                             "type": "integer"
+                          },
+                          "closingSafeId": {
+                            "type": "string"
                           },
                           "drawerId": {
                             "type": "string"
@@ -6766,6 +6779,10 @@
                     "shift": {
                       "additionalProperties": false,
                       "properties": {
+                        "awaitingConfirmationSince": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "businessDate": {
                           "type": "string"
                         },
@@ -6776,8 +6793,17 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "closingActorId": {
+                          "type": "string"
+                        },
+                        "closingApprovedById": {
+                          "type": "string"
+                        },
                         "closingCashMinor": {
                           "type": "integer"
+                        },
+                        "closingSafeId": {
+                          "type": "string"
                         },
                         "drawerId": {
                           "type": "string"
@@ -6928,6 +6954,10 @@
                 "schema": {
                   "additionalProperties": false,
                   "properties": {
+                    "awaitingConfirmationSince": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
                     "businessDate": {
                       "type": "string"
                     },
@@ -6938,8 +6968,17 @@
                       "format": "date-time",
                       "type": "string"
                     },
+                    "closingActorId": {
+                      "type": "string"
+                    },
+                    "closingApprovedById": {
+                      "type": "string"
+                    },
                     "closingCashMinor": {
                       "type": "integer"
+                    },
+                    "closingSafeId": {
+                      "type": "string"
                     },
                     "drawerId": {
                       "type": "string"
@@ -7649,6 +7688,10 @@
                     "shift": {
                       "additionalProperties": false,
                       "properties": {
+                        "awaitingConfirmationSince": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "businessDate": {
                           "type": "string"
                         },
@@ -7659,8 +7702,17 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "closingActorId": {
+                          "type": "string"
+                        },
+                        "closingApprovedById": {
+                          "type": "string"
+                        },
                         "closingCashMinor": {
                           "type": "integer"
+                        },
+                        "closingSafeId": {
+                          "type": "string"
                         },
                         "drawerId": {
                           "type": "string"
@@ -7820,6 +7872,282 @@
           }
         },
         "summary": "Close cashier shift",
+        "tags": [
+          "store-operations"
+        ]
+      }
+    },
+    "/v1/shifts/{shiftId}/confirm-close": {
+      "post": {
+        "operationId": "confirmCloseShift",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shiftId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique key used to make command execution idempotent.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "actorId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "actorId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Shift close confirmation command",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "shift": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "awaitingConfirmationSince": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "businessDate": {
+                          "type": "string"
+                        },
+                        "cashierId": {
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "closingActorId": {
+                          "type": "string"
+                        },
+                        "closingApprovedById": {
+                          "type": "string"
+                        },
+                        "closingCashMinor": {
+                          "type": "integer"
+                        },
+                        "closingSafeId": {
+                          "type": "string"
+                        },
+                        "drawerId": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "openedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "openingCashMinor": {
+                          "type": "integer"
+                        },
+                        "operationalDayId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "storeId": {
+                          "type": "string"
+                        },
+                        "terminalId": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storeId",
+                        "terminalId",
+                        "cashierId",
+                        "drawerId",
+                        "status",
+                        "openingCashMinor",
+                        "closingCashMinor",
+                        "openedAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "shift"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Shift close confirmed"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid confirm command"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Permission denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Shift was not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Shift confirmation conflict"
+          }
+        },
+        "summary": "Confirm a shift close that is awaiting senior-cashier confirmation",
         "tags": [
           "store-operations"
         ]
@@ -13554,6 +13882,10 @@
                       "items": {
                         "additionalProperties": false,
                         "properties": {
+                          "awaitingConfirmationSince": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
                           "businessDate": {
                             "type": "string"
                           },
@@ -13564,8 +13896,17 @@
                             "format": "date-time",
                             "type": "string"
                           },
+                          "closingActorId": {
+                            "type": "string"
+                          },
+                          "closingApprovedById": {
+                            "type": "string"
+                          },
                           "closingCashMinor": {
                             "type": "integer"
+                          },
+                          "closingSafeId": {
+                            "type": "string"
                           },
                           "drawerId": {
                             "type": "string"

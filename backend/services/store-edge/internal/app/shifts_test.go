@@ -45,6 +45,47 @@ func TestOpenShiftRejectsExistingTerminalShift(t *testing.T) {
 	}
 }
 
+func TestOpenShiftRejectsTerminalWithShiftAwaitingCloseConfirmation(t *testing.T) {
+	store := memory.NewStore()
+	var counter int
+	service := app.NewShiftService(store, store,
+		app.WithShiftCashLedger(store),
+		app.WithShiftClock(func() time.Time {
+			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+		}),
+		app.WithShiftIDGenerator(func(prefix string) string {
+			counter++
+			return fmt.Sprintf("%s-test-%d", prefix, counter)
+		}),
+	)
+
+	opened, err := service.OpenShift(context.Background(), testOpenShiftCommand())
+	if err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+	declared, err := service.CloseShift(context.Background(), app.CloseShiftCommand{
+		IdempotencyKey:   "shift-close-1",
+		ShiftID:          opened.Shift.ID,
+		ClosingCashMinor: 125000,
+		SafeID:           "safe-1",
+		ActorID:          "cashier-1",
+	})
+	if err != nil {
+		t.Fatalf("declare close shift: %v", err)
+	}
+	if declared.Shift.Status != domain.ShiftStatusAwaitingCloseConfirmation {
+		t.Fatalf("declared shift status = %s", declared.Shift.Status)
+	}
+
+	command := testOpenShiftCommand()
+	command.IdempotencyKey = "shift-open-2"
+	command.CashierID = "cashier-2"
+	_, err = service.OpenShift(context.Background(), command)
+	if !errors.Is(err, app.ErrShiftAlreadyOpenForTerminal) {
+		t.Fatalf("expected ErrShiftAlreadyOpenForTerminal, got %v", err)
+	}
+}
+
 func TestOpenShiftRejectsExistingCashierShift(t *testing.T) {
 	service := newTestShiftService()
 	if _, err := service.OpenShift(context.Background(), testOpenShiftCommand()); err != nil {
@@ -434,6 +475,183 @@ func TestCloseShiftWithCashRejectsSelfApproval(t *testing.T) {
 	}
 }
 
+func TestCloseShiftDeclaresAwaitingConfirmationWhenApproverOmitted(t *testing.T) {
+	service, store := newTestShiftServiceWithRoles()
+	cash := app.NewCashService(store, store)
+
+	opened, err := service.OpenShift(context.Background(), testOpenShiftCommand())
+	if err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+
+	movementsBefore, err := cash.ListCashMovements(context.Background(), "store-1", app.PageParams{Limit: 50})
+	if err != nil {
+		t.Fatalf("list movements before declare: %v", err)
+	}
+
+	declared, err := service.CloseShift(context.Background(), app.CloseShiftCommand{
+		IdempotencyKey:   "shift-close-1",
+		ShiftID:          opened.Shift.ID,
+		ClosingCashMinor: 125000,
+		SafeID:           "safe-1",
+		ActorID:          "cashier-1",
+	})
+	if err != nil {
+		t.Fatalf("declare close shift: %v", err)
+	}
+	if declared.Shift.Status != domain.ShiftStatusAwaitingCloseConfirmation {
+		t.Fatalf("declared shift status = %s", declared.Shift.Status)
+	}
+	if declared.Shift.ClosingApprovedByID != "" {
+		t.Fatalf("expected empty ClosingApprovedByID, got %q", declared.Shift.ClosingApprovedByID)
+	}
+	if declared.Shift.ClosingActorID != "cashier-1" || declared.Shift.ClosingSafeID != "safe-1" {
+		t.Fatalf("declared shift = %+v", declared.Shift)
+	}
+	if declared.Shift.AwaitingConfirmationSince.IsZero() {
+		t.Fatal("expected non-zero AwaitingConfirmationSince")
+	}
+
+	movementsAfter, err := cash.ListCashMovements(context.Background(), "store-1", app.PageParams{Limit: 50})
+	if err != nil {
+		t.Fatalf("list movements after declare: %v", err)
+	}
+	if movementsAfter.TotalCount != movementsBefore.TotalCount {
+		t.Fatalf("expected no new cash movement on declare, before=%d after=%d", movementsBefore.TotalCount, movementsAfter.TotalCount)
+	}
+}
+
+func TestConfirmCloseShiftMovesToClosedAndPostsCollectionMovement(t *testing.T) {
+	service, store := newTestShiftServiceWithRoles()
+	cash := app.NewCashService(store, store)
+
+	opened, err := service.OpenShift(context.Background(), testOpenShiftCommand())
+	if err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+	if _, err := service.CloseShift(context.Background(), app.CloseShiftCommand{
+		IdempotencyKey:   "shift-close-1",
+		ShiftID:          opened.Shift.ID,
+		ClosingCashMinor: 125000,
+		SafeID:           "safe-1",
+		ActorID:          "cashier-1",
+	}); err != nil {
+		t.Fatalf("declare close shift: %v", err)
+	}
+
+	confirmed, err := service.ConfirmCloseShift(context.Background(), app.ConfirmCloseShiftCommand{
+		IdempotencyKey: "shift-confirm-1",
+		ShiftID:        opened.Shift.ID,
+		ActorID:        "senior-1",
+	})
+	if err != nil {
+		t.Fatalf("confirm close shift: %v", err)
+	}
+	if confirmed.Shift.Status != domain.ShiftStatusClosed {
+		t.Fatalf("confirmed shift status = %s", confirmed.Shift.Status)
+	}
+	if confirmed.Shift.ClosingApprovedByID != "senior-1" {
+		t.Fatalf("confirmed shift approver = %q", confirmed.Shift.ClosingApprovedByID)
+	}
+	if confirmed.Shift.ClosedAt.IsZero() {
+		t.Fatal("expected non-zero ClosedAt")
+	}
+
+	balances, err := cash.ListCashBalances(context.Background(), "store-1")
+	if err != nil {
+		t.Fatalf("list balances: %v", err)
+	}
+	byContainer := map[string]int64{}
+	for _, balance := range balances {
+		byContainer[balance.ContainerID] = balance.BalanceMinor
+	}
+	if byContainer["drawer-1"] != -25000 {
+		t.Fatalf("drawer balance = %d", byContainer["drawer-1"])
+	}
+	if byContainer["safe-1"] != 25000 {
+		t.Fatalf("safe balance = %d", byContainer["safe-1"])
+	}
+}
+
+func TestConfirmCloseShiftRejectsOriginalDeclarer(t *testing.T) {
+	service, _ := newTestShiftServiceWithRoles()
+
+	opened, err := service.OpenShift(context.Background(), testOpenShiftCommand())
+	if err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+	if _, err := service.CloseShift(context.Background(), app.CloseShiftCommand{
+		IdempotencyKey:   "shift-close-1",
+		ShiftID:          opened.Shift.ID,
+		ClosingCashMinor: 125000,
+		SafeID:           "safe-1",
+		ActorID:          "senior-1",
+	}); err != nil {
+		t.Fatalf("declare close shift: %v", err)
+	}
+
+	_, err = service.ConfirmCloseShift(context.Background(), app.ConfirmCloseShiftCommand{
+		IdempotencyKey: "shift-confirm-1",
+		ShiftID:        opened.Shift.ID,
+		ActorID:        "senior-1",
+	})
+	if !errors.Is(err, app.ErrSeparationOfDutiesViolation) {
+		t.Fatalf("expected ErrSeparationOfDutiesViolation, got %v", err)
+	}
+}
+
+func TestConfirmCloseShiftRejectsWhenNotAwaitingConfirmation(t *testing.T) {
+	service, _ := newTestShiftServiceWithRoles()
+
+	opened, err := service.OpenShift(context.Background(), testOpenShiftCommand())
+	if err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+	if _, err := service.CloseShift(context.Background(), app.CloseShiftCommand{
+		IdempotencyKey:   "shift-close-1",
+		ShiftID:          opened.Shift.ID,
+		ClosingCashMinor: 0,
+	}); err != nil {
+		t.Fatalf("close shift: %v", err)
+	}
+
+	_, err = service.ConfirmCloseShift(context.Background(), app.ConfirmCloseShiftCommand{
+		IdempotencyKey: "shift-confirm-1",
+		ShiftID:        opened.Shift.ID,
+		ActorID:        "senior-1",
+	})
+	if !errors.Is(err, app.ErrShiftNotAwaitingCloseConfirmation) {
+		t.Fatalf("expected ErrShiftNotAwaitingCloseConfirmation, got %v", err)
+	}
+}
+
+func TestConfirmCloseShiftRequiresPermission(t *testing.T) {
+	service, _ := newTestShiftServiceWithRoles()
+
+	opened, err := service.OpenShift(context.Background(), testOpenShiftCommand())
+	if err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+	if _, err := service.CloseShift(context.Background(), app.CloseShiftCommand{
+		IdempotencyKey:   "shift-close-1",
+		ShiftID:          opened.Shift.ID,
+		ClosingCashMinor: 125000,
+		SafeID:           "safe-1",
+		ActorID:          "senior-1",
+	}); err != nil {
+		t.Fatalf("declare close shift: %v", err)
+	}
+
+	_, err = service.ConfirmCloseShift(context.Background(), app.ConfirmCloseShiftCommand{
+		IdempotencyKey: "shift-confirm-1",
+		ShiftID:        opened.Shift.ID,
+		ActorID:        "cashier-1",
+	})
+	if !errors.Is(err, app.ErrPermissionDenied) {
+		t.Fatalf("expected ErrPermissionDenied, got %v", err)
+	}
+}
+
 func TestShiftCashInIncreasesDrawerBalance(t *testing.T) {
 	store := memory.NewStore()
 	var counter int
@@ -559,6 +777,27 @@ func newTestShiftService() *app.ShiftService {
 			return fmt.Sprintf("%s-test-%d", prefix, counter)
 		}),
 	)
+}
+
+// newTestShiftServiceWithRoles wires demo actors (cashier-1/senior-1/admin-1)
+// and an AuthService-backed ActorRoleLookup, for tests exercising
+// ConfirmCloseShift's permission check.
+func newTestShiftServiceWithRoles() (*app.ShiftService, *memory.Store) {
+	store := memory.NewStore(memory.WithDemoActors())
+	auth := app.NewAuthService(store, store, store, store)
+	var counter int
+	service := app.NewShiftService(store, store,
+		app.WithShiftCashLedger(store),
+		app.WithShiftRoles(auth),
+		app.WithShiftClock(func() time.Time {
+			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+		}),
+		app.WithShiftIDGenerator(func(prefix string) string {
+			counter++
+			return fmt.Sprintf("%s-test-%d", prefix, counter)
+		}),
+	)
+	return service, store
 }
 
 func testOpenShiftCommand() app.OpenShiftCommand {
