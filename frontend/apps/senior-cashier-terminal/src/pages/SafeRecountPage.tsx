@@ -27,7 +27,10 @@ import { TopBar } from '@/components/TopBar.js';
 import { DenominationGrid } from './cash-operations/DenominationGrid.js';
 import { OperationChecklist } from './cash-operations/OperationChecklist.js';
 import { RecountResolutionModal } from './cash-operations/RecountResolutionModal.js';
-import { findSafeBalance, type CashBalanceForLookup } from './cash-operations/cash-operations-data.js';
+import {
+  findSafeBalance,
+  type CashBalanceForLookup,
+} from './cash-operations/cash-operations-data.js';
 import './cash-operations/CashOperations.css';
 
 // Stable empty-array fallback (module scope) — see `FinalCollectionPage.tsx`'s

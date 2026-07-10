@@ -58,7 +58,11 @@ export interface SecondSignerAuthModalProps {
  * `ATTEMPTS_KEY`/`sessionStorage`-backed counter: a different terminal
  * login flow's lockout must not be affected by second-signer auth attempts.
  */
-export function SecondSignerAuthModal({ open, onClose, onAuthenticated }: SecondSignerAuthModalProps) {
+export function SecondSignerAuthModal({
+  open,
+  onClose,
+  onAuthenticated,
+}: SecondSignerAuthModalProps) {
   const { t } = useTranslation();
   const { session } = useAuth();
 

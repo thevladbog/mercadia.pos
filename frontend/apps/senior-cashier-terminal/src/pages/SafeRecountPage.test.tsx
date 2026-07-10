@@ -242,8 +242,8 @@ describe('SafeRecountPage', () => {
     // The regression assertion for the `recountId` bug: the resolve call's
     // path parameter must be the REAL id from `createCashRecount`'s
     // response, never the old hardcoded `'pending'` placeholder.
-    const [resolveStoreId, resolveRecountId, resolveBody] = vi.mocked(resolveCashRecount).mock
-      .calls[0];
+    const [resolveStoreId, resolveRecountId, resolveBody] =
+      vi.mocked(resolveCashRecount).mock.calls[0];
     expect(resolveStoreId).toBe('store-1');
     expect(resolveRecountId).toBe(REAL_RECOUNT_ID);
     expect(resolveRecountId).not.toBe('pending');

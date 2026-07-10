@@ -29,7 +29,11 @@ export function renderWithProviders(ui: ReactElement, options?: { route?: string
   return render(
     <I18nextProvider i18n={i18n}>
       <ThemeProvider
-        defaultTheme={{ surface: 'senior-cashier', colorMode: 'dark', accentPreset: 'senior-cashier' }}
+        defaultTheme={{
+          surface: 'senior-cashier',
+          colorMode: 'dark',
+          accentPreset: 'senior-cashier',
+        }}
       >
         <QueryClientProvider client={queryClient}>
           <MemoryRouter initialEntries={[options?.route ?? '/']}>
