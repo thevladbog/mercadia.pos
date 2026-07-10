@@ -670,10 +670,14 @@ func buildServer(opts ServerOptions) (*http.ServeMux, *httpapi.Spec, app.OutboxR
 			pgStore.Close()
 			return nil, nil, nil, nil, "", err
 		}
+		if err := pgStore.SeedDemoCashBalances(ctx); err != nil {
+			pgStore.Close()
+			return nil, nil, nil, nil, "", err
+		}
 		readinessChecks = append(readinessChecks, pgStore.Ping)
 		store = pgStore
 	} else {
-		store = memory.NewStore(memory.WithProducts(demoProducts()...), memory.WithDemoActors())
+		store = memory.NewStore(memory.WithProducts(demoProducts()...), memory.WithDemoActors(), memory.WithDemoCashBalances())
 	}
 
 	var catalogSync *app.CatalogSyncService

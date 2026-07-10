@@ -26,6 +26,43 @@ func WithDemoActors() StoreOption {
 	}
 }
 
+// DemoOpeningSafeBalanceMinor is the amount WithDemoCashBalances seeds into
+// safe-1, exported so tests asserting on cash balances/movements against a
+// server built from this demo baseline don't hardcode a duplicate literal.
+const DemoOpeningSafeBalanceMinor = 5_000_000
+
+// WithDemoCashBalances seeds a posted cash-in movement from external into
+// the demo store's safe (safe-1), so a fresh in-memory instance (no
+// Postgres) boots with a real, non-zero safe balance instead of an empty
+// cash-balances list. Cash balances are derived entirely from posted cash
+// movements (see CashService.ListCashBalances) — there is no separate
+// balances store to seed directly.
+func WithDemoCashBalances() StoreOption {
+	return func(store *Store) {
+		movement := demoOpeningSafeBalanceMovement()
+		store.cashMovements[movement.ID] = movement
+		store.cashByStore[movement.StoreID] = append(store.cashByStore[movement.StoreID], movement.ID)
+	}
+}
+
+func demoOpeningSafeBalanceMovement() domain.CashMovement {
+	return domain.CashMovement{
+		ID:                "demo-cash-opening-safe-1",
+		StoreID:           "store-1",
+		Type:              domain.CashMovementTypeCashIn,
+		FromContainerID:   "external",
+		FromContainerType: domain.CashContainerTypeExternal,
+		ToContainerID:     "safe-1",
+		ToContainerType:   domain.CashContainerTypeSafe,
+		AmountMinor:       DemoOpeningSafeBalanceMinor,
+		Currency:          "RUB",
+		Reason:            "Demo opening safe balance",
+		ActorID:           "senior-1",
+		Status:            domain.CashMovementStatusPosted,
+		CreatedAt:         time.Now().UTC(),
+	}
+}
+
 func demoActors() []domain.Actor {
 	notRequired := domain.CredentialPolicy{Required: false}
 	return []domain.Actor{

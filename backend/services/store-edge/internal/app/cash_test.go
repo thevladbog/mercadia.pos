@@ -95,6 +95,38 @@ func TestListCashBalancesDerivesBalancesFromPostedMovements(t *testing.T) {
 	}
 }
 
+// TestListCashBalancesIncludesDemoOpeningSafeBalance guards against a fresh
+// in-memory store-edge instance (no Postgres) booting with zero cash
+// balances. ListCashBalances derives every balance from posted cash
+// movements (see TestListCashBalancesDerivesBalancesFromPostedMovements
+// above) — a demo store with no seeded movement has no balances at all,
+// which permanently disables every senior-cashier-terminal cash-operation
+// page's submit button, since each page's findSafeBalance(balances) has
+// nothing to find on a cold boot.
+func TestListCashBalancesIncludesDemoOpeningSafeBalance(t *testing.T) {
+	store := memory.NewStore(memory.WithDemoCashBalances())
+	service := app.NewCashService(store, store)
+
+	balances, err := service.ListCashBalances(context.Background(), "store-1")
+	if err != nil {
+		t.Fatalf("list cash balances: %v", err)
+	}
+
+	var safeBalance *domain.CashBalance
+	for i := range balances {
+		if balances[i].ContainerType == domain.CashContainerTypeSafe {
+			safeBalance = &balances[i]
+			break
+		}
+	}
+	if safeBalance == nil {
+		t.Fatalf("expected a safe cash balance on a fresh demo store, got none in %+v", balances)
+	}
+	if safeBalance.BalanceMinor <= 0 {
+		t.Fatalf("expected a positive demo safe balance, got %d", safeBalance.BalanceMinor)
+	}
+}
+
 func TestCreateCashRecountUsesDerivedExpectedBalance(t *testing.T) {
 	service := newTestCashService()
 	if _, err := service.CreateCashMovement(context.Background(), testCashMovementCommand()); err != nil {
