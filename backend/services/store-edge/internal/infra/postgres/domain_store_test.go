@@ -36,8 +36,8 @@ func TestSeedDemoCashBalancesSeedsSafeOpeningBalance(t *testing.T) {
 	if safeMovement == nil {
 		t.Fatalf("expected a posted movement into the safe, got none in %+v", movements)
 	}
-	if safeMovement.AmountMinor <= 0 {
-		t.Fatalf("expected a positive demo opening amount, got %d", safeMovement.AmountMinor)
+	if safeMovement.AmountMinor != domain.DemoOpeningSafeBalanceMinor {
+		t.Fatalf("expected demo opening amount %d, got %d", domain.DemoOpeningSafeBalanceMinor, safeMovement.AmountMinor)
 	}
 	if safeMovement.Status != domain.CashMovementStatusPosted {
 		t.Fatalf("expected posted status, got %s", safeMovement.Status)

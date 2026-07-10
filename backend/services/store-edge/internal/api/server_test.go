@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"mercadia.dev/pos/services/store-edge/internal/infra/memory"
+	"mercadia.dev/pos/services/store-edge/internal/domain"
 )
 
 func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
@@ -2514,7 +2514,7 @@ func TestBankCollectionAndBusinessExpenseWorkflow(t *testing.T) {
 	// safe-1 also carries the demo baseline opening balance seeded by
 	// NewServer's in-memory store (memory.WithDemoCashBalances), on top of
 	// this test's own seed/collection/expense movements.
-	var wantSafeBalance int64 = memory.DemoOpeningSafeBalanceMinor + 250000
+	var wantSafeBalance int64 = domain.DemoOpeningSafeBalanceMinor + 250000
 	if byContainer["safe-1"] != wantSafeBalance || byContainer["bank-collection-1"] != 200000 || byContainer["vendor-supplies"] != 50000 {
 		t.Fatalf("cash balances = %+v", balances.Balances)
 	}
@@ -2983,7 +2983,7 @@ func TestShiftWorkflow(t *testing.T) {
 	}
 	// safe-1 also carries the demo baseline opening balance seeded by
 	// NewServer's in-memory store (memory.WithDemoCashBalances).
-	if shiftBalances["drawer-1"] != -25000 || shiftBalances["safe-1"] != memory.DemoOpeningSafeBalanceMinor+25000 {
+	if shiftBalances["drawer-1"] != -25000 || shiftBalances["safe-1"] != domain.DemoOpeningSafeBalanceMinor+25000 {
 		t.Fatalf("cash balances = %+v", cashBalances.Balances)
 	}
 
@@ -3191,7 +3191,7 @@ func TestShiftCashInOutWorkflow(t *testing.T) {
 	}
 	// safe-1 also carries the demo baseline opening balance seeded by
 	// NewServer's in-memory store (memory.WithDemoCashBalances).
-	if shiftBalances["drawer-1"] != 75000 || shiftBalances["safe-1"] != memory.DemoOpeningSafeBalanceMinor-50000 {
+	if shiftBalances["drawer-1"] != 75000 || shiftBalances["safe-1"] != domain.DemoOpeningSafeBalanceMinor-50000 {
 		t.Fatalf("cash balances = %+v", cashBalances.Balances)
 	}
 }
@@ -3446,7 +3446,7 @@ func TestConfirmCloseShiftWorkflow(t *testing.T) {
 	}
 	// safe-1 also carries the demo baseline opening balance seeded by
 	// NewServer's in-memory store (memory.WithDemoCashBalances).
-	if byContainer["safe-1"] != memory.DemoOpeningSafeBalanceMinor+25000 {
+	if byContainer["safe-1"] != domain.DemoOpeningSafeBalanceMinor+25000 {
 		t.Fatalf("safe-1 balance = %d, balances = %+v", byContainer["safe-1"], balances.Balances)
 	}
 
@@ -4510,7 +4510,7 @@ func TestOperationalDaySummary(t *testing.T) {
 	// NewServer's in-memory store (memory.WithDemoCashBalances).
 	if len(summary.Cash.Balances) != 2 ||
 		cashByContainer["drawer-1"] != 150000 ||
-		cashByContainer["safe-1"] != memory.DemoOpeningSafeBalanceMinor-100000 ||
+		cashByContainer["safe-1"] != domain.DemoOpeningSafeBalanceMinor-100000 ||
 		summary.Cash.NonZeroDrawerCount != 1 {
 		t.Fatalf("cash summary = %+v", summary.Cash)
 	}
@@ -4676,7 +4676,7 @@ func TestScanReceiptWorkflow(t *testing.T) {
 	// NewServer's in-memory store (memory.WithDemoCashBalances).
 	if len(cashBalances.Balances) != 2 ||
 		cashByContainer["drawer-1"] != 139998 ||
-		cashByContainer["safe-1"] != memory.DemoOpeningSafeBalanceMinor-100000 {
+		cashByContainer["safe-1"] != domain.DemoOpeningSafeBalanceMinor-100000 {
 		t.Fatalf("cash balances = %+v", cashBalances.Balances)
 	}
 

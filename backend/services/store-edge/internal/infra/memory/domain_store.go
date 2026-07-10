@@ -26,11 +26,6 @@ func WithDemoActors() StoreOption {
 	}
 }
 
-// DemoOpeningSafeBalanceMinor is the amount WithDemoCashBalances seeds into
-// safe-1, exported so tests asserting on cash balances/movements against a
-// server built from this demo baseline don't hardcode a duplicate literal.
-const DemoOpeningSafeBalanceMinor = 5_000_000
-
 // WithDemoCashBalances seeds a posted cash-in movement from external into
 // the demo store's safe (safe-1), so a fresh in-memory instance (no
 // Postgres) boots with a real, non-zero safe balance instead of an empty
@@ -54,7 +49,7 @@ func demoOpeningSafeBalanceMovement() domain.CashMovement {
 		FromContainerType: domain.CashContainerTypeExternal,
 		ToContainerID:     "safe-1",
 		ToContainerType:   domain.CashContainerTypeSafe,
-		AmountMinor:       DemoOpeningSafeBalanceMinor,
+		AmountMinor:       domain.DemoOpeningSafeBalanceMinor,
 		Currency:          "RUB",
 		Reason:            "Demo opening safe balance",
 		ActorID:           "senior-1",

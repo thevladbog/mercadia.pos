@@ -98,7 +98,7 @@ func demoOpeningSafeBalanceMovement() domain.CashMovement {
 		FromContainerType: domain.CashContainerTypeExternal,
 		ToContainerID:     "safe-1",
 		ToContainerType:   domain.CashContainerTypeSafe,
-		AmountMinor:       5_000_000,
+		AmountMinor:       domain.DemoOpeningSafeBalanceMinor,
 		Currency:          "RUB",
 		Reason:            "Demo opening safe balance",
 		ActorID:           "senior-1",

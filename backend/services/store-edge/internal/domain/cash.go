@@ -35,6 +35,12 @@ var (
 	ErrDenominationBreakdownMismatch = errors.New("denomination breakdown does not match operation total")
 )
 
+// DemoOpeningSafeBalanceMinor is the amount the memory and postgres infra
+// packages each seed into safe-1 for a fresh demo store (see
+// memory.WithDemoCashBalances / postgres.SeedDemoCashBalances), shared here
+// so the two independent seed implementations can't drift apart.
+const DemoOpeningSafeBalanceMinor = 5_000_000
+
 // DenominationBreakdown captures the optional bill/coin count breakdown of a
 // cash operation's total. Bills maps a denomination's minor-unit value (e.g.
 // 5000_00 for a 5000-currency-unit note) to how many of that note were
