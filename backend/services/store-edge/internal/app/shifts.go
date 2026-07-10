@@ -10,15 +10,16 @@ import (
 )
 
 var (
-	ErrShiftNotFound               = errors.New("shift not found")
-	ErrInvalidShiftCommand         = errors.New("invalid shift command")
-	ErrShiftAlreadyOpenForTerminal = errors.New("shift already open for terminal")
-	ErrShiftAlreadyOpenForCashier  = errors.New("shift already open for cashier")
-	ErrShiftAlreadyClosed          = errors.New("shift already closed")
-	ErrShiftCashCollectionRequired = errors.New("shift cash collection details are required")
-	ErrShiftOpeningSafeRequired    = errors.New("shift opening safe is required when opening cash is positive")
-	ErrShiftCloseBlocked           = errors.New("shift close blocked")
-	ErrShiftNotOpen                = errors.New("shift is not open")
+	ErrShiftNotFound                     = errors.New("shift not found")
+	ErrInvalidShiftCommand               = errors.New("invalid shift command")
+	ErrShiftAlreadyOpenForTerminal       = errors.New("shift already open for terminal")
+	ErrShiftAlreadyOpenForCashier        = errors.New("shift already open for cashier")
+	ErrShiftAlreadyClosed                = errors.New("shift already closed")
+	ErrShiftCashCollectionRequired       = errors.New("shift cash collection details are required")
+	ErrShiftOpeningSafeRequired          = errors.New("shift opening safe is required when opening cash is positive")
+	ErrShiftCloseBlocked                 = errors.New("shift close blocked")
+	ErrShiftNotOpen                      = errors.New("shift is not open")
+	ErrShiftNotAwaitingCloseConfirmation = errors.New("shift is not awaiting close confirmation")
 )
 
 type ShiftRepository interface {
@@ -43,6 +44,7 @@ type ShiftService struct {
 	journal      OperationJournalRecorder
 	outbox       OutboxRecorder
 	transactions TransactionRunner
+	roles        ActorRoleLookup
 	now          func() time.Time
 	newID        func(prefix string) string
 }
@@ -112,6 +114,12 @@ func WithShiftOutbox(outbox OutboxRecorder) ShiftOption {
 	}
 }
 
+func WithShiftRoles(roles ActorRoleLookup) ShiftOption {
+	return func(service *ShiftService) {
+		service.roles = roles
+	}
+}
+
 type OpenShiftCommand struct {
 	IdempotencyKey   string
 	StoreID          string
@@ -130,6 +138,12 @@ type CloseShiftCommand struct {
 	ActorID          string
 	ApprovedByID     string
 	Breakdown        *domain.DenominationBreakdown
+}
+
+type ConfirmCloseShiftCommand struct {
+	IdempotencyKey string
+	ShiftID        string
+	ActorID        string // the confirming senior cashier/admin; becomes Shift.ClosingApprovedByID and the collection movement's ApprovedByID
 }
 
 type ShiftCashInCommand struct {
@@ -305,16 +319,26 @@ func (s *ShiftService) CloseShift(ctx context.Context, command CloseShiftCommand
 			return ShiftResult{}, ErrShiftCloseBlocked
 		}
 	}
-	if err := shift.Close(command.ClosingCashMinor, s.now()); err != nil {
-		if errors.Is(err, domain.ErrShiftNotOpen) {
-			return ShiftResult{}, ErrShiftAlreadyClosed
+	declareOnly := command.ClosingCashMinor > 0 && command.ApprovedByID == "" && s.cash != nil
+	if !declareOnly {
+		if err := shift.Close(command.ClosingCashMinor, s.now()); err != nil {
+			if errors.Is(err, domain.ErrShiftNotOpen) {
+				return ShiftResult{}, ErrShiftAlreadyClosed
+			}
+			return ShiftResult{}, err
 		}
-		return ShiftResult{}, err
 	}
 
 	var result ShiftResult
 	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
-		if command.ClosingCashMinor > 0 && s.cash != nil {
+		if declareOnly {
+			if command.SafeID == "" || command.ActorID == "" {
+				return ErrShiftCashCollectionRequired
+			}
+			if err := shift.DeclareAwaitingCloseConfirmation(command.ClosingCashMinor, command.ActorID, command.SafeID, s.now()); err != nil {
+				return err
+			}
+		} else if command.ClosingCashMinor > 0 && s.cash != nil {
 			if command.SafeID == "" || command.ActorID == "" || command.ApprovedByID == "" {
 				return ErrShiftCashCollectionRequired
 			}
@@ -346,6 +370,7 @@ func (s *ShiftService) CloseShift(ctx context.Context, command CloseShiftCommand
 			if err := s.recordShiftCashMovementSideEffects(ctx, movement); err != nil {
 				return err
 			}
+			shift.ClosingApprovedByID = command.ApprovedByID
 		}
 
 		if err := s.shifts.SaveShift(ctx, shift); err != nil {
@@ -360,7 +385,11 @@ func (s *ShiftService) CloseShift(ctx context.Context, command CloseShiftCommand
 		if actorID == "" {
 			actorID = shift.CashierID
 		}
-		if err := s.recordShiftJournal(ctx, shift.StoreID, "shift.closed", actorID, shift.ID, closeSummary); err != nil {
+		journalOperation := "shift.closed"
+		if declareOnly {
+			journalOperation = "shift.declared_closing"
+		}
+		if err := s.recordShiftJournal(ctx, shift.StoreID, journalOperation, actorID, shift.ID, closeSummary); err != nil {
 			return err
 		}
 
@@ -377,6 +406,89 @@ func (s *ShiftService) CloseShift(ctx context.Context, command CloseShiftCommand
 		return ShiftResult{}, err
 	}
 
+	return result, nil
+}
+
+func (s *ShiftService) ConfirmCloseShift(ctx context.Context, command ConfirmCloseShiftCommand) (ShiftResult, error) {
+	if command.IdempotencyKey == "" {
+		return ShiftResult{}, ErrIdempotencyKeyRequired
+	}
+	if command.ShiftID == "" || command.ActorID == "" {
+		return ShiftResult{}, ErrInvalidShiftCommand
+	}
+	if err := CheckActorPermission(s.roles, ctx, command.ActorID, PermissionShiftCloseConfirm); err != nil {
+		return ShiftResult{}, err
+	}
+
+	const operation = "shifts.confirm_close"
+	fingerprint := fmt.Sprintf("%s|%s", command.ShiftID, command.ActorID)
+	if result, found, err := s.findShiftIdempotency(ctx, operation, command.IdempotencyKey, command.ShiftID, fingerprint); err != nil || found {
+		return result, err
+	}
+
+	shift, err := s.shifts.FindShift(ctx, command.ShiftID)
+	if err != nil {
+		return ShiftResult{}, err
+	}
+	if command.ActorID == shift.ClosingActorID {
+		return ShiftResult{}, ErrSeparationOfDutiesViolation
+	}
+	if err := shift.ConfirmClose(command.ActorID, s.now()); err != nil {
+		if errors.Is(err, domain.ErrShiftNotAwaitingCloseConfirmation) {
+			return ShiftResult{}, ErrShiftNotAwaitingCloseConfirmation
+		}
+		return ShiftResult{}, err
+	}
+
+	var result ShiftResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if s.cash != nil {
+			movement, err := domain.CreateCashMovement(domain.CreateCashMovementInput{
+				ID:                s.newID("cash"),
+				StoreID:           shift.StoreID,
+				Type:              domain.CashMovementTypeDrawerToSafe,
+				FromContainerID:   shift.DrawerID,
+				FromContainerType: domain.CashContainerTypeDrawer,
+				ToContainerID:     shift.ClosingSafeID,
+				ToContainerType:   domain.CashContainerTypeSafe,
+				AmountMinor:       shift.ClosingCashMinor,
+				Currency:          "RUB",
+				Reason:            "Final cashier collection for shift " + shift.ID,
+				ActorID:           shift.ClosingActorID,
+				ApprovedByID:      command.ActorID,
+				Now:               s.now(),
+			})
+			if err != nil {
+				return err
+			}
+			if err := s.cash.SaveCashMovement(ctx, movement); err != nil {
+				return err
+			}
+			if err := s.recordShiftCashMovementSideEffects(ctx, movement); err != nil {
+				return err
+			}
+		}
+
+		if err := s.shifts.SaveShift(ctx, shift); err != nil {
+			return err
+		}
+		if err := s.recordShiftJournal(ctx, shift.StoreID, "shift.close_confirmed", command.ActorID,
+			shift.ID, fmt.Sprintf("closingCash=%d safe=%s", shift.ClosingCashMinor, shift.ClosingSafeID)); err != nil {
+			return err
+		}
+
+		result = ShiftResult{Shift: shift}
+		return s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.ShiftID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		})
+	}); err != nil {
+		return ShiftResult{}, err
+	}
 	return result, nil
 }
 

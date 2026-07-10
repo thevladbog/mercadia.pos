@@ -76,6 +76,63 @@ func TestOperationalDayCloseReadinessIncludesOpenShiftAndNoSales(t *testing.T) {
 	}
 }
 
+func TestCloseOperationalDayBlockedByShiftAwaitingCloseConfirmation(t *testing.T) {
+	service, store := newTestOperationalDayService()
+	shifts := app.NewShiftService(store, store,
+		app.WithShiftCashLedger(store),
+		app.WithShiftClock(func() time.Time {
+			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+		}),
+		app.WithShiftIDGenerator(func(prefix string) string {
+			return prefix + "-test-1"
+		}),
+	)
+
+	day, err := service.OpenOperationalDay(context.Background(), testOpenOperationalDayCommand())
+	if err != nil {
+		t.Fatalf("open operational day: %v", err)
+	}
+	opened, err := shifts.OpenShift(context.Background(), testOpenShiftCommand())
+	if err != nil {
+		t.Fatalf("open shift: %v", err)
+	}
+	declared, err := shifts.CloseShift(context.Background(), app.CloseShiftCommand{
+		IdempotencyKey:   "shift-close-1",
+		ShiftID:          opened.Shift.ID,
+		ClosingCashMinor: 125000,
+		SafeID:           "safe-1",
+		ActorID:          "cashier-1",
+	})
+	if err != nil {
+		t.Fatalf("declare close shift: %v", err)
+	}
+	if declared.Shift.Status != domain.ShiftStatusAwaitingCloseConfirmation {
+		t.Fatalf("declared shift status = %s", declared.Shift.Status)
+	}
+
+	readiness, err := service.CheckCloseReadiness(context.Background(), day.Day.ID)
+	if err != nil {
+		t.Fatalf("check close readiness: %v", err)
+	}
+	if readiness.CanClose {
+		t.Fatal("expected close readiness to be blocked by shift awaiting close confirmation")
+	}
+	if !hasBlocker(readiness.Blockers, "open_cashier_shift") {
+		t.Fatalf("expected open_cashier_shift blocker, got %+v", readiness.Blockers)
+	}
+
+	_, err = service.CloseOperationalDay(context.Background(), app.CloseOperationalDayCommand{
+		IdempotencyKey:  "oday-close-1",
+		DayID:           day.Day.ID,
+		ClosedByID:      "senior-1",
+		OverrideNoSales: true,
+		OverrideActorID: "admin-1",
+	})
+	if !errors.Is(err, app.ErrOperationalDayCloseBlocked) {
+		t.Fatalf("expected ErrOperationalDayCloseBlocked, got %v", err)
+	}
+}
+
 func TestCloseOperationalDayRequiresNoSalesOverride(t *testing.T) {
 	service, _ := newTestOperationalDayService()
 	day, err := service.OpenOperationalDay(context.Background(), testOpenOperationalDayCommand())

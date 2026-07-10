@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListOpenStoreShifts200ShiftsItem = {
+export type ConfirmCloseShift202Shift = {
   awaitingConfirmationSince?: string;
   businessDate?: string;
   cashierId: string;

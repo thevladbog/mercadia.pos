@@ -7,10 +7,14 @@
  */
 
 export type OpenShift202Shift = {
+  awaitingConfirmationSince?: string;
   businessDate?: string;
   cashierId: string;
   closedAt?: string;
+  closingActorId?: string;
+  closingApprovedById?: string;
   closingCashMinor: number;
+  closingSafeId?: string;
   drawerId: string;
   id: string;
   openedAt: string;

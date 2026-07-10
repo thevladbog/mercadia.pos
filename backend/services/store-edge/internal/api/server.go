@@ -403,6 +403,10 @@ type CloseShiftRequest struct {
 	Breakdown        *DenominationBreakdownRequest `json:"breakdown,omitempty"`
 }
 
+type ConfirmCloseShiftRequest struct {
+	ActorID string `json:"actorId"`
+}
+
 type ShiftCashInRequest struct {
 	AmountMinor       int64  `json:"amountMinor"`
 	Reason            string `json:"reason,omitempty"`
@@ -429,19 +433,23 @@ type ShiftsResponse struct {
 }
 
 type ShiftResponse struct {
-	ID               string             `json:"id"`
-	StoreID          string             `json:"storeId"`
-	OperationalDayID string             `json:"operationalDayId,omitempty"`
-	BusinessDate     string             `json:"businessDate,omitempty"`
-	TerminalID       string             `json:"terminalId"`
-	CashierID        string             `json:"cashierId"`
-	DrawerID         string             `json:"drawerId"`
-	Status           domain.ShiftStatus `json:"status"`
-	OpeningCashMinor int64              `json:"openingCashMinor"`
-	ClosingCashMinor int64              `json:"closingCashMinor"`
-	OpenedAt         time.Time          `json:"openedAt"`
-	ClosedAt         time.Time          `json:"closedAt,omitempty"`
-	UpdatedAt        time.Time          `json:"updatedAt"`
+	ID                        string             `json:"id"`
+	StoreID                   string             `json:"storeId"`
+	OperationalDayID          string             `json:"operationalDayId,omitempty"`
+	BusinessDate              string             `json:"businessDate,omitempty"`
+	TerminalID                string             `json:"terminalId"`
+	CashierID                 string             `json:"cashierId"`
+	DrawerID                  string             `json:"drawerId"`
+	Status                    domain.ShiftStatus `json:"status"`
+	OpeningCashMinor          int64              `json:"openingCashMinor"`
+	ClosingCashMinor          int64              `json:"closingCashMinor"`
+	OpenedAt                  time.Time          `json:"openedAt"`
+	ClosedAt                  time.Time          `json:"closedAt,omitempty"`
+	UpdatedAt                 time.Time          `json:"updatedAt"`
+	ClosingActorID            string             `json:"closingActorId,omitempty"`
+	ClosingSafeID             string             `json:"closingSafeId,omitempty"`
+	ClosingApprovedByID       string             `json:"closingApprovedById,omitempty"`
+	AwaitingConfirmationSince time.Time          `json:"awaitingConfirmationSince,omitempty"`
 }
 
 type ReceiptResponse struct {
@@ -755,6 +763,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 		app.WithShiftTransactionRunner(store),
 		app.WithShiftJournal(journal),
 		app.WithShiftOutbox(outbox),
+		app.WithShiftRoles(auth),
 	)
 	terminalOptions := []app.TerminalOption{app.WithTerminalEventPublisher(terminalEvents)}
 	if config.terminalOfflineAfter > 0 {
@@ -1209,6 +1218,47 @@ func mountRoutes(mux *http.ServeMux, spec *httpapi.Spec, outbox *app.OutboxServi
 		httpapi.WriteJSON(w, http.StatusAccepted, ShiftAcceptedResponse{
 			Shift: shiftResponse(result.Shift),
 		})
+	})
+
+	httpapi.Register(mux, spec, httpapi.Operation{
+		Method:              http.MethodPost,
+		Path:                "/v1/shifts/{shiftId}/confirm-close",
+		OperationID:         "confirmCloseShift",
+		Summary:             "Confirm a shift close that is awaiting senior-cashier confirmation",
+		Tags:                []string{"store-operations"},
+		RequiresIdempotency: true,
+		RequestBody: &httpapi.BodySpec{
+			Description: "Shift close confirmation command",
+			Required:    true,
+			Schema:      confirmCloseShiftRequestSchema(),
+		},
+		Responses: map[string]httpapi.ResponseSpec{
+			"202": {Description: "Shift close confirmed", Schema: shiftAcceptedResponseSchema()},
+			"400": {Description: "Invalid confirm command", Schema: httpapi.ProblemSchema()},
+			"403": {Description: "Permission denied", Schema: httpapi.ProblemSchema()},
+			"404": {Description: "Shift was not found", Schema: httpapi.ProblemSchema()},
+			"409": {Description: "Shift confirmation conflict", Schema: httpapi.ProblemSchema()},
+		},
+	}, func(w http.ResponseWriter, r *http.Request) {
+		if _, err := httpapi.RequireIdempotencyKey(r); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency key is required", err.Error())
+			return
+		}
+		var request ConfirmCloseShiftRequest
+		if err := httpapi.DecodeJSON(r, &request); err != nil {
+			httpapi.WriteProblem(w, http.StatusBadRequest, "invalid_json", "Invalid JSON", err.Error())
+			return
+		}
+		result, err := shifts.ConfirmCloseShift(r.Context(), app.ConfirmCloseShiftCommand{
+			IdempotencyKey: r.Header.Get("Idempotency-Key"),
+			ShiftID:        r.PathValue("shiftId"),
+			ActorID:        request.ActorID,
+		})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		httpapi.WriteJSON(w, http.StatusAccepted, ShiftAcceptedResponse{Shift: shiftResponse(result.Shift)})
 	})
 
 	httpapi.Register(mux, spec, httpapi.Operation{
@@ -2242,6 +2292,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 		httpapi.WriteProblem(w, http.StatusBadRequest, "shift_opening_safe_required", "Shift opening safe is required when opening cash is positive", err.Error())
 	case errors.Is(err, app.ErrShiftCloseBlocked):
 		httpapi.WriteProblem(w, http.StatusConflict, "shift_close_blocked", "Shift close is blocked", err.Error())
+	case errors.Is(err, app.ErrShiftNotAwaitingCloseConfirmation):
+		httpapi.WriteProblem(w, http.StatusConflict, "shift_not_awaiting_close_confirmation", "Shift is not awaiting close confirmation", err.Error())
 	case errors.Is(err, app.ErrOperationalDayAlreadyOpen):
 		httpapi.WriteProblem(w, http.StatusConflict, "operational_day_already_open", "Operational day is already open for store", err.Error())
 	case errors.Is(err, app.ErrOperationalDayAlreadyClosed):
@@ -2604,19 +2656,23 @@ func cashRecountResponses(recounts []domain.CashRecount) []CashRecountResponse {
 
 func shiftResponse(shift domain.Shift) ShiftResponse {
 	return ShiftResponse{
-		ID:               shift.ID,
-		StoreID:          shift.StoreID,
-		OperationalDayID: shift.OperationalDayID,
-		BusinessDate:     shift.BusinessDate,
-		TerminalID:       shift.TerminalID,
-		CashierID:        shift.CashierID,
-		DrawerID:         shift.DrawerID,
-		Status:           shift.Status,
-		OpeningCashMinor: shift.OpeningCashMinor,
-		ClosingCashMinor: shift.ClosingCashMinor,
-		OpenedAt:         shift.OpenedAt,
-		ClosedAt:         shift.ClosedAt,
-		UpdatedAt:        shift.UpdatedAt,
+		ID:                        shift.ID,
+		StoreID:                   shift.StoreID,
+		OperationalDayID:          shift.OperationalDayID,
+		BusinessDate:              shift.BusinessDate,
+		TerminalID:                shift.TerminalID,
+		CashierID:                 shift.CashierID,
+		DrawerID:                  shift.DrawerID,
+		Status:                    shift.Status,
+		OpeningCashMinor:          shift.OpeningCashMinor,
+		ClosingCashMinor:          shift.ClosingCashMinor,
+		OpenedAt:                  shift.OpenedAt,
+		ClosedAt:                  shift.ClosedAt,
+		UpdatedAt:                 shift.UpdatedAt,
+		ClosingActorID:            shift.ClosingActorID,
+		ClosingSafeID:             shift.ClosingSafeID,
+		ClosingApprovedByID:       shift.ClosingApprovedByID,
+		AwaitingConfirmationSince: shift.AwaitingConfirmationSince,
 	}
 }
 
@@ -2878,6 +2934,12 @@ func closeShiftRequestSchema() httpapi.Schema {
 	}, "closingCashMinor")
 }
 
+func confirmCloseShiftRequestSchema() httpapi.Schema {
+	return httpapi.ObjectSchema(map[string]httpapi.Schema{
+		"actorId": httpapi.StringSchema(),
+	}, "actorId")
+}
+
 func shiftCashInRequestSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
 		"amountMinor":       {"type": "integer", "minimum": 1},
@@ -3127,19 +3189,23 @@ func shiftsResponseSchema() httpapi.Schema {
 
 func shiftResponseSchema() httpapi.Schema {
 	return httpapi.ObjectSchema(map[string]httpapi.Schema{
-		"id":               httpapi.StringSchema(),
-		"storeId":          httpapi.StringSchema(),
-		"operationalDayId": httpapi.StringSchema(),
-		"businessDate":     httpapi.StringSchema(),
-		"terminalId":       httpapi.StringSchema(),
-		"cashierId":        httpapi.StringSchema(),
-		"drawerId":         httpapi.StringSchema(),
-		"status":           httpapi.StringSchema(),
-		"openingCashMinor": {"type": "integer"},
-		"closingCashMinor": {"type": "integer"},
-		"openedAt":         httpapi.DateTimeSchema(),
-		"closedAt":         httpapi.DateTimeSchema(),
-		"updatedAt":        httpapi.DateTimeSchema(),
+		"id":                        httpapi.StringSchema(),
+		"storeId":                   httpapi.StringSchema(),
+		"operationalDayId":          httpapi.StringSchema(),
+		"businessDate":              httpapi.StringSchema(),
+		"terminalId":                httpapi.StringSchema(),
+		"cashierId":                 httpapi.StringSchema(),
+		"drawerId":                  httpapi.StringSchema(),
+		"status":                    httpapi.StringSchema(),
+		"openingCashMinor":          {"type": "integer"},
+		"closingCashMinor":          {"type": "integer"},
+		"openedAt":                  httpapi.DateTimeSchema(),
+		"closedAt":                  httpapi.DateTimeSchema(),
+		"updatedAt":                 httpapi.DateTimeSchema(),
+		"closingActorId":            httpapi.StringSchema(),
+		"closingSafeId":             httpapi.StringSchema(),
+		"closingApprovedById":       httpapi.StringSchema(),
+		"awaitingConfirmationSince": httpapi.DateTimeSchema(),
 	}, "id", "storeId", "terminalId", "cashierId", "drawerId", "status", "openingCashMinor", "closingCashMinor", "openedAt", "updatedAt")
 }
 

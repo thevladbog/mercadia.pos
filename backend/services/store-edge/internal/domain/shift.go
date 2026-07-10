@@ -8,29 +8,35 @@ import (
 type ShiftStatus string
 
 const (
-	ShiftStatusOpen   ShiftStatus = "open"
-	ShiftStatusClosed ShiftStatus = "closed"
+	ShiftStatusOpen                      ShiftStatus = "open"
+	ShiftStatusClosed                    ShiftStatus = "closed"
+	ShiftStatusAwaitingCloseConfirmation ShiftStatus = "awaiting_close_confirmation"
 )
 
 var (
-	ErrInvalidShiftInput = errors.New("invalid shift input")
-	ErrShiftNotOpen      = errors.New("shift is not open")
+	ErrInvalidShiftInput                 = errors.New("invalid shift input")
+	ErrShiftNotOpen                      = errors.New("shift is not open")
+	ErrShiftNotAwaitingCloseConfirmation = errors.New("shift is not awaiting close confirmation")
 )
 
 type Shift struct {
-	ID               string
-	StoreID          string
-	OperationalDayID string
-	BusinessDate     string
-	TerminalID       string
-	CashierID        string
-	DrawerID         string
-	Status           ShiftStatus
-	OpeningCashMinor int64
-	ClosingCashMinor int64
-	OpenedAt         time.Time
-	ClosedAt         time.Time
-	UpdatedAt        time.Time
+	ID                        string
+	StoreID                   string
+	OperationalDayID          string
+	BusinessDate              string
+	TerminalID                string
+	CashierID                 string
+	DrawerID                  string
+	Status                    ShiftStatus
+	OpeningCashMinor          int64
+	ClosingCashMinor          int64
+	OpenedAt                  time.Time
+	ClosedAt                  time.Time
+	UpdatedAt                 time.Time
+	ClosingActorID            string    // who declared the close (the cashier)
+	ClosingSafeID             string    // declared at the same time — where the drawer cash will go once confirmed
+	ClosingApprovedByID       string    // who confirmed the close (filled only once confirmed; also filled directly for the atomic fast path)
+	AwaitingConfirmationSince time.Time // when the shift entered awaiting_close_confirmation; zero if it never did
 }
 
 type OpenShiftInput struct {
@@ -82,6 +88,42 @@ func (s *Shift) Close(closingCashMinor int64, now time.Time) error {
 
 	s.Status = ShiftStatusClosed
 	s.ClosingCashMinor = closingCashMinor
+	s.ClosedAt = now
+	s.UpdatedAt = now
+	return nil
+}
+
+func (s *Shift) DeclareAwaitingCloseConfirmation(closingCashMinor int64, actorID string, safeID string, now time.Time) error {
+	if s.Status != ShiftStatusOpen {
+		return ErrShiftNotOpen
+	}
+	if closingCashMinor <= 0 || actorID == "" || safeID == "" {
+		return ErrInvalidShiftInput
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	s.Status = ShiftStatusAwaitingCloseConfirmation
+	s.ClosingCashMinor = closingCashMinor
+	s.ClosingActorID = actorID
+	s.ClosingSafeID = safeID
+	s.AwaitingConfirmationSince = now
+	s.UpdatedAt = now
+	return nil
+}
+
+func (s *Shift) ConfirmClose(approvedByID string, now time.Time) error {
+	if s.Status != ShiftStatusAwaitingCloseConfirmation {
+		return ErrShiftNotAwaitingCloseConfirmation
+	}
+	if approvedByID == "" || approvedByID == s.ClosingActorID {
+		return ErrInvalidShiftInput
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	s.Status = ShiftStatusClosed
+	s.ClosingApprovedByID = approvedByID
 	s.ClosedAt = now
 	s.UpdatedAt = now
 	return nil
