@@ -36,6 +36,7 @@ type CashService struct {
 	outbox       OutboxRecorder
 	journal      OperationJournalRecorder
 	transactions TransactionRunner
+	roles        ActorRoleLookup
 	now          func() time.Time
 	newID        func(prefix string) string
 }
@@ -84,6 +85,12 @@ func WithCashJournal(journal OperationJournalRecorder) CashOption {
 func WithCashTransactionRunner(runner TransactionRunner) CashOption {
 	return func(service *CashService) {
 		service.transactions = runner
+	}
+}
+
+func WithCashRoles(roles ActorRoleLookup) CashOption {
+	return func(service *CashService) {
+		service.roles = roles
 	}
 }
 
@@ -398,6 +405,9 @@ func (s *CashService) ResolveCashRecount(ctx context.Context, command ResolveCas
 	}
 	if command.ApprovedByID == command.ActorID {
 		return CashRecountResult{}, ErrSeparationOfDutiesViolation
+	}
+	if err := CheckActorPermission(s.roles, ctx, command.ActorID, PermissionRecountApprove); err != nil {
+		return CashRecountResult{}, err
 	}
 
 	const operation = "cash.resolve_cash_recount"

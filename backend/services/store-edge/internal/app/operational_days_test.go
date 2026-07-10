@@ -165,9 +165,21 @@ func TestCloseOperationalDayRequiresNoSalesOverride(t *testing.T) {
 }
 
 func TestOperationalDayCloseReadinessBlocksUnresolvedCashDiscrepancy(t *testing.T) {
-	service, store := newTestOperationalDayService()
+	store := memory.NewStore(memory.WithDemoActors())
+	var dayCounter int
+	service := app.NewOperationalDayService(store, store, store, store, store,
+		app.WithOperationalDayClock(func() time.Time {
+			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+		}),
+		app.WithOperationalDayIDGenerator(func(prefix string) string {
+			dayCounter++
+			return fmt.Sprintf("%s-test-%d", prefix, dayCounter)
+		}),
+	)
+	auth := app.NewAuthService(store, store, store, store)
 	var cashCounter int
 	cash := app.NewCashService(store, store,
+		app.WithCashRoles(auth),
 		app.WithCashClock(func() time.Time {
 			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
 		}),
