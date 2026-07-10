@@ -45,6 +45,19 @@ import type {
   ConfirmCloseShift404,
   ConfirmCloseShift409,
   ConfirmCloseShiftBody,
+  CreateChangeFundRequest202,
+  CreateChangeFundRequest400,
+  CreateChangeFundRequest404,
+  CreateChangeFundRequest409,
+  CreateChangeFundRequestBody,
+  FulfillChangeFundRequest202,
+  FulfillChangeFundRequest400,
+  FulfillChangeFundRequest403,
+  FulfillChangeFundRequest404,
+  FulfillChangeFundRequest409,
+  FulfillChangeFundRequestBody,
+  GetChangeFundRequest200,
+  GetChangeFundRequest404,
   GetCurrentOperationalDay200,
   GetCurrentOperationalDay404,
   GetOperationalDay200,
@@ -64,6 +77,9 @@ import type {
   ListOperationalDayShifts400,
   ListOperationalDayShifts404,
   ListOperationalDayShiftsParams,
+  ListStoreChangeFundRequests200,
+  ListStoreChangeFundRequests400,
+  ListStoreChangeFundRequestsParams,
   OpenOperationalDay202,
   OpenOperationalDay400,
   OpenOperationalDay409,
@@ -106,7 +122,231 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type openOperationalDayResponse202 = {
+export type getChangeFundRequestResponse200 = {
+  data: GetChangeFundRequest200
+  status: 200
+}
+
+export type getChangeFundRequestResponse404 = {
+  data: GetChangeFundRequest404
+  status: 404
+}
+
+export type getChangeFundRequestResponseSuccess = (getChangeFundRequestResponse200) & {
+  headers: Headers;
+};
+export type getChangeFundRequestResponseError = (getChangeFundRequestResponse404) & {
+  headers: Headers;
+};
+
+export type getChangeFundRequestResponse = (getChangeFundRequestResponseSuccess | getChangeFundRequestResponseError)
+
+export const getGetChangeFundRequestUrl = (requestId: string,) => {
+
+
+
+
+  return `/v1/change-fund-requests/${requestId}`
+}
+
+/**
+ * @summary Get change fund request
+ */
+export const getChangeFundRequest = async (requestId: string, options?: RequestInit): Promise<getChangeFundRequestResponse> => {
+
+  return customFetch<getChangeFundRequestResponse>(getGetChangeFundRequestUrl(requestId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChangeFundRequestQueryKey = (requestId: string,) => {
+    return [
+    `/v1/change-fund-requests/${requestId}`
+    ] as const;
+    }
+
+
+export const getGetChangeFundRequestQueryOptions = <TData = Awaited<ReturnType<typeof getChangeFundRequest>>, TError = GetChangeFundRequest404>(requestId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChangeFundRequest>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChangeFundRequestQueryKey(requestId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChangeFundRequest>>> = ({ signal }) => getChangeFundRequest(requestId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: requestId !== null && requestId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChangeFundRequest>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetChangeFundRequestQueryResult = NonNullable<Awaited<ReturnType<typeof getChangeFundRequest>>>
+export type GetChangeFundRequestQueryError = GetChangeFundRequest404
+
+
+export function useGetChangeFundRequest<TData = Awaited<ReturnType<typeof getChangeFundRequest>>, TError = GetChangeFundRequest404>(
+ requestId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChangeFundRequest>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getChangeFundRequest>>,
+          TError,
+          Awaited<ReturnType<typeof getChangeFundRequest>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetChangeFundRequest<TData = Awaited<ReturnType<typeof getChangeFundRequest>>, TError = GetChangeFundRequest404>(
+ requestId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChangeFundRequest>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getChangeFundRequest>>,
+          TError,
+          Awaited<ReturnType<typeof getChangeFundRequest>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetChangeFundRequest<TData = Awaited<ReturnType<typeof getChangeFundRequest>>, TError = GetChangeFundRequest404>(
+ requestId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChangeFundRequest>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get change fund request
+ */
+
+export function useGetChangeFundRequest<TData = Awaited<ReturnType<typeof getChangeFundRequest>>, TError = GetChangeFundRequest404>(
+ requestId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChangeFundRequest>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetChangeFundRequestQueryOptions(requestId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type fulfillChangeFundRequestResponse202 = {
+  data: FulfillChangeFundRequest202
+  status: 202
+}
+
+export type fulfillChangeFundRequestResponse400 = {
+  data: FulfillChangeFundRequest400
+  status: 400
+}
+
+export type fulfillChangeFundRequestResponse403 = {
+  data: FulfillChangeFundRequest403
+  status: 403
+}
+
+export type fulfillChangeFundRequestResponse404 = {
+  data: FulfillChangeFundRequest404
+  status: 404
+}
+
+export type fulfillChangeFundRequestResponse409 = {
+  data: FulfillChangeFundRequest409
+  status: 409
+}
+
+export type fulfillChangeFundRequestResponseSuccess = (fulfillChangeFundRequestResponse202) & {
+  headers: Headers;
+};
+export type fulfillChangeFundRequestResponseError = (fulfillChangeFundRequestResponse400 | fulfillChangeFundRequestResponse403 | fulfillChangeFundRequestResponse404 | fulfillChangeFundRequestResponse409) & {
+  headers: Headers;
+};
+
+export type fulfillChangeFundRequestResponse = (fulfillChangeFundRequestResponseSuccess | fulfillChangeFundRequestResponseError)
+
+export const getFulfillChangeFundRequestUrl = (requestId: string,) => {
+
+
+
+
+  return `/v1/change-fund-requests/${requestId}/fulfill`
+}
+
+/**
+ * @summary Fulfill a change fund request from a safe
+ */
+export const fulfillChangeFundRequest = async (requestId: string,
+    fulfillChangeFundRequestBody: FulfillChangeFundRequestBody, options?: RequestInit): Promise<fulfillChangeFundRequestResponse> => {
+
+  return customFetch<fulfillChangeFundRequestResponse>(getFulfillChangeFundRequestUrl(requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(fulfillChangeFundRequestBody)
+  }
+);}
+
+
+
+
+
+export const getFulfillChangeFundRequestMutationOptions = <TError = FulfillChangeFundRequest400 | FulfillChangeFundRequest403 | FulfillChangeFundRequest404 | FulfillChangeFundRequest409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fulfillChangeFundRequest>>, TError,{requestId: string;data: FulfillChangeFundRequestBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof fulfillChangeFundRequest>>, TError,{requestId: string;data: FulfillChangeFundRequestBody}, TContext> => {
+
+const mutationKey = ['fulfillChangeFundRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof fulfillChangeFundRequest>>, {requestId: string;data: FulfillChangeFundRequestBody}> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  fulfillChangeFundRequest(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FulfillChangeFundRequestMutationResult = NonNullable<Awaited<ReturnType<typeof fulfillChangeFundRequest>>>
+    export type FulfillChangeFundRequestMutationBody = FulfillChangeFundRequestBody
+    export type FulfillChangeFundRequestMutationError = FulfillChangeFundRequest400 | FulfillChangeFundRequest403 | FulfillChangeFundRequest404 | FulfillChangeFundRequest409
+
+    /**
+ * @summary Fulfill a change fund request from a safe
+ */
+export const useFulfillChangeFundRequest = <TError = FulfillChangeFundRequest400 | FulfillChangeFundRequest403 | FulfillChangeFundRequest404 | FulfillChangeFundRequest409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fulfillChangeFundRequest>>, TError,{requestId: string;data: FulfillChangeFundRequestBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof fulfillChangeFundRequest>>,
+        TError,
+        {requestId: string;data: FulfillChangeFundRequestBody},
+        TContext
+      > => {
+      return useMutation(getFulfillChangeFundRequestMutationOptions(options), queryClient);
+    }
+    export type openOperationalDayResponse202 = {
   data: OpenOperationalDay202
   status: 202
 }
@@ -1194,6 +1434,106 @@ export const useShiftCashOut = <TError = ShiftCashOut400 | ShiftCashOut404 | Shi
       > => {
       return useMutation(getShiftCashOutMutationOptions(options), queryClient);
     }
+    export type createChangeFundRequestResponse202 = {
+  data: CreateChangeFundRequest202
+  status: 202
+}
+
+export type createChangeFundRequestResponse400 = {
+  data: CreateChangeFundRequest400
+  status: 400
+}
+
+export type createChangeFundRequestResponse404 = {
+  data: CreateChangeFundRequest404
+  status: 404
+}
+
+export type createChangeFundRequestResponse409 = {
+  data: CreateChangeFundRequest409
+  status: 409
+}
+
+export type createChangeFundRequestResponseSuccess = (createChangeFundRequestResponse202) & {
+  headers: Headers;
+};
+export type createChangeFundRequestResponseError = (createChangeFundRequestResponse400 | createChangeFundRequestResponse404 | createChangeFundRequestResponse409) & {
+  headers: Headers;
+};
+
+export type createChangeFundRequestResponse = (createChangeFundRequestResponseSuccess | createChangeFundRequestResponseError)
+
+export const getCreateChangeFundRequestUrl = (shiftId: string,) => {
+
+
+
+
+  return `/v1/shifts/${shiftId}/change-fund-requests`
+}
+
+/**
+ * @summary Request more change fund for a shift drawer
+ */
+export const createChangeFundRequest = async (shiftId: string,
+    createChangeFundRequestBody: CreateChangeFundRequestBody, options?: RequestInit): Promise<createChangeFundRequestResponse> => {
+
+  return customFetch<createChangeFundRequestResponse>(getCreateChangeFundRequestUrl(shiftId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createChangeFundRequestBody)
+  }
+);}
+
+
+
+
+
+export const getCreateChangeFundRequestMutationOptions = <TError = CreateChangeFundRequest400 | CreateChangeFundRequest404 | CreateChangeFundRequest409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChangeFundRequest>>, TError,{shiftId: string;data: CreateChangeFundRequestBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createChangeFundRequest>>, TError,{shiftId: string;data: CreateChangeFundRequestBody}, TContext> => {
+
+const mutationKey = ['createChangeFundRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createChangeFundRequest>>, {shiftId: string;data: CreateChangeFundRequestBody}> = (props) => {
+          const {shiftId,data} = props ?? {};
+
+          return  createChangeFundRequest(shiftId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateChangeFundRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createChangeFundRequest>>>
+    export type CreateChangeFundRequestMutationBody = CreateChangeFundRequestBody
+    export type CreateChangeFundRequestMutationError = CreateChangeFundRequest400 | CreateChangeFundRequest404 | CreateChangeFundRequest409
+
+    /**
+ * @summary Request more change fund for a shift drawer
+ */
+export const useCreateChangeFundRequest = <TError = CreateChangeFundRequest400 | CreateChangeFundRequest404 | CreateChangeFundRequest409,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChangeFundRequest>>, TError,{shiftId: string;data: CreateChangeFundRequestBody}, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createChangeFundRequest>>,
+        TError,
+        {shiftId: string;data: CreateChangeFundRequestBody},
+        TContext
+      > => {
+      return useMutation(getCreateChangeFundRequestMutationOptions(options), queryClient);
+    }
     export type closeShiftResponse202 = {
   data: CloseShift202
   status: 202
@@ -1500,6 +1840,140 @@ export function useGetStoreEdgeStatus<TData = Awaited<ReturnType<typeof getStore
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetStoreEdgeStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type listStoreChangeFundRequestsResponse200 = {
+  data: ListStoreChangeFundRequests200
+  status: 200
+}
+
+export type listStoreChangeFundRequestsResponse400 = {
+  data: ListStoreChangeFundRequests400
+  status: 400
+}
+
+export type listStoreChangeFundRequestsResponseSuccess = (listStoreChangeFundRequestsResponse200) & {
+  headers: Headers;
+};
+export type listStoreChangeFundRequestsResponseError = (listStoreChangeFundRequestsResponse400) & {
+  headers: Headers;
+};
+
+export type listStoreChangeFundRequestsResponse = (listStoreChangeFundRequestsResponseSuccess | listStoreChangeFundRequestsResponseError)
+
+export const getListStoreChangeFundRequestsUrl = (storeId: string,
+    params?: ListStoreChangeFundRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/stores/${storeId}/change-fund-requests?${stringifiedParams}` : `/v1/stores/${storeId}/change-fund-requests`
+}
+
+/**
+ * @summary List change fund requests for store
+ */
+export const listStoreChangeFundRequests = async (storeId: string,
+    params?: ListStoreChangeFundRequestsParams, options?: RequestInit): Promise<listStoreChangeFundRequestsResponse> => {
+
+  return customFetch<listStoreChangeFundRequestsResponse>(getListStoreChangeFundRequestsUrl(storeId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStoreChangeFundRequestsQueryKey = (storeId: string,
+    params?: ListStoreChangeFundRequestsParams,) => {
+    return [
+    `/v1/stores/${storeId}/change-fund-requests`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListStoreChangeFundRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreChangeFundRequests>>, TError = ListStoreChangeFundRequests400>(storeId: string,
+    params?: ListStoreChangeFundRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreChangeFundRequests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStoreChangeFundRequestsQueryKey(storeId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStoreChangeFundRequests>>> = ({ signal }) => listStoreChangeFundRequests(storeId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: storeId !== null && storeId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStoreChangeFundRequests>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListStoreChangeFundRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listStoreChangeFundRequests>>>
+export type ListStoreChangeFundRequestsQueryError = ListStoreChangeFundRequests400
+
+
+export function useListStoreChangeFundRequests<TData = Awaited<ReturnType<typeof listStoreChangeFundRequests>>, TError = ListStoreChangeFundRequests400>(
+ storeId: string,
+    params: undefined |  ListStoreChangeFundRequestsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreChangeFundRequests>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listStoreChangeFundRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listStoreChangeFundRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListStoreChangeFundRequests<TData = Awaited<ReturnType<typeof listStoreChangeFundRequests>>, TError = ListStoreChangeFundRequests400>(
+ storeId: string,
+    params?: ListStoreChangeFundRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreChangeFundRequests>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listStoreChangeFundRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listStoreChangeFundRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListStoreChangeFundRequests<TData = Awaited<ReturnType<typeof listStoreChangeFundRequests>>, TError = ListStoreChangeFundRequests400>(
+ storeId: string,
+    params?: ListStoreChangeFundRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreChangeFundRequests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List change fund requests for store
+ */
+
+export function useListStoreChangeFundRequests<TData = Awaited<ReturnType<typeof listStoreChangeFundRequests>>, TError = ListStoreChangeFundRequests400>(
+ storeId: string,
+    params?: ListStoreChangeFundRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStoreChangeFundRequests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListStoreChangeFundRequestsQueryOptions(storeId,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

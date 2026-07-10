@@ -3461,6 +3461,508 @@ func TestConfirmCloseShiftRequiresPermissionViaHTTP(t *testing.T) {
 	}
 }
 
+func openStoreDayAndShiftReturningID(t *testing.T, server http.Handler, keyPrefix string) string {
+	t.Helper()
+	openStoreDayAndShift(t, server, keyPrefix)
+
+	openShiftsResponse := httptest.NewRecorder()
+	openShiftsRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/shifts/open", nil)
+	server.ServeHTTP(openShiftsResponse, openShiftsRequest)
+	if openShiftsResponse.Code != http.StatusOK {
+		t.Fatalf("open shifts status = %d, body = %s", openShiftsResponse.Code, openShiftsResponse.Body.String())
+	}
+
+	var openShifts ShiftsResponse
+	if err := json.Unmarshal(openShiftsResponse.Body.Bytes(), &openShifts); err != nil {
+		t.Fatalf("decode open shifts response: %v", err)
+	}
+	if len(openShifts.Shifts) != 1 {
+		t.Fatalf("open shifts count = %d", len(openShifts.Shifts))
+	}
+	return openShifts.Shifts[0].ID
+}
+
+func TestCreateChangeFundRequestSucceedsForOpenShift(t *testing.T) {
+	server := NewServer()
+	shiftID := openStoreDayAndShiftReturningID(t, server, "cfr-create")
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/change-fund-requests", bytes.NewBufferString(`{
+		"amountMinor": 5000,
+		"actorId": "cashier-1"
+	}`))
+	request.Header.Set("Idempotency-Key", "cfr-create-1")
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusAccepted {
+		t.Fatalf("create change fund request status = %d, body = %s", response.Code, response.Body.String())
+	}
+
+	var accepted ChangeFundRequestAcceptedResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode change fund request response: %v", err)
+	}
+	if accepted.Request.Status != "requested" {
+		t.Fatalf("created change fund request status = %s", accepted.Request.Status)
+	}
+	if accepted.Request.FulfilledByID != "" {
+		t.Fatalf("created change fund request fulfilledById = %s", accepted.Request.FulfilledByID)
+	}
+	if accepted.Request.ShiftID != shiftID || accepted.Request.ActorID != "cashier-1" || accepted.Request.AmountMinor != 5000 {
+		t.Fatalf("created change fund request = %+v", accepted.Request)
+	}
+}
+
+func TestCreateChangeFundRequestDenominationBreakdownRoundTrips(t *testing.T) {
+	server := NewServer()
+	shiftID := openStoreDayAndShiftReturningID(t, server, "cfr-breakdown")
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/change-fund-requests", bytes.NewBufferString(`{
+		"amountMinor": 10000,
+		"actorId": "cashier-1",
+		"breakdown": {
+			"bills": {"5000": 2},
+			"coinsMinor": 0,
+			"otherMinor": 0
+		}
+	}`))
+	request.Header.Set("Idempotency-Key", "cfr-breakdown-1")
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusAccepted {
+		t.Fatalf("create change fund request status = %d, body = %s", response.Code, response.Body.String())
+	}
+
+	var accepted ChangeFundRequestAcceptedResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode change fund request response: %v", err)
+	}
+	if accepted.Request.Breakdown == nil || accepted.Request.Breakdown.Bills["5000"] != 2 {
+		t.Fatalf("created change fund request breakdown = %+v", accepted.Request.Breakdown)
+	}
+}
+
+func TestCreateChangeFundRequestRejectsMismatchedBreakdown(t *testing.T) {
+	server := NewServer()
+	shiftID := openStoreDayAndShiftReturningID(t, server, "cfr-breakdown-mismatch")
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/change-fund-requests", bytes.NewBufferString(`{
+		"amountMinor": 10000,
+		"actorId": "cashier-1",
+		"breakdown": {
+			"bills": {"5000": 1},
+			"coinsMinor": 0,
+			"otherMinor": 0
+		}
+	}`))
+	request.Header.Set("Idempotency-Key", "cfr-breakdown-mismatch-1")
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("mismatched change fund request breakdown status = %d, body = %s", response.Code, response.Body.String())
+	}
+
+	var problem struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Code != "denomination_breakdown_mismatch" {
+		t.Fatalf("problem code = %s body = %s", problem.Code, response.Body.String())
+	}
+}
+
+func TestCreateChangeFundRequestRejectsNonOpenShift(t *testing.T) {
+	server := NewServer()
+	shiftID := openStoreDayAndShiftReturningID(t, server, "cfr-shift-closed")
+
+	closeResponse := httptest.NewRecorder()
+	closeRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/close", bytes.NewBufferString(`{
+		"closingCashMinor": 100000,
+		"safeId": "safe-1",
+		"actorId": "cashier-1",
+		"approvedById": "senior-1"
+	}`))
+	closeRequest.Header.Set("Idempotency-Key", "cfr-shift-closed-close-1")
+	server.ServeHTTP(closeResponse, closeRequest)
+	if closeResponse.Code != http.StatusAccepted {
+		t.Fatalf("close shift status = %d, body = %s", closeResponse.Code, closeResponse.Body.String())
+	}
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/change-fund-requests", bytes.NewBufferString(`{
+		"amountMinor": 5000,
+		"actorId": "cashier-1"
+	}`))
+	request.Header.Set("Idempotency-Key", "cfr-shift-closed-1")
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusConflict {
+		t.Fatalf("create change fund request on closed shift status = %d, body = %s", response.Code, response.Body.String())
+	}
+
+	var problem struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Code != "shift_not_open" {
+		t.Fatalf("problem code = %s body = %s", problem.Code, response.Body.String())
+	}
+}
+
+func TestFulfillChangeFundRequestPostsMovement(t *testing.T) {
+	server := NewServer()
+	shiftID := openStoreDayAndShiftReturningID(t, server, "cfr-fulfill")
+
+	createResponse := httptest.NewRecorder()
+	createRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/change-fund-requests", bytes.NewBufferString(`{
+		"amountMinor": 15000,
+		"actorId": "cashier-1",
+		"breakdown": {
+			"bills": {"5000": 3},
+			"coinsMinor": 0,
+			"otherMinor": 0
+		}
+	}`))
+	createRequest.Header.Set("Idempotency-Key", "cfr-fulfill-create-1")
+	server.ServeHTTP(createResponse, createRequest)
+	if createResponse.Code != http.StatusAccepted {
+		t.Fatalf("create change fund request status = %d, body = %s", createResponse.Code, createResponse.Body.String())
+	}
+	var created ChangeFundRequestAcceptedResponse
+	if err := json.Unmarshal(createResponse.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode change fund request response: %v", err)
+	}
+
+	fulfillResponse := httptest.NewRecorder()
+	fulfillRequest := httptest.NewRequest(http.MethodPost, "/v1/change-fund-requests/"+created.Request.ID+"/fulfill", bytes.NewBufferString(`{
+		"actorId": "senior-1",
+		"safeId": "safe-1"
+	}`))
+	fulfillRequest.Header.Set("Idempotency-Key", "cfr-fulfill-1")
+	server.ServeHTTP(fulfillResponse, fulfillRequest)
+	if fulfillResponse.Code != http.StatusAccepted {
+		t.Fatalf("fulfill change fund request status = %d, body = %s", fulfillResponse.Code, fulfillResponse.Body.String())
+	}
+
+	var fulfilled ChangeFundRequestAcceptedResponse
+	if err := json.Unmarshal(fulfillResponse.Body.Bytes(), &fulfilled); err != nil {
+		t.Fatalf("decode fulfilled change fund request response: %v", err)
+	}
+	if fulfilled.Request.Status != "fulfilled" {
+		t.Fatalf("fulfilled change fund request status = %s", fulfilled.Request.Status)
+	}
+	if fulfilled.Request.FulfilledByID != "senior-1" {
+		t.Fatalf("fulfilled change fund request fulfilledById = %s", fulfilled.Request.FulfilledByID)
+	}
+	if fulfilled.Request.CashMovementID == "" {
+		t.Fatalf("fulfilled change fund request cashMovementId is empty")
+	}
+
+	movementsResponse := httptest.NewRecorder()
+	movementsRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/cash-movements", nil)
+	server.ServeHTTP(movementsResponse, movementsRequest)
+	if movementsResponse.Code != http.StatusOK {
+		t.Fatalf("list cash movements status = %d, body = %s", movementsResponse.Code, movementsResponse.Body.String())
+	}
+	var movements PaginatedCashMovementsResponse
+	if err := json.Unmarshal(movementsResponse.Body.Bytes(), &movements); err != nil {
+		t.Fatalf("decode cash movements response: %v", err)
+	}
+	var found *CashMovementResponse
+	for i := range movements.Items {
+		if movements.Items[i].ID == fulfilled.Request.CashMovementID {
+			found = &movements.Items[i]
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("cash movement %s not found in %+v", fulfilled.Request.CashMovementID, movements.Items)
+	}
+	if found.Type != "change_fund" {
+		t.Fatalf("cash movement type = %s", found.Type)
+	}
+	if found.AmountMinor != 15000 {
+		t.Fatalf("cash movement amountMinor = %d", found.AmountMinor)
+	}
+	if found.FromContainerID != "safe-1" || found.ToContainerID != "drawer-1" {
+		t.Fatalf("cash movement containers = %+v", found)
+	}
+	if found.Breakdown == nil || found.Breakdown.Bills["5000"] != 3 {
+		t.Fatalf("cash movement breakdown = %+v", found.Breakdown)
+	}
+}
+
+func TestFulfillChangeFundRequestRejectsOriginalRequester(t *testing.T) {
+	server := NewServer()
+	shiftID := openStoreDayAndShiftReturningID(t, server, "cfr-sod")
+
+	createResponse := httptest.NewRecorder()
+	createRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/change-fund-requests", bytes.NewBufferString(`{
+		"amountMinor": 5000,
+		"actorId": "senior-1"
+	}`))
+	createRequest.Header.Set("Idempotency-Key", "cfr-sod-create-1")
+	server.ServeHTTP(createResponse, createRequest)
+	if createResponse.Code != http.StatusAccepted {
+		t.Fatalf("create change fund request status = %d, body = %s", createResponse.Code, createResponse.Body.String())
+	}
+	var created ChangeFundRequestAcceptedResponse
+	if err := json.Unmarshal(createResponse.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode change fund request response: %v", err)
+	}
+
+	// The original requester (senior-1) has the fulfill permission, so this
+	// isolates the separation-of-duties check from the permission check
+	// (see TestFulfillChangeFundRequestRequiresPermission for that case).
+	fulfillResponse := httptest.NewRecorder()
+	fulfillRequest := httptest.NewRequest(http.MethodPost, "/v1/change-fund-requests/"+created.Request.ID+"/fulfill", bytes.NewBufferString(`{
+		"actorId": "senior-1",
+		"safeId": "safe-1"
+	}`))
+	fulfillRequest.Header.Set("Idempotency-Key", "cfr-sod-fulfill-1")
+	server.ServeHTTP(fulfillResponse, fulfillRequest)
+	if fulfillResponse.Code != http.StatusConflict {
+		t.Fatalf("self fulfill status = %d, body = %s", fulfillResponse.Code, fulfillResponse.Body.String())
+	}
+
+	var problem struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(fulfillResponse.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Code != "separation_of_duties_violation" {
+		t.Fatalf("problem code = %s body = %s", problem.Code, fulfillResponse.Body.String())
+	}
+}
+
+func TestFulfillChangeFundRequestRejectsAlreadyFulfilled(t *testing.T) {
+	server := NewServer()
+	shiftID := openStoreDayAndShiftReturningID(t, server, "cfr-already-fulfilled")
+
+	createResponse := httptest.NewRecorder()
+	createRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/change-fund-requests", bytes.NewBufferString(`{
+		"amountMinor": 5000,
+		"actorId": "cashier-1"
+	}`))
+	createRequest.Header.Set("Idempotency-Key", "cfr-already-fulfilled-create-1")
+	server.ServeHTTP(createResponse, createRequest)
+	if createResponse.Code != http.StatusAccepted {
+		t.Fatalf("create change fund request status = %d, body = %s", createResponse.Code, createResponse.Body.String())
+	}
+	var created ChangeFundRequestAcceptedResponse
+	if err := json.Unmarshal(createResponse.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode change fund request response: %v", err)
+	}
+
+	firstFulfillResponse := httptest.NewRecorder()
+	firstFulfillRequest := httptest.NewRequest(http.MethodPost, "/v1/change-fund-requests/"+created.Request.ID+"/fulfill", bytes.NewBufferString(`{
+		"actorId": "senior-1",
+		"safeId": "safe-1"
+	}`))
+	firstFulfillRequest.Header.Set("Idempotency-Key", "cfr-already-fulfilled-fulfill-1")
+	server.ServeHTTP(firstFulfillResponse, firstFulfillRequest)
+	if firstFulfillResponse.Code != http.StatusAccepted {
+		t.Fatalf("first fulfill status = %d, body = %s", firstFulfillResponse.Code, firstFulfillResponse.Body.String())
+	}
+
+	secondFulfillResponse := httptest.NewRecorder()
+	secondFulfillRequest := httptest.NewRequest(http.MethodPost, "/v1/change-fund-requests/"+created.Request.ID+"/fulfill", bytes.NewBufferString(`{
+		"actorId": "admin-1",
+		"safeId": "safe-1"
+	}`))
+	secondFulfillRequest.Header.Set("Idempotency-Key", "cfr-already-fulfilled-fulfill-2")
+	server.ServeHTTP(secondFulfillResponse, secondFulfillRequest)
+	if secondFulfillResponse.Code != http.StatusConflict {
+		t.Fatalf("second fulfill status = %d, body = %s", secondFulfillResponse.Code, secondFulfillResponse.Body.String())
+	}
+
+	var problem struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(secondFulfillResponse.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Code != "change_fund_request_already_fulfilled" {
+		t.Fatalf("problem code = %s body = %s", problem.Code, secondFulfillResponse.Body.String())
+	}
+}
+
+func TestFulfillChangeFundRequestRequiresPermission(t *testing.T) {
+	server := NewServer()
+	shiftID := openStoreDayAndShiftReturningID(t, server, "cfr-perm")
+
+	createResponse := httptest.NewRecorder()
+	createRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/change-fund-requests", bytes.NewBufferString(`{
+		"amountMinor": 5000,
+		"actorId": "senior-1"
+	}`))
+	createRequest.Header.Set("Idempotency-Key", "cfr-perm-create-1")
+	server.ServeHTTP(createResponse, createRequest)
+	if createResponse.Code != http.StatusAccepted {
+		t.Fatalf("create change fund request status = %d, body = %s", createResponse.Code, createResponse.Body.String())
+	}
+	var created ChangeFundRequestAcceptedResponse
+	if err := json.Unmarshal(createResponse.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode change fund request response: %v", err)
+	}
+
+	// cashier-1 is not the original requester (senior-1 is), isolating this
+	// from the separation-of-duties check; cashier-1 simply lacks the
+	// fulfill permission.
+	fulfillResponse := httptest.NewRecorder()
+	fulfillRequest := httptest.NewRequest(http.MethodPost, "/v1/change-fund-requests/"+created.Request.ID+"/fulfill", bytes.NewBufferString(`{
+		"actorId": "cashier-1",
+		"safeId": "safe-1"
+	}`))
+	fulfillRequest.Header.Set("Idempotency-Key", "cfr-perm-fulfill-1")
+	server.ServeHTTP(fulfillResponse, fulfillRequest)
+	if fulfillResponse.Code != http.StatusForbidden {
+		t.Fatalf("fulfill without permission status = %d, body = %s", fulfillResponse.Code, fulfillResponse.Body.String())
+	}
+
+	var problem struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(fulfillResponse.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Code != "permission_denied" {
+		t.Fatalf("problem code = %s body = %s", problem.Code, fulfillResponse.Body.String())
+	}
+}
+
+func TestFulfillChangeFundRequestIdempotentReplay(t *testing.T) {
+	server := NewServer()
+	shiftID := openStoreDayAndShiftReturningID(t, server, "cfr-replay")
+
+	createResponse := httptest.NewRecorder()
+	createRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/change-fund-requests", bytes.NewBufferString(`{
+		"amountMinor": 5000,
+		"actorId": "cashier-1"
+	}`))
+	createRequest.Header.Set("Idempotency-Key", "cfr-replay-create-1")
+	server.ServeHTTP(createResponse, createRequest)
+	if createResponse.Code != http.StatusAccepted {
+		t.Fatalf("create change fund request status = %d, body = %s", createResponse.Code, createResponse.Body.String())
+	}
+	var created ChangeFundRequestAcceptedResponse
+	if err := json.Unmarshal(createResponse.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode change fund request response: %v", err)
+	}
+
+	firstResponse := httptest.NewRecorder()
+	firstRequest := httptest.NewRequest(http.MethodPost, "/v1/change-fund-requests/"+created.Request.ID+"/fulfill", bytes.NewBufferString(`{
+		"actorId": "senior-1",
+		"safeId": "safe-1"
+	}`))
+	firstRequest.Header.Set("Idempotency-Key", "cfr-replay-fulfill-1")
+	server.ServeHTTP(firstResponse, firstRequest)
+	if firstResponse.Code != http.StatusAccepted {
+		t.Fatalf("first fulfill status = %d, body = %s", firstResponse.Code, firstResponse.Body.String())
+	}
+	var first ChangeFundRequestAcceptedResponse
+	if err := json.Unmarshal(firstResponse.Body.Bytes(), &first); err != nil {
+		t.Fatalf("decode first fulfill response: %v", err)
+	}
+
+	replayResponse := httptest.NewRecorder()
+	replayRequest := httptest.NewRequest(http.MethodPost, "/v1/change-fund-requests/"+created.Request.ID+"/fulfill", bytes.NewBufferString(`{
+		"actorId": "senior-1",
+		"safeId": "safe-1"
+	}`))
+	replayRequest.Header.Set("Idempotency-Key", "cfr-replay-fulfill-1")
+	server.ServeHTTP(replayResponse, replayRequest)
+	if replayResponse.Code != http.StatusAccepted {
+		t.Fatalf("replay fulfill status = %d, body = %s", replayResponse.Code, replayResponse.Body.String())
+	}
+	var replayed ChangeFundRequestAcceptedResponse
+	if err := json.Unmarshal(replayResponse.Body.Bytes(), &replayed); err != nil {
+		t.Fatalf("decode replay fulfill response: %v", err)
+	}
+	if replayed.Request.CashMovementID != first.Request.CashMovementID {
+		t.Fatalf("replay cashMovementId = %s, first cashMovementId = %s", replayed.Request.CashMovementID, first.Request.CashMovementID)
+	}
+
+	movementsResponse := httptest.NewRecorder()
+	movementsRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/cash-movements", nil)
+	server.ServeHTTP(movementsResponse, movementsRequest)
+	if movementsResponse.Code != http.StatusOK {
+		t.Fatalf("list cash movements status = %d, body = %s", movementsResponse.Code, movementsResponse.Body.String())
+	}
+	var movements PaginatedCashMovementsResponse
+	if err := json.Unmarshal(movementsResponse.Body.Bytes(), &movements); err != nil {
+		t.Fatalf("decode cash movements response: %v", err)
+	}
+	movementCount := 0
+	for _, movement := range movements.Items {
+		if movement.ID == first.Request.CashMovementID {
+			movementCount++
+		}
+	}
+	if movementCount != 1 {
+		t.Fatalf("cash movement count for %s = %d", first.Request.CashMovementID, movementCount)
+	}
+}
+
+func TestChangeFundRequestListAndGetRoundTrip(t *testing.T) {
+	server := NewServer()
+	shiftID := openStoreDayAndShiftReturningID(t, server, "cfr-list")
+
+	var created []ChangeFundRequestAcceptedResponse
+	for i := 0; i < 2; i++ {
+		response := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/change-fund-requests", bytes.NewBufferString(fmt.Sprintf(`{
+			"amountMinor": %d,
+			"actorId": "cashier-1"
+		}`, 1000*(i+1))))
+		request.Header.Set("Idempotency-Key", fmt.Sprintf("cfr-list-create-%d", i))
+		server.ServeHTTP(response, request)
+		if response.Code != http.StatusAccepted {
+			t.Fatalf("create change fund request status = %d, body = %s", response.Code, response.Body.String())
+		}
+		var accepted ChangeFundRequestAcceptedResponse
+		if err := json.Unmarshal(response.Body.Bytes(), &accepted); err != nil {
+			t.Fatalf("decode change fund request response: %v", err)
+		}
+		created = append(created, accepted)
+	}
+
+	listResponse := httptest.NewRecorder()
+	listRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/change-fund-requests", nil)
+	server.ServeHTTP(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK {
+		t.Fatalf("list change fund requests status = %d, body = %s", listResponse.Code, listResponse.Body.String())
+	}
+	var listed PaginatedChangeFundRequestsResponse
+	if err := json.Unmarshal(listResponse.Body.Bytes(), &listed); err != nil {
+		t.Fatalf("decode change fund requests response: %v", err)
+	}
+	if listed.TotalCount != 2 || len(listed.Items) != 2 {
+		t.Fatalf("change fund requests list = %+v", listed)
+	}
+
+	getResponse := httptest.NewRecorder()
+	getRequest := httptest.NewRequest(http.MethodGet, "/v1/change-fund-requests/"+created[0].Request.ID, nil)
+	server.ServeHTTP(getResponse, getRequest)
+	if getResponse.Code != http.StatusOK {
+		t.Fatalf("get change fund request status = %d, body = %s", getResponse.Code, getResponse.Body.String())
+	}
+	var fetched ChangeFundRequestAcceptedResponse
+	if err := json.Unmarshal(getResponse.Body.Bytes(), &fetched); err != nil {
+		t.Fatalf("decode change fund request response: %v", err)
+	}
+	if fetched.Request.ID != created[0].Request.ID {
+		t.Fatalf("fetched change fund request id = %s, want %s", fetched.Request.ID, created[0].Request.ID)
+	}
+}
+
 func TestShiftRejectsDuplicateOpenTerminal(t *testing.T) {
 	server := NewServer()
 	openDay(t, server, "shift-duplicate-terminal")
