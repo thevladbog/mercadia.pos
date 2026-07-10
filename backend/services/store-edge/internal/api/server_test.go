@@ -98,6 +98,9 @@ func TestOpenAPIExposesStoreEdgeOperations(t *testing.T) {
 	if _, ok := paths["/v1/shifts/{shiftId}/close"]; !ok {
 		t.Fatal("expected /v1/shifts/{shiftId}/close path")
 	}
+	if _, ok := paths["/v1/shifts/{shiftId}/confirm-close"]; !ok {
+		t.Fatal("expected /v1/shifts/{shiftId}/confirm-close path")
+	}
 	if _, ok := paths["/v1/shifts/{shiftId}/cash-in"]; !ok {
 		t.Fatal("expected /v1/shifts/{shiftId}/cash-in path")
 	}
@@ -3286,6 +3289,175 @@ func TestListShiftReceipts(t *testing.T) {
 	}
 	if len(listedAfterCancel.Receipts) != 1 || listedAfterCancel.Receipts[0].Status != "cancelled" {
 		t.Fatalf("listed receipts after cancel = %+v", listedAfterCancel.Receipts)
+	}
+}
+
+func openShiftAwaitingCloseConfirmation(t *testing.T, server http.Handler, keyPrefix string) string {
+	t.Helper()
+
+	openStoreDayAndShift(t, server, keyPrefix)
+
+	listOpenResponse := httptest.NewRecorder()
+	listOpenRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/shifts/open", nil)
+	server.ServeHTTP(listOpenResponse, listOpenRequest)
+	if listOpenResponse.Code != http.StatusOK {
+		t.Fatalf("list open shifts status = %d, body = %s", listOpenResponse.Code, listOpenResponse.Body.String())
+	}
+	var openShifts ShiftsResponse
+	if err := json.Unmarshal(listOpenResponse.Body.Bytes(), &openShifts); err != nil {
+		t.Fatalf("decode open shifts response: %v", err)
+	}
+	if len(openShifts.Shifts) != 1 {
+		t.Fatalf("open shifts count = %d", len(openShifts.Shifts))
+	}
+	shiftID := openShifts.Shifts[0].ID
+
+	declareResponse := httptest.NewRecorder()
+	declareRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/close", bytes.NewBufferString(`{
+		"closingCashMinor": 125000,
+		"safeId": "safe-1",
+		"actorId": "cashier-1"
+	}`))
+	declareRequest.Header.Set("Idempotency-Key", keyPrefix+"-shift-declare-1")
+	server.ServeHTTP(declareResponse, declareRequest)
+	if declareResponse.Code != http.StatusAccepted {
+		t.Fatalf("declare close shift status = %d, body = %s", declareResponse.Code, declareResponse.Body.String())
+	}
+
+	var declared ShiftAcceptedResponse
+	if err := json.Unmarshal(declareResponse.Body.Bytes(), &declared); err != nil {
+		t.Fatalf("decode declare close shift response: %v", err)
+	}
+	if declared.Shift.Status != "awaiting_close_confirmation" {
+		t.Fatalf("declared shift status = %s", declared.Shift.Status)
+	}
+
+	return shiftID
+}
+
+func TestConfirmCloseShiftWorkflow(t *testing.T) {
+	server := NewServer()
+	shiftID := openShiftAwaitingCloseConfirmation(t, server, "shift-confirm-http")
+
+	confirmResponse := httptest.NewRecorder()
+	confirmRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/confirm-close", bytes.NewBufferString(`{
+		"actorId": "senior-1"
+	}`))
+	confirmRequest.Header.Set("Idempotency-Key", "shift-confirm-http-1")
+	server.ServeHTTP(confirmResponse, confirmRequest)
+	if confirmResponse.Code != http.StatusAccepted {
+		t.Fatalf("confirm close shift status = %d, body = %s", confirmResponse.Code, confirmResponse.Body.String())
+	}
+
+	var confirmed ShiftAcceptedResponse
+	if err := json.Unmarshal(confirmResponse.Body.Bytes(), &confirmed); err != nil {
+		t.Fatalf("decode confirm close shift response: %v", err)
+	}
+	if confirmed.Shift.Status != "closed" {
+		t.Fatalf("confirmed shift status = %s", confirmed.Shift.Status)
+	}
+	if confirmed.Shift.ClosingApprovedByID != "senior-1" {
+		t.Fatalf("confirmed shift closingApprovedById = %s", confirmed.Shift.ClosingApprovedByID)
+	}
+
+	cashBalanceResponse := httptest.NewRecorder()
+	cashBalanceRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/cash-balances", nil)
+	server.ServeHTTP(cashBalanceResponse, cashBalanceRequest)
+	if cashBalanceResponse.Code != http.StatusOK {
+		t.Fatalf("cash balances status = %d, body = %s", cashBalanceResponse.Code, cashBalanceResponse.Body.String())
+	}
+	var balances CashBalancesResponse
+	if err := json.Unmarshal(cashBalanceResponse.Body.Bytes(), &balances); err != nil {
+		t.Fatalf("decode cash balances response: %v", err)
+	}
+	byContainer := map[string]int64{}
+	for _, balance := range balances.Balances {
+		byContainer[balance.ContainerID] = balance.BalanceMinor
+	}
+	if byContainer["safe-1"] != 25000 {
+		t.Fatalf("safe-1 balance = %d, balances = %+v", byContainer["safe-1"], balances.Balances)
+	}
+
+	// Idempotent replay must return the identical result, not error or double-post the movement.
+	replayResponse := httptest.NewRecorder()
+	replayRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/confirm-close", bytes.NewBufferString(`{
+		"actorId": "senior-1"
+	}`))
+	replayRequest.Header.Set("Idempotency-Key", "shift-confirm-http-1")
+	server.ServeHTTP(replayResponse, replayRequest)
+	if replayResponse.Code != http.StatusAccepted {
+		t.Fatalf("replay confirm close shift status = %d, body = %s", replayResponse.Code, replayResponse.Body.String())
+	}
+}
+
+func TestConfirmCloseShiftRejectsOriginalDeclarerViaHTTP(t *testing.T) {
+	server := NewServer()
+	openStoreDayAndShift(t, server, "shift-confirm-sod")
+
+	listOpenResponse := httptest.NewRecorder()
+	listOpenRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/shifts/open", nil)
+	server.ServeHTTP(listOpenResponse, listOpenRequest)
+	var openShifts ShiftsResponse
+	if err := json.Unmarshal(listOpenResponse.Body.Bytes(), &openShifts); err != nil {
+		t.Fatalf("decode open shifts response: %v", err)
+	}
+	shiftID := openShifts.Shifts[0].ID
+
+	declareResponse := httptest.NewRecorder()
+	declareRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/close", bytes.NewBufferString(`{
+		"closingCashMinor": 125000,
+		"safeId": "safe-1",
+		"actorId": "senior-1"
+	}`))
+	declareRequest.Header.Set("Idempotency-Key", "shift-confirm-sod-declare-1")
+	server.ServeHTTP(declareResponse, declareRequest)
+	if declareResponse.Code != http.StatusAccepted {
+		t.Fatalf("declare close shift status = %d, body = %s", declareResponse.Code, declareResponse.Body.String())
+	}
+
+	confirmResponse := httptest.NewRecorder()
+	confirmRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/confirm-close", bytes.NewBufferString(`{
+		"actorId": "senior-1"
+	}`))
+	confirmRequest.Header.Set("Idempotency-Key", "shift-confirm-sod-1")
+	server.ServeHTTP(confirmResponse, confirmRequest)
+	if confirmResponse.Code != http.StatusConflict {
+		t.Fatalf("self confirm status = %d, body = %s", confirmResponse.Code, confirmResponse.Body.String())
+	}
+
+	var problem struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(confirmResponse.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Code != "separation_of_duties_violation" {
+		t.Fatalf("problem code = %s body = %s", problem.Code, confirmResponse.Body.String())
+	}
+}
+
+func TestConfirmCloseShiftRequiresPermissionViaHTTP(t *testing.T) {
+	server := NewServer()
+	shiftID := openShiftAwaitingCloseConfirmation(t, server, "shift-confirm-perm")
+
+	confirmResponse := httptest.NewRecorder()
+	confirmRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+shiftID+"/confirm-close", bytes.NewBufferString(`{
+		"actorId": "cashier-1"
+	}`))
+	confirmRequest.Header.Set("Idempotency-Key", "shift-confirm-perm-1")
+	server.ServeHTTP(confirmResponse, confirmRequest)
+	if confirmResponse.Code != http.StatusForbidden {
+		t.Fatalf("confirm without permission status = %d, body = %s", confirmResponse.Code, confirmResponse.Body.String())
+	}
+
+	var problem struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(confirmResponse.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Code != "permission_denied" {
+		t.Fatalf("problem code = %s body = %s", problem.Code, confirmResponse.Body.String())
 	}
 }
 
