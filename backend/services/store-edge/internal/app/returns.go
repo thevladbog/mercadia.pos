@@ -16,6 +16,7 @@ var (
 	ErrReceiptNotReturnable       = errors.New("receipt is not returnable")
 	ErrReturnAlreadySettled       = errors.New("return is already settled")
 	ErrReturnSettlementNotAllowed = errors.New("return settlement is not allowed")
+	ErrReturnNotPendingApproval   = errors.New("return is not pending approval")
 )
 
 type ReturnRepository interface {
@@ -171,11 +172,10 @@ func (s *ReturnsService) CreateNoReceiptReturn(ctx context.Context, command Crea
 	if command.IdempotencyKey == "" {
 		return ReturnResult{}, ErrIdempotencyKeyRequired
 	}
-	if command.StoreID == "" || command.Reason == "" || command.ActorID == "" ||
-		command.ApprovedByID == "" || len(command.Lines) == 0 {
+	if command.StoreID == "" || command.Reason == "" || command.ActorID == "" || len(command.Lines) == 0 {
 		return ReturnResult{}, ErrInvalidReturnCommand
 	}
-	if command.ApprovedByID == command.ActorID {
+	if command.ApprovedByID != "" && command.ApprovedByID == command.ActorID {
 		return ReturnResult{}, ErrSeparationOfDutiesViolation
 	}
 	if err := CheckActorPermission(s.roles, ctx, command.ActorID, PermissionReturnsCreate); err != nil {
@@ -217,6 +217,76 @@ func (s *ReturnsService) CreateNoReceiptReturn(ctx context.Context, command Crea
 			Operation:   operation,
 			Key:         command.IdempotencyKey,
 			TargetID:    command.StoreID,
+			Fingerprint: fingerprint,
+			Result:      result,
+			CreatedAt:   s.now(),
+		})
+	}); err != nil {
+		return ReturnResult{}, err
+	}
+	return result, nil
+}
+
+type ConfirmReturnCommand struct {
+	IdempotencyKey string
+	ReturnID       string
+	ActorID        string // the confirming senior cashier/admin; becomes Return.ApprovedByID
+}
+
+func (s *ReturnsService) ConfirmReturn(ctx context.Context, command ConfirmReturnCommand) (ReturnResult, error) {
+	if command.IdempotencyKey == "" {
+		return ReturnResult{}, ErrIdempotencyKeyRequired
+	}
+	if command.ReturnID == "" || command.ActorID == "" {
+		return ReturnResult{}, ErrInvalidReturnCommand
+	}
+	if err := CheckActorPermission(s.roles, ctx, command.ActorID, PermissionReturnsApprove); err != nil {
+		return ReturnResult{}, err
+	}
+
+	const operation = "returns.confirm"
+	fingerprint := fmt.Sprintf("%s|%s", command.ReturnID, command.ActorID)
+	if result, found, err := s.findReturnIdempotency(ctx, operation, command.IdempotencyKey, command.ReturnID, fingerprint); err != nil || found {
+		return result, err
+	}
+
+	ret, err := s.returns.FindReturn(ctx, command.ReturnID)
+	if err != nil {
+		return ReturnResult{}, err
+	}
+	if command.ActorID == ret.ActorID {
+		return ReturnResult{}, ErrSeparationOfDutiesViolation
+	}
+
+	if err := ret.ConfirmPendingApproval(command.ActorID, s.now()); err != nil {
+		if errors.Is(err, domain.ErrReturnNotPendingApproval) {
+			return ReturnResult{}, ErrReturnNotPendingApproval
+		}
+		return ReturnResult{}, ErrInvalidReturnCommand
+	}
+
+	var result ReturnResult
+	if err := RunTransaction(ctx, s.transactions, func(ctx context.Context) error {
+		if err := s.returns.SaveReturn(ctx, ret); err != nil {
+			return err
+		}
+		if s.journal != nil {
+			if err := s.journal.RecordOperation(ctx, RecordOperationCommand{
+				StoreID:       ret.StoreID,
+				OperationType: "return.confirmed",
+				ActorID:       command.ActorID,
+				ReferenceID:   ret.ID,
+				Summary:       fmt.Sprintf("%s return %s confirmed, total=%d", ret.Kind, ret.Reason, ret.TotalMinor),
+			}); err != nil {
+				return err
+			}
+		}
+
+		result = ReturnResult{Return: ret}
+		return s.idempotency.Save(ctx, IdempotencyRecord{
+			Operation:   operation,
+			Key:         command.IdempotencyKey,
+			TargetID:    command.ReturnID,
 			Fingerprint: fingerprint,
 			Result:      result,
 			CreatedAt:   s.now(),

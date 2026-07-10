@@ -5,16 +5,16 @@
  * Store-local operational API for POS, SCO/KSO, senior cashier, assistant, and store admin clients.
  * OpenAPI spec version: 0.1.0
  */
-import type { ListStoreReturns200ItemsItemLinesItem } from './listStoreReturns200ItemsItemLinesItem.ts';
+import type { ConfirmReturn202ReturnLinesItem } from './confirmReturn202ReturnLinesItem.ts';
 
-export type ListStoreReturns200ItemsItem = {
+export type ConfirmReturn202Return = {
   actorId: string;
   approvedById?: string;
   confirmedAt?: string;
   createdAt: string;
   id: string;
   kind: string;
-  lines: ListStoreReturns200ItemsItemLinesItem[];
+  lines: ConfirmReturn202ReturnLinesItem[];
   reason: string;
   receiptId?: string;
   status: string;

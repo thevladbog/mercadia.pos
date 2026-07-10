@@ -2053,6 +2053,259 @@ func TestSettleNoReceiptReturnWorkflow(t *testing.T) {
 	}
 }
 
+func TestCreateNoReceiptReturnWithoutApproverIsPendingApproval(t *testing.T) {
+	server := NewServer()
+
+	returnResponse := httptest.NewRecorder()
+	returnRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/returns/no-receipt", bytes.NewBufferString(`{
+		"lines": [{"productId": "sku-1", "name": "Milk", "quantity": 1, "unitPriceMinor": 2500}],
+		"reason": "No receipt return",
+		"actorId": "senior-1"
+	}`))
+	returnRequest.Header.Set("Content-Type", "application/json")
+	returnRequest.Header.Set("Idempotency-Key", "return-pending-create-1")
+	server.ServeHTTP(returnResponse, returnRequest)
+	if returnResponse.Code != http.StatusAccepted {
+		t.Fatalf("create return status = %d body = %s", returnResponse.Code, returnResponse.Body.String())
+	}
+
+	var accepted ReturnAcceptedResponse
+	if err := json.Unmarshal(returnResponse.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode return response: %v", err)
+	}
+	if accepted.Return.Status != "pending_approval" {
+		t.Fatalf("return status = %s", accepted.Return.Status)
+	}
+	if accepted.Return.ApprovedByID != "" {
+		t.Fatalf("return approvedById = %s", accepted.Return.ApprovedByID)
+	}
+}
+
+func TestConfirmReturnMovesPendingReturnToCompleted(t *testing.T) {
+	server := NewServer()
+
+	returnResponse := httptest.NewRecorder()
+	returnRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/returns/no-receipt", bytes.NewBufferString(`{
+		"lines": [{"productId": "sku-1", "name": "Milk", "quantity": 1, "unitPriceMinor": 2500}],
+		"reason": "No receipt return",
+		"actorId": "senior-1"
+	}`))
+	returnRequest.Header.Set("Content-Type", "application/json")
+	returnRequest.Header.Set("Idempotency-Key", "return-pending-confirm-create-1")
+	server.ServeHTTP(returnResponse, returnRequest)
+	if returnResponse.Code != http.StatusAccepted {
+		t.Fatalf("create return status = %d body = %s", returnResponse.Code, returnResponse.Body.String())
+	}
+
+	var accepted ReturnAcceptedResponse
+	if err := json.Unmarshal(returnResponse.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode return response: %v", err)
+	}
+
+	confirmResponse := httptest.NewRecorder()
+	confirmRequest := httptest.NewRequest(http.MethodPost, "/v1/returns/"+accepted.Return.ID+"/confirm", bytes.NewBufferString(`{
+		"actorId": "admin-1"
+	}`))
+	confirmRequest.Header.Set("Content-Type", "application/json")
+	confirmRequest.Header.Set("Idempotency-Key", "return-pending-confirm-1")
+	server.ServeHTTP(confirmResponse, confirmRequest)
+	if confirmResponse.Code != http.StatusAccepted {
+		t.Fatalf("confirm return status = %d body = %s", confirmResponse.Code, confirmResponse.Body.String())
+	}
+
+	var confirmed ReturnAcceptedResponse
+	if err := json.Unmarshal(confirmResponse.Body.Bytes(), &confirmed); err != nil {
+		t.Fatalf("decode confirm response: %v", err)
+	}
+	if confirmed.Return.Status != "completed" {
+		t.Fatalf("return status = %s", confirmed.Return.Status)
+	}
+	if confirmed.Return.ApprovedByID != "admin-1" {
+		t.Fatalf("return approvedById = %s", confirmed.Return.ApprovedByID)
+	}
+	if confirmed.Return.ConfirmedAt.IsZero() {
+		t.Fatalf("return confirmedAt is zero")
+	}
+}
+
+func TestConfirmReturnRejectsOriginalCreator(t *testing.T) {
+	server := NewServer()
+
+	returnResponse := httptest.NewRecorder()
+	returnRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/returns/no-receipt", bytes.NewBufferString(`{
+		"lines": [{"productId": "sku-1", "name": "Milk", "quantity": 1, "unitPriceMinor": 2500}],
+		"reason": "No receipt return",
+		"actorId": "senior-1"
+	}`))
+	returnRequest.Header.Set("Content-Type", "application/json")
+	returnRequest.Header.Set("Idempotency-Key", "return-pending-self-confirm-create-1")
+	server.ServeHTTP(returnResponse, returnRequest)
+	if returnResponse.Code != http.StatusAccepted {
+		t.Fatalf("create return status = %d body = %s", returnResponse.Code, returnResponse.Body.String())
+	}
+
+	var accepted ReturnAcceptedResponse
+	if err := json.Unmarshal(returnResponse.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode return response: %v", err)
+	}
+
+	confirmResponse := httptest.NewRecorder()
+	confirmRequest := httptest.NewRequest(http.MethodPost, "/v1/returns/"+accepted.Return.ID+"/confirm", bytes.NewBufferString(`{
+		"actorId": "senior-1"
+	}`))
+	confirmRequest.Header.Set("Content-Type", "application/json")
+	confirmRequest.Header.Set("Idempotency-Key", "return-pending-self-confirm-1")
+	server.ServeHTTP(confirmResponse, confirmRequest)
+	if confirmResponse.Code != http.StatusConflict {
+		t.Fatalf("self confirm status = %d body = %s", confirmResponse.Code, confirmResponse.Body.String())
+	}
+
+	var problem struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(confirmResponse.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Code != "separation_of_duties_violation" {
+		t.Fatalf("problem code = %s body = %s", problem.Code, confirmResponse.Body.String())
+	}
+}
+
+func TestConfirmReturnRejectsReturnThatIsNotPending(t *testing.T) {
+	server := NewServer()
+
+	returnResponse := httptest.NewRecorder()
+	returnRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/returns/no-receipt", bytes.NewBufferString(`{
+		"lines": [{"productId": "sku-1", "name": "Milk", "quantity": 1, "unitPriceMinor": 2500}],
+		"reason": "No receipt return",
+		"actorId": "senior-1",
+		"approvedById": "admin-1"
+	}`))
+	returnRequest.Header.Set("Content-Type", "application/json")
+	returnRequest.Header.Set("Idempotency-Key", "return-not-pending-create-1")
+	server.ServeHTTP(returnResponse, returnRequest)
+	if returnResponse.Code != http.StatusAccepted {
+		t.Fatalf("create return status = %d body = %s", returnResponse.Code, returnResponse.Body.String())
+	}
+
+	var accepted ReturnAcceptedResponse
+	if err := json.Unmarshal(returnResponse.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode return response: %v", err)
+	}
+	if accepted.Return.Status != "completed" {
+		t.Fatalf("return status = %s", accepted.Return.Status)
+	}
+
+	confirmResponse := httptest.NewRecorder()
+	confirmRequest := httptest.NewRequest(http.MethodPost, "/v1/returns/"+accepted.Return.ID+"/confirm", bytes.NewBufferString(`{
+		"actorId": "admin-1"
+	}`))
+	confirmRequest.Header.Set("Content-Type", "application/json")
+	confirmRequest.Header.Set("Idempotency-Key", "return-not-pending-confirm-1")
+	server.ServeHTTP(confirmResponse, confirmRequest)
+	if confirmResponse.Code != http.StatusConflict {
+		t.Fatalf("confirm non-pending return status = %d body = %s", confirmResponse.Code, confirmResponse.Body.String())
+	}
+
+	var problem struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(confirmResponse.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Code != "return_not_pending_approval" {
+		t.Fatalf("problem code = %s body = %s", problem.Code, confirmResponse.Body.String())
+	}
+}
+
+func TestConfirmReturnRequiresPermission(t *testing.T) {
+	server := NewServer()
+
+	returnResponse := httptest.NewRecorder()
+	returnRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/returns/no-receipt", bytes.NewBufferString(`{
+		"lines": [{"productId": "sku-1", "name": "Milk", "quantity": 1, "unitPriceMinor": 2500}],
+		"reason": "No receipt return",
+		"actorId": "senior-1"
+	}`))
+	returnRequest.Header.Set("Content-Type", "application/json")
+	returnRequest.Header.Set("Idempotency-Key", "return-pending-permission-create-1")
+	server.ServeHTTP(returnResponse, returnRequest)
+	if returnResponse.Code != http.StatusAccepted {
+		t.Fatalf("create return status = %d body = %s", returnResponse.Code, returnResponse.Body.String())
+	}
+
+	var accepted ReturnAcceptedResponse
+	if err := json.Unmarshal(returnResponse.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode return response: %v", err)
+	}
+
+	confirmResponse := httptest.NewRecorder()
+	confirmRequest := httptest.NewRequest(http.MethodPost, "/v1/returns/"+accepted.Return.ID+"/confirm", bytes.NewBufferString(`{
+		"actorId": "cashier-1"
+	}`))
+	confirmRequest.Header.Set("Content-Type", "application/json")
+	confirmRequest.Header.Set("Idempotency-Key", "return-pending-permission-confirm-1")
+	server.ServeHTTP(confirmResponse, confirmRequest)
+	if confirmResponse.Code != http.StatusForbidden {
+		t.Fatalf("confirm without permission status = %d body = %s", confirmResponse.Code, confirmResponse.Body.String())
+	}
+
+	var problem struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(confirmResponse.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Code != "permission_denied" {
+		t.Fatalf("problem code = %s body = %s", problem.Code, confirmResponse.Body.String())
+	}
+}
+
+func TestSettleReturnBlockedWhilePendingApproval(t *testing.T) {
+	server := NewServer()
+
+	returnResponse := httptest.NewRecorder()
+	returnRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/returns/no-receipt", bytes.NewBufferString(`{
+		"lines": [{"productId": "sku-1", "name": "Milk", "quantity": 1, "unitPriceMinor": 2500}],
+		"reason": "No receipt return",
+		"actorId": "senior-1"
+	}`))
+	returnRequest.Header.Set("Content-Type", "application/json")
+	returnRequest.Header.Set("Idempotency-Key", "return-pending-settle-create-1")
+	server.ServeHTTP(returnResponse, returnRequest)
+	if returnResponse.Code != http.StatusAccepted {
+		t.Fatalf("create return status = %d body = %s", returnResponse.Code, returnResponse.Body.String())
+	}
+
+	var accepted ReturnAcceptedResponse
+	if err := json.Unmarshal(returnResponse.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode return response: %v", err)
+	}
+
+	settleResponse := httptest.NewRecorder()
+	settleRequest := httptest.NewRequest(http.MethodPost, "/v1/returns/"+accepted.Return.ID+"/settle", bytes.NewBufferString(`{
+		"actorId": "senior-1",
+		"reason": "No receipt payout",
+		"drawerId": "drawer-1"
+	}`))
+	settleRequest.Header.Set("Content-Type", "application/json")
+	settleRequest.Header.Set("Idempotency-Key", "return-pending-settle-1")
+	server.ServeHTTP(settleResponse, settleRequest)
+	if settleResponse.Code != http.StatusConflict {
+		t.Fatalf("settle pending return status = %d body = %s", settleResponse.Code, settleResponse.Body.String())
+	}
+
+	var problem struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(settleResponse.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Code != "return_settlement_conflict" {
+		t.Fatalf("problem code = %s body = %s", problem.Code, settleResponse.Body.String())
+	}
+}
+
 func TestCashMovementWorkflow(t *testing.T) {
 	server := NewServer()
 

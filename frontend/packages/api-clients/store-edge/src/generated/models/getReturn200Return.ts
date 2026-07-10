@@ -10,6 +10,7 @@ import type { GetReturn200ReturnLinesItem } from './getReturn200ReturnLinesItem.
 export type GetReturn200Return = {
   actorId: string;
   approvedById?: string;
+  confirmedAt?: string;
   createdAt: string;
   id: string;
   kind: string;

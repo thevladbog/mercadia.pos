@@ -10,6 +10,7 @@ import type { CreateNoReceiptReturn202ReturnLinesItem } from './createNoReceiptR
 export type CreateNoReceiptReturn202Return = {
   actorId: string;
   approvedById?: string;
+  confirmedAt?: string;
   createdAt: string;
   id: string;
   kind: string;

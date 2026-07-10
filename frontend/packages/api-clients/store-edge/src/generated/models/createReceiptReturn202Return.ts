@@ -10,6 +10,7 @@ import type { CreateReceiptReturn202ReturnLinesItem } from './createReceiptRetur
 export type CreateReceiptReturn202Return = {
   actorId: string;
   approvedById?: string;
+  confirmedAt?: string;
   createdAt: string;
   id: string;
   kind: string;

@@ -2285,6 +2285,8 @@ func writeAppError(w http.ResponseWriter, err error) {
 	case errors.Is(err, app.ErrReturnAlreadySettled), errors.Is(err, app.ErrReturnSettlementNotAllowed),
 		errors.Is(err, app.ErrReturnSettlementPaymentMismatch), errors.Is(err, app.ErrReturnSettlementCumulativeTotalExceeded):
 		httpapi.WriteProblem(w, http.StatusConflict, "return_settlement_conflict", "Return settlement conflict", err.Error())
+	case errors.Is(err, app.ErrReturnNotPendingApproval):
+		httpapi.WriteProblem(w, http.StatusConflict, "return_not_pending_approval", "Return is not pending approval", err.Error())
 	case errors.Is(err, app.ErrReturnNotSettled), errors.Is(err, app.ErrReturnNotFiscalizable),
 		errors.Is(err, app.ErrReturnFiscalDocumentAlreadyExists):
 		httpapi.WriteProblem(w, http.StatusConflict, "return_fiscalization_conflict", "Return fiscalization conflict", err.Error())
