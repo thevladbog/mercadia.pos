@@ -141,8 +141,3 @@ export async function readStaffCredential(
     maskedToken: typeof maskedToken === 'string' ? maskedToken : undefined,
   };
 }
-
-export async function readIButton(signal?: AbortSignal): Promise<string> {
-  const credential = await readStaffCredential('ibutton', signal);
-  return credential.factor.token;
-}

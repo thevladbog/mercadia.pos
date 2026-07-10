@@ -347,15 +347,34 @@
   },
   "handover": {
     "title": "Передача смены",
-    "currentSession": "Текущая сессия",
-    "incomingCashier": "Новый старший кассир",
-    "incomingPersonnelId": "Табельный номер нового",
-    "incomingPin": "ПИН нового",
-    "incomingIbutton": "Приложите iButton нового",
-    "openOperations": "Открытые операции",
-    "safeState": "Состояние сейфа",
     "confirmHandover": "Передать смену",
-    "handoverSuccess": "Смена передана"
+    "summary": {
+      "title": "Итоги смены",
+      "changeIssued": "Выдано размена",
+      "cashReceived": "Принято от кассиров",
+      "incassations": "Инкассации (итог)",
+      "expenses": "Хоз. расходы",
+      "refundsApproved": "Возвраты подтверждено",
+      "safeNetChange": "Сейф · итог изменения",
+      "opCount": "{{count}} операций",
+      "opCount_one": "{{count}} операция",
+      "opCount_few": "{{count}} операции",
+      "opCount_many": "{{count}} операций"
+    },
+    "pickSuccessor": {
+      "title": "Выберите преемника",
+      "empty": "Нет доступных старших кассиров для передачи смены."
+    },
+    "warning": {
+      "pendingChangeFundRequests": "{{count}} запросов на размен ещё не выполнено",
+      "pendingChangeFundRequests_one": "{{count}} запрос на размен ещё не выполнен",
+      "pendingChangeFundRequests_few": "{{count}} запроса на размен ещё не выполнено",
+      "pendingChangeFundRequests_many": "{{count}} запросов на размен ещё не выполнено",
+      "openRecountDiscrepancies": "{{count}} пересчётов с расхождением ещё не разрешено",
+      "openRecountDiscrepancies_one": "{{count}} пересчёт с расхождением ещё не разрешён",
+      "openRecountDiscrepancies_few": "{{count}} пересчёта с расхождением ещё не разрешено",
+      "openRecountDiscrepancies_many": "{{count}} пересчётов с расхождением ещё не разрешено"
+    }
   },
   "ibutton": {
     "present": "Приложите iButton",
