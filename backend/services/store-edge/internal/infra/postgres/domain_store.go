@@ -76,6 +76,37 @@ func (s *Store) SeedDemoActors(ctx context.Context) error {
 	})
 }
 
+// SeedDemoCashBalances seeds a posted cash-in movement from external into
+// the demo store's safe (safe-1), so a fresh Postgres-backed demo instance
+// boots with a real, non-zero safe balance instead of an empty
+// cash-balances list — mirroring memory.WithDemoCashBalances for the
+// in-memory store. Cash balances are derived entirely from posted cash
+// movements (see CashService.ListCashBalances), so there is no separate
+// balances table to seed directly. SaveCashMovement upserts on conflict and
+// excludes created_at from the update, so re-seeding on every boot is a
+// no-op after the first.
+func (s *Store) SeedDemoCashBalances(ctx context.Context) error {
+	return s.SaveCashMovement(ctx, demoOpeningSafeBalanceMovement())
+}
+
+func demoOpeningSafeBalanceMovement() domain.CashMovement {
+	return domain.CashMovement{
+		ID:                "demo-cash-opening-safe-1",
+		StoreID:           "store-1",
+		Type:              domain.CashMovementTypeCashIn,
+		FromContainerID:   "external",
+		FromContainerType: domain.CashContainerTypeExternal,
+		ToContainerID:     "safe-1",
+		ToContainerType:   domain.CashContainerTypeSafe,
+		AmountMinor:       domain.DemoOpeningSafeBalanceMinor,
+		Currency:          "RUB",
+		Reason:            "Demo opening safe balance",
+		ActorID:           "senior-1",
+		Status:            domain.CashMovementStatusPosted,
+		CreatedAt:         time.Now().UTC(),
+	}
+}
+
 // demoActorSeed pairs a demo actor with its human-readable plaintext PIN.
 // The plaintext is hashed with app.HashPIN immediately before being persisted
 // by SeedDemoActors; it is never written to storage or logged in the clear.
