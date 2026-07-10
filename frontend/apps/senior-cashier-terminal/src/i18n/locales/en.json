@@ -249,7 +249,24 @@
     "pageIntro": {
       "changeFund": "Count the bills and coins from the safe and enter the quantity for each denomination on the left.",
       "receiveCash": "Count the bills and coins received from the cashier and enter the quantity for each denomination on the left.",
-      "finalCollection": "Recount the drawer together with the cashier and enter the quantity for each denomination on the left."
+      "finalCollection": "Recount the drawer together with the cashier and enter the quantity for each denomination on the left.",
+      "safeRecount": "Recount the cash held in the safe and enter the quantity for each denomination on the left."
+    },
+    "discrepancyComment": "Discrepancy comment",
+    "discrepancyCommentPlaceholder": "Describe the reason for the discrepancy…",
+    "secondSigner": {
+      "title": "Second Senior Cashier",
+      "primaryStaysAuthorized": "\"{{actorId}}\" remains signed in on this terminal — the operation is signed by both.",
+      "sameActorError": "The second signer must be a different person than the current cashier. Choose someone else."
+    },
+    "resolution": {
+      "title": "Recount Sign-off",
+      "firstSignature": "FIRST SIGNATURE",
+      "secondSignature": "SECOND SIGNATURE",
+      "signedAt": "Signed at {{time}}",
+      "confirmedNow": "Confirmed just now",
+      "commentLabel": "Comment",
+      "signButton": "✓ Sign the recount"
     },
     "grid": {
       "titleIssue": "Denomination composition to issue",
@@ -289,6 +306,9 @@
       "finalCollection1": "Recount the drawer together with the cashier.",
       "finalCollection2": "Compare the total against the expected drawer balance shown on the right.",
       "finalCollection3": "Confirm to close the shift.",
+      "safeRecount1": "Recount the cash in the safe by denomination.",
+      "safeRecount2": "If the amount doesn't match, describe the reason for the discrepancy.",
+      "safeRecount3": "Invite a second senior cashier to sign off the recount.",
       "bankCollection1": "Count out the amount to be collected.",
       "bankCollection2": "Fill in the collector's details and the bag/seal number.",
       "bankCollection3": "Confirm — the cash has been handed to the collector.",

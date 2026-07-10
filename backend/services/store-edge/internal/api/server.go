@@ -795,6 +795,7 @@ func wireServer(config wireConfig, systemOptions ...httpapi.SystemRoutesOption) 
 		app.WithCashOutboxRecorder(outbox),
 		app.WithCashJournal(journal),
 		app.WithCashTransactionRunner(store),
+		app.WithCashRoles(auth),
 	)
 	shifts := app.NewShiftService(store, store,
 		app.WithShiftCashLedger(store),

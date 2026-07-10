@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Dialog, DialogBody, DialogContent, DialogTitle } from '@mercadia/ui';
 
@@ -9,6 +10,14 @@ interface MismatchDialogProps {
   open: boolean;
   onClose: () => void;
   onResolve?: () => void;
+  /** Disables the "resolve" button without hiding it — e.g. `SafeRecountPage`
+   * (plan 028) gates it on a required discrepancy comment being non-empty. */
+  resolveDisabled?: boolean;
+  /** Extra content rendered between the expected/counted/diff summary and the
+   * button row — e.g. `SafeRecountPage`'s (plan 028) discrepancy-comment
+   * textarea. `undefined` for every other caller, so their rendered output
+   * is unchanged. */
+  children?: ReactNode;
 }
 
 export function MismatchDialog({
@@ -17,6 +26,8 @@ export function MismatchDialog({
   open,
   onClose,
   onResolve,
+  resolveDisabled,
+  children,
 }: MismatchDialogProps) {
   const { t } = useTranslation();
   const diff = countedMinor - expectedMinor;
@@ -59,12 +70,14 @@ export function MismatchDialog({
             </div>
           </div>
 
+          {children}
+
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
             <Button variant="ghost" onClick={onClose}>
               {t('common.cancel')}
             </Button>
             {onResolve && !isMatch && (
-              <Button variant="primary" onClick={onResolve}>
+              <Button variant="primary" onClick={onResolve} disabled={resolveDisabled}>
                 {t('cash.mismatchResolve')}
               </Button>
             )}

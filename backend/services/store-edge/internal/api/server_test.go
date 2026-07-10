@@ -2582,6 +2582,54 @@ func TestCashRecountDiscrepancyCanBeResolved(t *testing.T) {
 	}
 }
 
+func TestResolveCashRecountRequiresPermissionViaHTTP(t *testing.T) {
+	server := NewServer()
+
+	createResponse := httptest.NewRecorder()
+	createRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/cash-recounts", bytes.NewBufferString(`{
+		"containerId": "safe-1",
+		"containerType": "safe",
+		"countedMinor": 100000,
+		"reason": "Safe recount",
+		"actorId": "senior-1",
+		"approvedById": "cashier-1"
+	}`))
+	createRequest.Header.Set("Idempotency-Key", "recount-perm-create-1")
+	server.ServeHTTP(createResponse, createRequest)
+	if createResponse.Code != http.StatusAccepted {
+		t.Fatalf("create cash recount status = %d, body = %s", createResponse.Code, createResponse.Body.String())
+	}
+	var created CashRecountAcceptedResponse
+	if err := json.Unmarshal(createResponse.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode cash recount response: %v", err)
+	}
+
+	// cashier-1 is not the original creator (senior-1 is), isolating this
+	// from the separation-of-duties check; cashier-1 simply lacks
+	// PermissionRecountApprove.
+	resolveResponse := httptest.NewRecorder()
+	resolveRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/cash-recounts/"+created.Recount.ID+"/resolve", bytes.NewBufferString(`{
+		"resolutionNote": "Adjustment movement posted",
+		"actorId": "cashier-1",
+		"approvedById": "admin-1"
+	}`))
+	resolveRequest.Header.Set("Idempotency-Key", "recount-perm-resolve-1")
+	server.ServeHTTP(resolveResponse, resolveRequest)
+	if resolveResponse.Code != http.StatusForbidden {
+		t.Fatalf("resolve without permission status = %d, body = %s", resolveResponse.Code, resolveResponse.Body.String())
+	}
+
+	var problem struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(resolveResponse.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Code != "permission_denied" {
+		t.Fatalf("problem code = %s body = %s", problem.Code, resolveResponse.Body.String())
+	}
+}
+
 func TestCashMovementOmittedBreakdownStillWorks(t *testing.T) {
 	server := NewServer()
 

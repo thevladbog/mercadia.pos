@@ -181,7 +181,7 @@ func TestListCashRecounts(t *testing.T) {
 }
 
 func TestResolveCashRecountMarksDiscrepancyResolved(t *testing.T) {
-	service := newTestCashService()
+	service := newTestCashServiceWithRoles()
 	created, err := service.CreateCashRecount(context.Background(), app.CreateCashRecountCommand{
 		IdempotencyKey: "recount-1",
 		StoreID:        "store-1",
@@ -217,7 +217,7 @@ func TestResolveCashRecountMarksDiscrepancyResolved(t *testing.T) {
 }
 
 func TestResolveCashRecountRejectsSelfApproval(t *testing.T) {
-	service := newTestCashService()
+	service := newTestCashServiceWithRoles()
 	created, err := service.CreateCashRecount(context.Background(), app.CreateCashRecountCommand{
 		IdempotencyKey: "recount-1",
 		StoreID:        "store-1",
@@ -243,6 +243,36 @@ func TestResolveCashRecountRejectsSelfApproval(t *testing.T) {
 	})
 	if !errors.Is(err, app.ErrSeparationOfDutiesViolation) {
 		t.Fatalf("expected ErrSeparationOfDutiesViolation, got %v", err)
+	}
+}
+
+func TestResolveCashRecountRequiresPermission(t *testing.T) {
+	service := newTestCashServiceWithRoles()
+	created, err := service.CreateCashRecount(context.Background(), app.CreateCashRecountCommand{
+		IdempotencyKey: "recount-1",
+		StoreID:        "store-1",
+		ContainerID:    "safe-1",
+		ContainerType:  domain.CashContainerTypeSafe,
+		Currency:       "RUB",
+		CountedMinor:   100000,
+		Reason:         "Safe recount",
+		ActorID:        "senior-1",
+		ApprovedByID:   "cashier-1",
+	})
+	if err != nil {
+		t.Fatalf("create cash recount: %v", err)
+	}
+
+	_, err = service.ResolveCashRecount(context.Background(), app.ResolveCashRecountCommand{
+		IdempotencyKey: "recount-resolve-1",
+		StoreID:        "store-1",
+		RecountID:      created.Recount.ID,
+		ResolutionNote: "Adjustment movement will be posted by cash office",
+		ActorID:        "cashier-1",
+		ApprovedByID:   "admin-1",
+	})
+	if !errors.Is(err, app.ErrPermissionDenied) {
+		t.Fatalf("expected ErrPermissionDenied, got %v", err)
 	}
 }
 
@@ -380,6 +410,25 @@ func newTestCashService() *app.CashService {
 	store := memory.NewStore()
 	var counter int
 	return app.NewCashService(store, store,
+		app.WithCashClock(func() time.Time {
+			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+		}),
+		app.WithCashIDGenerator(func(prefix string) string {
+			counter++
+			return fmt.Sprintf("%s-test-%d", prefix, counter)
+		}),
+	)
+}
+
+// newTestCashServiceWithRoles wires demo actors (cashier-1/senior-1/admin-1)
+// and an AuthService-backed ActorRoleLookup, for tests exercising
+// ResolveCashRecount's permission check.
+func newTestCashServiceWithRoles() *app.CashService {
+	store := memory.NewStore(memory.WithDemoActors())
+	auth := app.NewAuthService(store, store, store, store)
+	var counter int
+	return app.NewCashService(store, store,
+		app.WithCashRoles(auth),
 		app.WithCashClock(func() time.Time {
 			return time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
 		}),
