@@ -1,0 +1,127 @@
+/**
+ * Redesigned Shift Handover page (plan 029, Phase 9). Colocated with the
+ * page, same convention as `pages/dashboard/DashboardPage.css` (plan 021)/
+ * `pages/login/LoginPage.css` (plan 020)/`pages/cash-operations/CashOperations.css`
+ * (plan 022) — reuses `index.css`'s existing `.sr-panel`/`.sr-panel-title`/
+ * `.muted`/`.sr-button-row`/`.sr-field-error` rules; only the layout that
+ * doesn't already exist there is added here. Every color is one of the
+ * existing `--ui-*` tokens.
+ */
+
+.sr-handover-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .sr-handover-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sr-handover-left,
+.sr-handover-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.sr-handover-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sr-handover-identity-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.sr-handover-identity-line {
+  font-weight: 600;
+}
+
+.sr-handover-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.sr-handover-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.sr-handover-summary-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.sr-handover-summary-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.sr-handover-summary-sublabel {
+  font-size: 0.8rem;
+  color: var(--ui-text-muted);
+}
+
+.sr-handover-summary-amount {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sr-handover-warning {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-warning-muted);
+  border: 1px solid var(--ui-warning);
+  color: var(--ui-warning);
+}
+
+.sr-handover-successor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.sr-handover-successor-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.sr-handover-successor-row:hover,
+.sr-handover-successor-row:focus-visible {
+  border-color: var(--ui-accent);
+  outline: none;
+}
+
+.sr-handover-successor-id {
+  font-weight: 600;
+  flex: 1;
+}

@@ -345,15 +345,28 @@
   },
   "handover": {
     "title": "Shift Handover",
-    "currentSession": "Current Session",
-    "incomingCashier": "New Senior Cashier",
-    "incomingPersonnelId": "New personnel ID",
-    "incomingPin": "New PIN",
-    "incomingIbutton": "Present new iButton",
-    "openOperations": "Open Operations",
-    "safeState": "Safe State",
-    "confirmHandover": "Confirm Handover",
-    "handoverSuccess": "Handover completed"
+    "confirmHandover": "Hand Off",
+    "summary": {
+      "title": "Shift Summary",
+      "changeIssued": "Change Issued",
+      "cashReceived": "Received from Cashiers",
+      "incassations": "Final Collections",
+      "expenses": "Business Expenses",
+      "refundsApproved": "Refunds Approved",
+      "safeNetChange": "Safe · Net Change",
+      "opCount": "{{count}} operations",
+      "opCount_one": "{{count}} operation"
+    },
+    "pickSuccessor": {
+      "title": "Choose a Successor",
+      "empty": "No senior cashiers are available to hand the shift to."
+    },
+    "warning": {
+      "pendingChangeFundRequests": "{{count}} change-fund requests are still unfulfilled",
+      "pendingChangeFundRequests_one": "{{count}} change-fund request is still unfulfilled",
+      "openRecountDiscrepancies": "{{count}} cash recounts with a discrepancy are still unresolved",
+      "openRecountDiscrepancies_one": "{{count}} cash recount with a discrepancy is still unresolved"
+    }
   },
   "ibutton": {
     "present": "Present iButton",
