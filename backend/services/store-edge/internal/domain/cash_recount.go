@@ -42,6 +42,7 @@ type CashRecount struct {
 	ResolvedByID     string
 	ResolvedAt       time.Time
 	CreatedAt        time.Time
+	Breakdown        *DenominationBreakdown
 }
 
 type CreateCashRecountInput struct {
@@ -57,6 +58,7 @@ type CreateCashRecountInput struct {
 	ActorID       string
 	ApprovedByID  string
 	Now           time.Time
+	Breakdown     *DenominationBreakdown
 }
 
 func CreateCashRecount(input CreateCashRecountInput) (CashRecount, error) {
@@ -69,6 +71,9 @@ func CreateCashRecount(input CreateCashRecountInput) (CashRecount, error) {
 	}
 	if input.Now.IsZero() {
 		input.Now = time.Now().UTC()
+	}
+	if err := validateDenominationBreakdown(input.Breakdown, input.CountedMinor); err != nil {
+		return CashRecount{}, err
 	}
 
 	discrepancy := input.CountedMinor - input.ExpectedMinor
@@ -95,6 +100,7 @@ func CreateCashRecount(input CreateCashRecountInput) (CashRecount, error) {
 		Status:           status,
 		ResolutionStatus: resolutionStatus,
 		CreatedAt:        input.Now,
+		Breakdown:        input.Breakdown,
 	}, nil
 }
 

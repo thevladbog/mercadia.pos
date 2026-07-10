@@ -459,11 +459,15 @@ func (s *Store) FindFiscalDocumentByReturn(ctx context.Context, returnID string)
 }
 
 func (s *Store) SaveCashMovement(ctx context.Context, movement domain.CashMovement) error {
-	_, err := s.conn(ctx).Exec(ctx, `
+	breakdown, err := marshalDenominationBreakdown(movement.Breakdown)
+	if err != nil {
+		return err
+	}
+	_, err = s.conn(ctx).Exec(ctx, `
 		INSERT INTO cash_movements (
 			id, store_id, type, from_container_id, from_container_type, to_container_id, to_container_type,
-			amount_minor, currency, reason, actor_id, approved_by_id, status, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			amount_minor, currency, reason, actor_id, approved_by_id, status, created_at, denomination_breakdown
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		ON CONFLICT (id) DO UPDATE SET
 			store_id = EXCLUDED.store_id,
 			type = EXCLUDED.type,
@@ -476,7 +480,8 @@ func (s *Store) SaveCashMovement(ctx context.Context, movement domain.CashMoveme
 			reason = EXCLUDED.reason,
 			actor_id = EXCLUDED.actor_id,
 			approved_by_id = EXCLUDED.approved_by_id,
-			status = EXCLUDED.status
+			status = EXCLUDED.status,
+			denomination_breakdown = EXCLUDED.denomination_breakdown
 	`,
 		movement.ID,
 		movement.StoreID,
@@ -492,6 +497,7 @@ func (s *Store) SaveCashMovement(ctx context.Context, movement domain.CashMoveme
 		movement.ApprovedByID,
 		string(movement.Status),
 		movement.CreatedAt,
+		breakdown,
 	)
 	return err
 }
@@ -499,7 +505,7 @@ func (s *Store) SaveCashMovement(ctx context.Context, movement domain.CashMoveme
 func (s *Store) ListCashMovements(ctx context.Context, storeID string) ([]domain.CashMovement, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, store_id, type, from_container_id, from_container_type, to_container_id, to_container_type,
-			amount_minor, currency, reason, actor_id, approved_by_id, status, created_at
+			amount_minor, currency, reason, actor_id, approved_by_id, status, created_at, denomination_breakdown
 		FROM cash_movements
 		WHERE store_id = $1
 		ORDER BY created_at
@@ -513,12 +519,16 @@ func (s *Store) ListCashMovements(ctx context.Context, storeID string) ([]domain
 }
 
 func (s *Store) SaveCashRecount(ctx context.Context, recount domain.CashRecount) error {
-	_, err := s.conn(ctx).Exec(ctx, `
+	breakdown, err := marshalDenominationBreakdown(recount.Breakdown)
+	if err != nil {
+		return err
+	}
+	_, err = s.conn(ctx).Exec(ctx, `
 		INSERT INTO cash_recounts (
 			id, store_id, business_date, container_id, container_type, currency, expected_minor,
 			counted_minor, discrepancy_minor, reason, actor_id, approved_by_id, status, resolution_status,
-			resolution_note, resolved_by_id, resolved_at, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+			resolution_note, resolved_by_id, resolved_at, created_at, denomination_breakdown
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 		ON CONFLICT (id) DO UPDATE SET
 			store_id = EXCLUDED.store_id,
 			business_date = EXCLUDED.business_date,
@@ -535,7 +545,8 @@ func (s *Store) SaveCashRecount(ctx context.Context, recount domain.CashRecount)
 			resolution_status = EXCLUDED.resolution_status,
 			resolution_note = EXCLUDED.resolution_note,
 			resolved_by_id = EXCLUDED.resolved_by_id,
-			resolved_at = EXCLUDED.resolved_at
+			resolved_at = EXCLUDED.resolved_at,
+			denomination_breakdown = EXCLUDED.denomination_breakdown
 	`,
 		recount.ID,
 		recount.StoreID,
@@ -555,6 +566,7 @@ func (s *Store) SaveCashRecount(ctx context.Context, recount domain.CashRecount)
 		recount.ResolvedByID,
 		nullTime(recount.ResolvedAt),
 		recount.CreatedAt,
+		breakdown,
 	)
 	return err
 }
@@ -563,7 +575,7 @@ func (s *Store) FindCashRecount(ctx context.Context, recountID string) (domain.C
 	row := s.pool.QueryRow(ctx, `
 		SELECT id, store_id, business_date, container_id, container_type, currency, expected_minor,
 			counted_minor, discrepancy_minor, reason, actor_id, approved_by_id, status, resolution_status,
-			resolution_note, resolved_by_id, resolved_at, created_at
+			resolution_note, resolved_by_id, resolved_at, created_at, denomination_breakdown
 		FROM cash_recounts
 		WHERE id = $1
 	`, recountID)
@@ -579,7 +591,7 @@ func (s *Store) ListCashRecounts(ctx context.Context, storeID string) ([]domain.
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, store_id, business_date, container_id, container_type, currency, expected_minor,
 			counted_minor, discrepancy_minor, reason, actor_id, approved_by_id, status, resolution_status,
-			resolution_note, resolved_by_id, resolved_at, created_at
+			resolution_note, resolved_by_id, resolved_at, created_at, denomination_breakdown
 		FROM cash_recounts
 		WHERE store_id = $1
 		ORDER BY created_at
@@ -596,7 +608,7 @@ func (s *Store) ListCashRecountsByStoreAndBusinessDate(ctx context.Context, stor
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, store_id, business_date, container_id, container_type, currency, expected_minor,
 			counted_minor, discrepancy_minor, reason, actor_id, approved_by_id, status, resolution_status,
-			resolution_note, resolved_by_id, resolved_at, created_at
+			resolution_note, resolved_by_id, resolved_at, created_at, denomination_breakdown
 		FROM cash_recounts
 		WHERE store_id = $1
 			AND COALESCE(NULLIF(business_date, ''), to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD')) = $2
@@ -614,7 +626,7 @@ func (s *Store) ListUnresolvedCashRecountDiscrepanciesByStoreAndBusinessDate(ctx
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, store_id, business_date, container_id, container_type, currency, expected_minor,
 			counted_minor, discrepancy_minor, reason, actor_id, approved_by_id, status, resolution_status,
-			resolution_note, resolved_by_id, resolved_at, created_at
+			resolution_note, resolved_by_id, resolved_at, created_at, denomination_breakdown
 		FROM cash_recounts
 		WHERE store_id = $1
 			AND status = $2
@@ -1007,6 +1019,35 @@ func nullTime(value time.Time) any {
 	return value
 }
 
+// marshalDenominationBreakdown marshals a possibly-nil breakdown for storage
+// in a nullable JSONB column. A nil breakdown marshals to SQL NULL (not the
+// JSON string "null"), preserving the "no breakdown provided" distinction
+// from "an empty breakdown was provided" all the way to the database.
+func marshalDenominationBreakdown(breakdown *domain.DenominationBreakdown) (any, error) {
+	if breakdown == nil {
+		return nil, nil
+	}
+	encoded, err := json.Marshal(breakdown)
+	if err != nil {
+		return nil, fmt.Errorf("marshal denomination breakdown: %w", err)
+	}
+	return encoded, nil
+}
+
+// unmarshalDenominationBreakdown is the read-side counterpart of
+// marshalDenominationBreakdown: an empty/NULL column scans to a nil raw
+// slice, which must stay nil rather than becoming a non-nil empty struct.
+func unmarshalDenominationBreakdown(raw []byte) (*domain.DenominationBreakdown, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var breakdown domain.DenominationBreakdown
+	if err := json.Unmarshal(raw, &breakdown); err != nil {
+		return nil, fmt.Errorf("unmarshal denomination breakdown: %w", err)
+	}
+	return &breakdown, nil
+}
+
 type rowScanner interface {
 	Scan(dest ...any) error
 }
@@ -1197,6 +1238,7 @@ func scanCashMovement(row rowScanner) (domain.CashMovement, error) {
 	var fromContainerType string
 	var toContainerType string
 	var status string
+	var breakdownJSON []byte
 
 	err := row.Scan(
 		&movement.ID,
@@ -1213,6 +1255,7 @@ func scanCashMovement(row rowScanner) (domain.CashMovement, error) {
 		&movement.ApprovedByID,
 		&status,
 		&movement.CreatedAt,
+		&breakdownJSON,
 	)
 	if err != nil {
 		return domain.CashMovement{}, err
@@ -1222,6 +1265,11 @@ func scanCashMovement(row rowScanner) (domain.CashMovement, error) {
 	movement.FromContainerType = domain.CashContainerType(fromContainerType)
 	movement.ToContainerType = domain.CashContainerType(toContainerType)
 	movement.Status = domain.CashMovementStatus(status)
+	breakdown, err := unmarshalDenominationBreakdown(breakdownJSON)
+	if err != nil {
+		return domain.CashMovement{}, err
+	}
+	movement.Breakdown = breakdown
 	return movement, nil
 }
 
@@ -1243,6 +1291,7 @@ func scanCashRecount(row rowScanner) (domain.CashRecount, error) {
 	var status string
 	var resolutionStatus string
 	var resolvedAt *time.Time
+	var breakdownJSON []byte
 
 	err := row.Scan(
 		&recount.ID,
@@ -1263,6 +1312,7 @@ func scanCashRecount(row rowScanner) (domain.CashRecount, error) {
 		&recount.ResolvedByID,
 		&resolvedAt,
 		&recount.CreatedAt,
+		&breakdownJSON,
 	)
 	if err != nil {
 		return domain.CashRecount{}, err
@@ -1274,6 +1324,11 @@ func scanCashRecount(row rowScanner) (domain.CashRecount, error) {
 	if resolvedAt != nil {
 		recount.ResolvedAt = *resolvedAt
 	}
+	breakdown, err := unmarshalDenominationBreakdown(breakdownJSON)
+	if err != nil {
+		return domain.CashRecount{}, err
+	}
+	recount.Breakdown = breakdown
 	return recount, nil
 }
 

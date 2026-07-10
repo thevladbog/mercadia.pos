@@ -5,6 +5,7 @@
  * Store-local operational API for POS, SCO/KSO, senior cashier, assistant, and store admin clients.
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateBankCollectionBodyBreakdown } from './createBankCollectionBodyBreakdown.ts';
 
 export type CreateBankCollectionBody = {
   actorId: string;
@@ -12,6 +13,7 @@ export type CreateBankCollectionBody = {
   amountMinor: number;
   approvedById: string;
   bankContainerId: string;
+  breakdown?: CreateBankCollectionBodyBreakdown;
   currency?: string;
   reason?: string;
   safeId: string;

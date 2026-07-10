@@ -5,11 +5,13 @@
  * Store-local operational API for POS, SCO/KSO, senior cashier, assistant, and store admin clients.
  * OpenAPI spec version: 0.1.0
  */
+import type { ShiftCashOut202MovementBreakdown } from './shiftCashOut202MovementBreakdown.ts';
 
 export type ShiftCashOut202Movement = {
   actorId: string;
   amountMinor: number;
   approvedById?: string;
+  breakdown?: ShiftCashOut202MovementBreakdown;
   createdAt: string;
   currency: string;
   fromContainerId: string;

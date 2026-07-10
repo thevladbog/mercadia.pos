@@ -30,7 +30,54 @@ const (
 	CashMovementStatusPosted CashMovementStatus = "posted"
 )
 
-var ErrInvalidCashMovementInput = errors.New("invalid cash movement input")
+var (
+	ErrInvalidCashMovementInput      = errors.New("invalid cash movement input")
+	ErrDenominationBreakdownMismatch = errors.New("denomination breakdown does not match operation total")
+)
+
+// DenominationBreakdown captures the optional bill/coin count breakdown of a
+// cash operation's total. Bills maps a denomination's minor-unit value (e.g.
+// 5000_00 for a 5000-currency-unit note) to how many of that note were
+// counted. CoinsMinor and OtherMinor are lump sums, matching the
+// DenominationGrid frontend's own "МОНЕТЫ"/"ДРУГОЕ" fields.
+type DenominationBreakdown struct {
+	Bills      map[int64]int
+	CoinsMinor int64
+	OtherMinor int64
+}
+
+// Sum returns Σ(denomination × count) + CoinsMinor + OtherMinor. This is the
+// single validation primitive every breakdown-accepting constructor reuses.
+func (b DenominationBreakdown) Sum() int64 {
+	var total int64
+	for denomination, count := range b.Bills {
+		total += denomination * int64(count)
+	}
+	return total + b.CoinsMinor + b.OtherMinor
+}
+
+// validateDenominationBreakdown is a no-op when breakdown is nil (the
+// backward-compatible "no breakdown provided" path). When non-nil, it
+// rejects negative bill counts, non-positive denomination keys, negative
+// lump sums, and any breakdown whose Sum() doesn't exactly equal
+// expectedTotal (AmountMinor for cash movements, CountedMinor for recounts).
+func validateDenominationBreakdown(breakdown *DenominationBreakdown, expectedTotal int64) error {
+	if breakdown == nil {
+		return nil
+	}
+	if breakdown.CoinsMinor < 0 || breakdown.OtherMinor < 0 {
+		return ErrDenominationBreakdownMismatch
+	}
+	for denomination, count := range breakdown.Bills {
+		if denomination <= 0 || count < 0 {
+			return ErrDenominationBreakdownMismatch
+		}
+	}
+	if breakdown.Sum() != expectedTotal {
+		return ErrDenominationBreakdownMismatch
+	}
+	return nil
+}
 
 type CashMovement struct {
 	ID                string
@@ -47,6 +94,7 @@ type CashMovement struct {
 	ApprovedByID      string
 	Status            CashMovementStatus
 	CreatedAt         time.Time
+	Breakdown         *DenominationBreakdown
 }
 
 type CashBalance struct {
@@ -72,6 +120,7 @@ type CreateCashMovementInput struct {
 	ActorID           string
 	ApprovedByID      string
 	Now               time.Time
+	Breakdown         *DenominationBreakdown
 }
 
 func CreateCashMovement(input CreateCashMovementInput) (CashMovement, error) {
@@ -85,6 +134,9 @@ func CreateCashMovement(input CreateCashMovementInput) (CashMovement, error) {
 	}
 	if input.Now.IsZero() {
 		input.Now = time.Now().UTC()
+	}
+	if err := validateDenominationBreakdown(input.Breakdown, input.AmountMinor); err != nil {
+		return CashMovement{}, err
 	}
 
 	return CashMovement{
@@ -102,5 +154,6 @@ func CreateCashMovement(input CreateCashMovementInput) (CashMovement, error) {
 		ApprovedByID:      input.ApprovedByID,
 		Status:            CashMovementStatusPosted,
 		CreatedAt:         input.Now,
+		Breakdown:         input.Breakdown,
 	}, nil
 }

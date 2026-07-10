@@ -6805,6 +6805,24 @@
                         "approvedById": {
                           "type": "string"
                         },
+                        "breakdown": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bills": {
+                              "additionalProperties": {
+                                "type": "integer"
+                              },
+                              "type": "object"
+                            },
+                            "coinsMinor": {
+                              "type": "integer"
+                            },
+                            "otherMinor": {
+                              "type": "integer"
+                            }
+                          },
+                          "type": "object"
+                        },
                         "createdAt": {
                           "format": "date-time",
                           "type": "string"
@@ -7054,6 +7072,24 @@
                         "approvedById": {
                           "type": "string"
                         },
+                        "breakdown": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bills": {
+                              "additionalProperties": {
+                                "type": "integer"
+                              },
+                              "type": "object"
+                            },
+                            "coinsMinor": {
+                              "type": "integer"
+                            },
+                            "otherMinor": {
+                              "type": "integer"
+                            }
+                          },
+                          "type": "object"
+                        },
                         "createdAt": {
                           "format": "date-time",
                           "type": "string"
@@ -7259,6 +7295,27 @@
                   },
                   "approvedById": {
                     "type": "string"
+                  },
+                  "breakdown": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "bills": {
+                        "additionalProperties": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "type": "object"
+                      },
+                      "coinsMinor": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "otherMinor": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
                   },
                   "closingCashMinor": {
                     "minimum": 0,
@@ -9743,6 +9800,27 @@
                   "bankContainerId": {
                     "type": "string"
                   },
+                  "breakdown": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "bills": {
+                        "additionalProperties": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "type": "object"
+                      },
+                      "coinsMinor": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "otherMinor": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  },
                   "currency": {
                     "type": "string"
                   },
@@ -9785,6 +9863,24 @@
                         },
                         "approvedById": {
                           "type": "string"
+                        },
+                        "breakdown": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bills": {
+                              "additionalProperties": {
+                                "type": "integer"
+                              },
+                              "type": "object"
+                            },
+                            "coinsMinor": {
+                              "type": "integer"
+                            },
+                            "otherMinor": {
+                              "type": "integer"
+                            }
+                          },
+                          "type": "object"
                         },
                         "createdAt": {
                           "format": "date-time",
@@ -9961,6 +10057,27 @@
                   "approvedById": {
                     "type": "string"
                   },
+                  "breakdown": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "bills": {
+                        "additionalProperties": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "type": "object"
+                      },
+                      "coinsMinor": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "otherMinor": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  },
                   "currency": {
                     "type": "string"
                   },
@@ -10007,6 +10124,24 @@
                         },
                         "approvedById": {
                           "type": "string"
+                        },
+                        "breakdown": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bills": {
+                              "additionalProperties": {
+                                "type": "integer"
+                              },
+                              "type": "object"
+                            },
+                            "coinsMinor": {
+                              "type": "integer"
+                            },
+                            "otherMinor": {
+                              "type": "integer"
+                            }
+                          },
+                          "type": "object"
                         },
                         "createdAt": {
                           "format": "date-time",
@@ -10305,6 +10440,24 @@
                           "approvedById": {
                             "type": "string"
                           },
+                          "breakdown": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "bills": {
+                                "additionalProperties": {
+                                  "type": "integer"
+                                },
+                                "type": "object"
+                              },
+                              "coinsMinor": {
+                                "type": "integer"
+                              },
+                              "otherMinor": {
+                                "type": "integer"
+                              }
+                            },
+                            "type": "object"
+                          },
                           "createdAt": {
                             "format": "date-time",
                             "type": "string"
@@ -10450,6 +10603,27 @@
                   "approvedById": {
                     "type": "string"
                   },
+                  "breakdown": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "bills": {
+                        "additionalProperties": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "type": "object"
+                      },
+                      "coinsMinor": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "otherMinor": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  },
                   "currency": {
                     "type": "string"
                   },
@@ -10506,6 +10680,24 @@
                         },
                         "approvedById": {
                           "type": "string"
+                        },
+                        "breakdown": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bills": {
+                              "additionalProperties": {
+                                "type": "integer"
+                              },
+                              "type": "object"
+                            },
+                            "coinsMinor": {
+                              "type": "integer"
+                            },
+                            "otherMinor": {
+                              "type": "integer"
+                            }
+                          },
+                          "type": "object"
                         },
                         "createdAt": {
                           "format": "date-time",
@@ -10694,6 +10886,24 @@
                           "approvedById": {
                             "type": "string"
                           },
+                          "breakdown": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "bills": {
+                                "additionalProperties": {
+                                  "type": "integer"
+                                },
+                                "type": "object"
+                              },
+                              "coinsMinor": {
+                                "type": "integer"
+                              },
+                              "otherMinor": {
+                                "type": "integer"
+                              }
+                            },
+                            "type": "object"
+                          },
                           "containerId": {
                             "type": "string"
                           },
@@ -10848,6 +11058,27 @@
                   "approvedById": {
                     "type": "string"
                   },
+                  "breakdown": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "bills": {
+                        "additionalProperties": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "type": "object"
+                      },
+                      "coinsMinor": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "otherMinor": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  },
                   "containerId": {
                     "type": "string"
                   },
@@ -10893,6 +11124,24 @@
                         },
                         "approvedById": {
                           "type": "string"
+                        },
+                        "breakdown": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bills": {
+                              "additionalProperties": {
+                                "type": "integer"
+                              },
+                              "type": "object"
+                            },
+                            "coinsMinor": {
+                              "type": "integer"
+                            },
+                            "otherMinor": {
+                              "type": "integer"
+                            }
+                          },
+                          "type": "object"
                         },
                         "containerId": {
                           "type": "string"
@@ -11117,6 +11366,24 @@
                         },
                         "approvedById": {
                           "type": "string"
+                        },
+                        "breakdown": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "bills": {
+                              "additionalProperties": {
+                                "type": "integer"
+                              },
+                              "type": "object"
+                            },
+                            "coinsMinor": {
+                              "type": "integer"
+                            },
+                            "otherMinor": {
+                              "type": "integer"
+                            }
+                          },
+                          "type": "object"
                         },
                         "containerId": {
                           "type": "string"

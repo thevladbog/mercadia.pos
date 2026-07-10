@@ -5,13 +5,12 @@
  * Store-local operational API for POS, SCO/KSO, senior cashier, assistant, and store admin clients.
  * OpenAPI spec version: 0.1.0
  */
-import type { CloseShiftBodyBreakdown } from './closeShiftBodyBreakdown.ts';
+import type { CloseShiftBodyBreakdownBills } from './closeShiftBodyBreakdownBills.ts';
 
-export type CloseShiftBody = {
-  actorId?: string;
-  approvedById?: string;
-  breakdown?: CloseShiftBodyBreakdown;
+export type CloseShiftBodyBreakdown = {
+  bills?: CloseShiftBodyBreakdownBills;
   /** @minimum 0 */
-  closingCashMinor: number;
-  safeId?: string;
+  coinsMinor?: number;
+  /** @minimum 0 */
+  otherMinor?: number;
 };

@@ -129,6 +129,7 @@ type CloseShiftCommand struct {
 	SafeID           string
 	ActorID          string
 	ApprovedByID     string
+	Breakdown        *domain.DenominationBreakdown
 }
 
 type ShiftCashInCommand struct {
@@ -283,7 +284,7 @@ func (s *ShiftService) CloseShift(ctx context.Context, command CloseShiftCommand
 	}
 
 	const operation = "shifts.close_shift"
-	fingerprint := fmt.Sprintf("%s|%d|%s|%s|%s", command.ShiftID, command.ClosingCashMinor, command.SafeID, command.ActorID, command.ApprovedByID)
+	fingerprint := fmt.Sprintf("%s|%d|%s|%s|%s|%s", command.ShiftID, command.ClosingCashMinor, command.SafeID, command.ActorID, command.ApprovedByID, denominationBreakdownFingerprint(command.Breakdown))
 	if result, found, err := s.findShiftIdempotency(ctx, operation, command.IdempotencyKey, command.ShiftID, fingerprint); err != nil || found {
 		return result, err
 	}
@@ -334,6 +335,7 @@ func (s *ShiftService) CloseShift(ctx context.Context, command CloseShiftCommand
 				ActorID:           command.ActorID,
 				ApprovedByID:      command.ApprovedByID,
 				Now:               s.now(),
+				Breakdown:         command.Breakdown,
 			})
 			if err != nil {
 				return err

@@ -5,12 +5,14 @@
  * Store-local operational API for POS, SCO/KSO, senior cashier, assistant, and store admin clients.
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateBusinessExpenseBodyBreakdown } from './createBusinessExpenseBodyBreakdown.ts';
 
 export type CreateBusinessExpenseBody = {
   actorId: string;
   /** @minimum 1 */
   amountMinor: number;
   approvedById: string;
+  breakdown?: CreateBusinessExpenseBodyBreakdown;
   currency?: string;
   payeeId: string;
   reason: string;

@@ -2326,6 +2326,249 @@ func TestCashRecountDiscrepancyCanBeResolved(t *testing.T) {
 	}
 }
 
+func TestCashMovementOmittedBreakdownStillWorks(t *testing.T) {
+	server := NewServer()
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/cash-movements", bytes.NewBufferString(`{
+		"type": "change_fund",
+		"fromContainerId": "safe-1",
+		"fromContainerType": "safe",
+		"toContainerId": "drawer-1",
+		"toContainerType": "drawer",
+		"amountMinor": 500000,
+		"actorId": "senior-1"
+	}`))
+	request.Header.Set("Idempotency-Key", "cash-no-breakdown-1")
+
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusAccepted {
+		t.Fatalf("create cash movement status = %d, body = %s", response.Code, response.Body.String())
+	}
+
+	var accepted CashMovementAcceptedResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode cash movement response: %v", err)
+	}
+	if accepted.Movement.Breakdown != nil {
+		t.Fatalf("expected nil breakdown when omitted, got %+v", accepted.Movement.Breakdown)
+	}
+}
+
+func TestCashMovementDenominationBreakdownRoundTrips(t *testing.T) {
+	server := NewServer()
+
+	createResponse := httptest.NewRecorder()
+	createRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/cash-movements", bytes.NewBufferString(`{
+		"type": "change_fund",
+		"fromContainerId": "safe-1",
+		"fromContainerType": "safe",
+		"toContainerId": "drawer-1",
+		"toContainerType": "drawer",
+		"amountMinor": 15000,
+		"actorId": "senior-1",
+		"breakdown": {
+			"bills": {"10000": 1, "5000": 1},
+			"coinsMinor": 0,
+			"otherMinor": 0
+		}
+	}`))
+	createRequest.Header.Set("Idempotency-Key", "cash-breakdown-1")
+
+	server.ServeHTTP(createResponse, createRequest)
+
+	if createResponse.Code != http.StatusAccepted {
+		t.Fatalf("create cash movement status = %d, body = %s", createResponse.Code, createResponse.Body.String())
+	}
+
+	var accepted CashMovementAcceptedResponse
+	if err := json.Unmarshal(createResponse.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode cash movement response: %v", err)
+	}
+	if accepted.Movement.Breakdown == nil || accepted.Movement.Breakdown.Bills["10000"] != 1 || accepted.Movement.Breakdown.Bills["5000"] != 1 {
+		t.Fatalf("created cash movement breakdown = %+v", accepted.Movement.Breakdown)
+	}
+
+	listResponse := httptest.NewRecorder()
+	listRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/cash-movements", nil)
+
+	server.ServeHTTP(listResponse, listRequest)
+
+	if listResponse.Code != http.StatusOK {
+		t.Fatalf("list cash movements status = %d, body = %s", listResponse.Code, listResponse.Body.String())
+	}
+
+	var listed PaginatedCashMovementsResponse
+	if err := json.Unmarshal(listResponse.Body.Bytes(), &listed); err != nil {
+		t.Fatalf("decode cash movements response: %v", err)
+	}
+	if len(listed.Items) != 1 {
+		t.Fatalf("cash movements count = %d", len(listed.Items))
+	}
+	roundTripped := listed.Items[0].Breakdown
+	if roundTripped == nil || roundTripped.Bills["10000"] != 1 || roundTripped.Bills["5000"] != 1 {
+		t.Fatalf("round-tripped cash movement breakdown = %+v", roundTripped)
+	}
+}
+
+func TestCashMovementDenominationBreakdownMismatchRejected(t *testing.T) {
+	server := NewServer()
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/cash-movements", bytes.NewBufferString(`{
+		"type": "change_fund",
+		"fromContainerId": "safe-1",
+		"fromContainerType": "safe",
+		"toContainerId": "drawer-1",
+		"toContainerType": "drawer",
+		"amountMinor": 15000,
+		"actorId": "senior-1",
+		"breakdown": {
+			"bills": {"10000": 1},
+			"coinsMinor": 0,
+			"otherMinor": 0
+		}
+	}`))
+	request.Header.Set("Idempotency-Key", "cash-breakdown-mismatch-1")
+
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("mismatched breakdown status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestBankCollectionDenominationBreakdownRoundTrips(t *testing.T) {
+	server := NewServer()
+
+	seedResponse := httptest.NewRecorder()
+	seedRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/cash-movements", bytes.NewBufferString(`{
+		"type": "cash_in",
+		"fromContainerId": "external-customer",
+		"fromContainerType": "external",
+		"toContainerId": "safe-1",
+		"toContainerType": "safe",
+		"amountMinor": 500000,
+		"reason": "Seed safe balance",
+		"actorId": "senior-1"
+	}`))
+	seedRequest.Header.Set("Idempotency-Key", "seed-safe-breakdown-1")
+	server.ServeHTTP(seedResponse, seedRequest)
+	if seedResponse.Code != http.StatusAccepted {
+		t.Fatalf("seed safe status = %d, body = %s", seedResponse.Code, seedResponse.Body.String())
+	}
+
+	bankResponse := httptest.NewRecorder()
+	bankRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/bank-collections", bytes.NewBufferString(`{
+		"safeId": "safe-1",
+		"bankContainerId": "bank-collection-1",
+		"amountMinor": 200000,
+		"reason": "Scheduled collection",
+		"actorId": "senior-1",
+		"approvedById": "admin-1",
+		"breakdown": {
+			"bills": {"100000": 2},
+			"coinsMinor": 0,
+			"otherMinor": 0
+		}
+	}`))
+	bankRequest.Header.Set("Idempotency-Key", "bank-collection-breakdown-1")
+	server.ServeHTTP(bankResponse, bankRequest)
+	if bankResponse.Code != http.StatusAccepted {
+		t.Fatalf("bank collection status = %d, body = %s", bankResponse.Code, bankResponse.Body.String())
+	}
+
+	var accepted CashMovementAcceptedResponse
+	if err := json.Unmarshal(bankResponse.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("decode bank collection response: %v", err)
+	}
+	if accepted.Movement.Breakdown == nil || accepted.Movement.Breakdown.Bills["100000"] != 2 {
+		t.Fatalf("bank collection breakdown = %+v", accepted.Movement.Breakdown)
+	}
+}
+
+func TestCashRecountDenominationBreakdownRoundTrips(t *testing.T) {
+	server := NewServer()
+
+	createResponse := httptest.NewRecorder()
+	createRequest := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/cash-recounts", bytes.NewBufferString(`{
+		"containerId": "safe-1",
+		"containerType": "safe",
+		"countedMinor": 100000,
+		"reason": "Safe recount",
+		"actorId": "senior-1",
+		"approvedById": "cashier-1",
+		"breakdown": {
+			"bills": {"50000": 2},
+			"coinsMinor": 0,
+			"otherMinor": 0
+		}
+	}`))
+	createRequest.Header.Set("Idempotency-Key", "recount-breakdown-1")
+
+	server.ServeHTTP(createResponse, createRequest)
+
+	if createResponse.Code != http.StatusAccepted {
+		t.Fatalf("create cash recount status = %d, body = %s", createResponse.Code, createResponse.Body.String())
+	}
+
+	var created CashRecountAcceptedResponse
+	if err := json.Unmarshal(createResponse.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode cash recount response: %v", err)
+	}
+	if created.Recount.Breakdown == nil || created.Recount.Breakdown.Bills["50000"] != 2 {
+		t.Fatalf("created cash recount breakdown = %+v", created.Recount.Breakdown)
+	}
+
+	listResponse := httptest.NewRecorder()
+	listRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/cash-recounts", nil)
+
+	server.ServeHTTP(listResponse, listRequest)
+
+	if listResponse.Code != http.StatusOK {
+		t.Fatalf("list cash recounts status = %d, body = %s", listResponse.Code, listResponse.Body.String())
+	}
+
+	var listed PaginatedCashRecountsResponse
+	if err := json.Unmarshal(listResponse.Body.Bytes(), &listed); err != nil {
+		t.Fatalf("decode cash recounts response: %v", err)
+	}
+	if len(listed.Items) != 1 {
+		t.Fatalf("cash recounts count = %d", len(listed.Items))
+	}
+	roundTripped := listed.Items[0].Breakdown
+	if roundTripped == nil || roundTripped.Bills["50000"] != 2 {
+		t.Fatalf("round-tripped cash recount breakdown = %+v", roundTripped)
+	}
+}
+
+func TestCashRecountDenominationBreakdownMismatchRejected(t *testing.T) {
+	server := NewServer()
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/v1/stores/store-1/cash-recounts", bytes.NewBufferString(`{
+		"containerId": "safe-1",
+		"containerType": "safe",
+		"countedMinor": 100000,
+		"reason": "Safe recount",
+		"actorId": "senior-1",
+		"approvedById": "cashier-1",
+		"breakdown": {
+			"bills": {"50000": 1},
+			"coinsMinor": 0,
+			"otherMinor": 0
+		}
+	}`))
+	request.Header.Set("Idempotency-Key", "recount-breakdown-mismatch-1")
+
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("mismatched recount breakdown status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
 func TestShiftWorkflow(t *testing.T) {
 	server := NewServer()
 
@@ -2435,6 +2678,129 @@ func TestShiftWorkflow(t *testing.T) {
 	}
 	if len(finalOpenShifts.Shifts) != 0 {
 		t.Fatalf("final open shifts count = %d", len(finalOpenShifts.Shifts))
+	}
+}
+
+func TestCloseShiftDenominationBreakdownRoundTrips(t *testing.T) {
+	server := NewServer()
+
+	openDay(t, server, "shift-breakdown")
+
+	openResponse := httptest.NewRecorder()
+	openRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts", bytes.NewBufferString(`{
+		"storeId": "store-1",
+		"terminalId": "pos-1",
+		"cashierId": "cashier-1",
+		"drawerId": "drawer-1",
+		"sourceSafeId": "safe-1",
+		"openingCashMinor": 100000
+	}`))
+	openRequest.Header.Set("Idempotency-Key", "shift-breakdown-open-1")
+
+	server.ServeHTTP(openResponse, openRequest)
+
+	if openResponse.Code != http.StatusAccepted {
+		t.Fatalf("open shift status = %d, body = %s", openResponse.Code, openResponse.Body.String())
+	}
+
+	var opened ShiftAcceptedResponse
+	if err := json.Unmarshal(openResponse.Body.Bytes(), &opened); err != nil {
+		t.Fatalf("decode open shift response: %v", err)
+	}
+
+	closeResponse := httptest.NewRecorder()
+	closeRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+opened.Shift.ID+"/close", bytes.NewBufferString(`{
+		"closingCashMinor": 125000,
+		"safeId": "safe-1",
+		"actorId": "cashier-1",
+		"approvedById": "senior-1",
+		"breakdown": {
+			"bills": {"100000": 1, "20000": 1, "5000": 1},
+			"coinsMinor": 0,
+			"otherMinor": 0
+		}
+	}`))
+	closeRequest.Header.Set("Idempotency-Key", "shift-breakdown-close-1")
+
+	server.ServeHTTP(closeResponse, closeRequest)
+
+	if closeResponse.Code != http.StatusAccepted {
+		t.Fatalf("close shift status = %d, body = %s", closeResponse.Code, closeResponse.Body.String())
+	}
+
+	// The shift-close response itself carries no breakdown (domain.Shift has
+	// no such field — the breakdown lives on the drawer-to-safe collection
+	// movement CloseShift creates as a side effect). Verify it round-trips
+	// there instead.
+	listResponse := httptest.NewRecorder()
+	listRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/cash-movements", nil)
+
+	server.ServeHTTP(listResponse, listRequest)
+
+	if listResponse.Code != http.StatusOK {
+		t.Fatalf("list cash movements status = %d, body = %s", listResponse.Code, listResponse.Body.String())
+	}
+
+	var listed PaginatedCashMovementsResponse
+	if err := json.Unmarshal(listResponse.Body.Bytes(), &listed); err != nil {
+		t.Fatalf("decode cash movements response: %v", err)
+	}
+
+	var collectionMovement *CashMovementResponse
+	for i := range listed.Items {
+		if listed.Items[i].Type == "drawer_to_safe" {
+			collectionMovement = &listed.Items[i]
+		}
+	}
+	if collectionMovement == nil {
+		t.Fatalf("expected a drawer_to_safe collection movement, items = %+v", listed.Items)
+	}
+	breakdown := collectionMovement.Breakdown
+	if breakdown == nil || breakdown.Bills["100000"] != 1 || breakdown.Bills["20000"] != 1 || breakdown.Bills["5000"] != 1 {
+		t.Fatalf("collection movement breakdown = %+v", breakdown)
+	}
+}
+
+func TestCloseShiftOmittedBreakdownStillWorks(t *testing.T) {
+	server := NewServer()
+
+	openStoreDayAndShift(t, server, "shift-no-breakdown")
+
+	listOpenResponse := httptest.NewRecorder()
+	listOpenRequest := httptest.NewRequest(http.MethodGet, "/v1/stores/store-1/shifts/open", nil)
+	server.ServeHTTP(listOpenResponse, listOpenRequest)
+	if listOpenResponse.Code != http.StatusOK {
+		t.Fatalf("list open shifts status = %d, body = %s", listOpenResponse.Code, listOpenResponse.Body.String())
+	}
+	var openShifts ShiftsResponse
+	if err := json.Unmarshal(listOpenResponse.Body.Bytes(), &openShifts); err != nil {
+		t.Fatalf("decode open shifts response: %v", err)
+	}
+	if len(openShifts.Shifts) != 1 {
+		t.Fatalf("open shifts count = %d", len(openShifts.Shifts))
+	}
+
+	closeResponse := httptest.NewRecorder()
+	closeRequest := httptest.NewRequest(http.MethodPost, "/v1/shifts/"+openShifts.Shifts[0].ID+"/close", bytes.NewBufferString(`{
+		"closingCashMinor": 100000,
+		"safeId": "safe-1",
+		"actorId": "cashier-1",
+		"approvedById": "senior-1"
+	}`))
+	closeRequest.Header.Set("Idempotency-Key", "shift-no-breakdown-close-1")
+
+	server.ServeHTTP(closeResponse, closeRequest)
+
+	if closeResponse.Code != http.StatusAccepted {
+		t.Fatalf("close shift status = %d, body = %s", closeResponse.Code, closeResponse.Body.String())
+	}
+
+	var closed ShiftAcceptedResponse
+	if err := json.Unmarshal(closeResponse.Body.Bytes(), &closed); err != nil {
+		t.Fatalf("decode close shift response: %v", err)
+	}
+	if closed.Shift.Status != "closed" {
+		t.Fatalf("closed shift = %+v", closed.Shift)
 	}
 }
 
