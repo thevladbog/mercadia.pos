@@ -355,11 +355,16 @@ func TestStoreAuthSettingsCanBeReadAndUpdatedByManagerSession(t *testing.T) {
 		t.Fatalf("default auth settings = %+v", defaults.Settings)
 	}
 
+	if defaults.Settings.SafeCashLimitMinor != 0 {
+		t.Fatalf("default safe cash limit = %d, want 0", defaults.Settings.SafeCashLimitMinor)
+	}
+
 	unauthorized := httptest.NewRecorder()
 	unauthorizedRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
 		"failedAttemptLimit": 3,
 		"lockoutDurationSeconds": 600,
-		"posAutoLockSeconds": 120
+		"posAutoLockSeconds": 120,
+		"safeCashLimitMinor": 5000000
 	}`))
 	unauthorizedRequest.Header.Set("Idempotency-Key", "auth-settings-no-session")
 	server.ServeHTTP(unauthorized, unauthorizedRequest)
@@ -372,7 +377,8 @@ func TestStoreAuthSettingsCanBeReadAndUpdatedByManagerSession(t *testing.T) {
 	forbiddenRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
 		"failedAttemptLimit": 3,
 		"lockoutDurationSeconds": 600,
-		"posAutoLockSeconds": 120
+		"posAutoLockSeconds": 120,
+		"safeCashLimitMinor": 5000000
 	}`))
 	forbiddenRequest.Header.Set(sessionTokenHeader, cashierToken)
 	forbiddenRequest.Header.Set("Idempotency-Key", "auth-settings-cashier")
@@ -386,7 +392,8 @@ func TestStoreAuthSettingsCanBeReadAndUpdatedByManagerSession(t *testing.T) {
 	updatedRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
 		"failedAttemptLimit": 3,
 		"lockoutDurationSeconds": 600,
-		"posAutoLockSeconds": 120
+		"posAutoLockSeconds": 120,
+		"safeCashLimitMinor": 5000000
 	}`))
 	updatedRequest.Header.Set(sessionTokenHeader, adminToken)
 	updatedRequest.Header.Set("Idempotency-Key", "auth-settings-admin")
@@ -398,7 +405,7 @@ func TestStoreAuthSettingsCanBeReadAndUpdatedByManagerSession(t *testing.T) {
 	if err := json.Unmarshal(updated.Body.Bytes(), &accepted); err != nil {
 		t.Fatalf("decode updated auth settings: %v", err)
 	}
-	if accepted.Settings.FailedAttemptLimit != 3 || accepted.Settings.LockoutDurationSeconds != 600 || accepted.Settings.POSAutoLockSeconds != 120 || accepted.Settings.UpdatedByID != "admin-1" {
+	if accepted.Settings.FailedAttemptLimit != 3 || accepted.Settings.LockoutDurationSeconds != 600 || accepted.Settings.POSAutoLockSeconds != 120 || accepted.Settings.SafeCashLimitMinor != 5000000 || accepted.Settings.UpdatedByID != "admin-1" {
 		t.Fatalf("updated auth settings = %+v", accepted.Settings)
 	}
 	if accepted.Settings.UpdatedAt == nil {
@@ -409,7 +416,8 @@ func TestStoreAuthSettingsCanBeReadAndUpdatedByManagerSession(t *testing.T) {
 	replayRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
 		"failedAttemptLimit": 3,
 		"lockoutDurationSeconds": 600,
-		"posAutoLockSeconds": 120
+		"posAutoLockSeconds": 120,
+		"safeCashLimitMinor": 5000000
 	}`))
 	replayRequest.Header.Set(sessionTokenHeader, adminToken)
 	replayRequest.Header.Set("Idempotency-Key", "auth-settings-admin")
@@ -424,18 +432,57 @@ func TestStoreAuthSettingsCanBeReadAndUpdatedByManagerSession(t *testing.T) {
 	if replayed.Settings.UpdatedAt == nil || !replayed.Settings.UpdatedAt.Equal(*accepted.Settings.UpdatedAt) {
 		t.Fatalf("replayed updatedAt = %v, want %v", replayed.Settings.UpdatedAt, accepted.Settings.UpdatedAt)
 	}
+	if replayed.Settings.SafeCashLimitMinor != accepted.Settings.SafeCashLimitMinor {
+		t.Fatalf("replayed safeCashLimitMinor = %d, want %d", replayed.Settings.SafeCashLimitMinor, accepted.Settings.SafeCashLimitMinor)
+	}
 
 	reused := httptest.NewRecorder()
 	reusedRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
 		"failedAttemptLimit": 4,
 		"lockoutDurationSeconds": 600,
-		"posAutoLockSeconds": 120
+		"posAutoLockSeconds": 120,
+		"safeCashLimitMinor": 5000000
 	}`))
 	reusedRequest.Header.Set(sessionTokenHeader, adminToken)
 	reusedRequest.Header.Set("Idempotency-Key", "auth-settings-admin")
 	server.ServeHTTP(reused, reusedRequest)
 	if reused.Code != http.StatusConflict {
 		t.Fatalf("auth settings reused key status = %d, body = %s", reused.Code, reused.Body.String())
+	}
+
+	zeroLimit := httptest.NewRecorder()
+	zeroLimitRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
+		"failedAttemptLimit": 3,
+		"lockoutDurationSeconds": 600,
+		"posAutoLockSeconds": 120,
+		"safeCashLimitMinor": 0
+	}`))
+	zeroLimitRequest.Header.Set(sessionTokenHeader, adminToken)
+	zeroLimitRequest.Header.Set("Idempotency-Key", "auth-settings-zero-limit")
+	server.ServeHTTP(zeroLimit, zeroLimitRequest)
+	if zeroLimit.Code != http.StatusOK {
+		t.Fatalf("auth settings zero safe cash limit status = %d, body = %s", zeroLimit.Code, zeroLimit.Body.String())
+	}
+	var zeroLimitAccepted StoreAuthSettingsAcceptedResponse
+	if err := json.Unmarshal(zeroLimit.Body.Bytes(), &zeroLimitAccepted); err != nil {
+		t.Fatalf("decode zero safe cash limit auth settings: %v", err)
+	}
+	if zeroLimitAccepted.Settings.SafeCashLimitMinor != 0 {
+		t.Fatalf("zero safe cash limit auth settings = %+v", zeroLimitAccepted.Settings)
+	}
+
+	negativeLimit := httptest.NewRecorder()
+	negativeLimitRequest := httptest.NewRequest(http.MethodPut, "/v1/stores/store-1/auth-settings", bytes.NewBufferString(`{
+		"failedAttemptLimit": 3,
+		"lockoutDurationSeconds": 600,
+		"posAutoLockSeconds": 120,
+		"safeCashLimitMinor": -1
+	}`))
+	negativeLimitRequest.Header.Set(sessionTokenHeader, adminToken)
+	negativeLimitRequest.Header.Set("Idempotency-Key", "auth-settings-negative-limit")
+	server.ServeHTTP(negativeLimit, negativeLimitRequest)
+	if negativeLimit.Code != http.StatusBadRequest {
+		t.Fatalf("auth settings negative safe cash limit status = %d, body = %s", negativeLimit.Code, negativeLimit.Body.String())
 	}
 }
 

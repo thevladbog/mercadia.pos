@@ -407,7 +407,7 @@ func (s *Store) FindSessionByToken(ctx context.Context, token string) (domain.Se
 func (s *Store) FindStoreAuthSettings(ctx context.Context, storeID string) (domain.StoreAuthSettings, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT store_id, failed_attempt_limit, lockout_duration_seconds, pos_auto_lock_seconds,
-			updated_by_id, updated_at
+			safe_cash_limit_minor, updated_by_id, updated_at
 		FROM store_auth_settings WHERE store_id = $1
 	`, storeID)
 	var settings domain.StoreAuthSettings
@@ -416,6 +416,7 @@ func (s *Store) FindStoreAuthSettings(ctx context.Context, storeID string) (doma
 		&settings.FailedAttemptLimit,
 		&settings.LockoutDurationSeconds,
 		&settings.POSAutoLockSeconds,
+		&settings.SafeCashLimitMinor,
 		&settings.UpdatedByID,
 		&settings.UpdatedAt,
 	); err != nil {
@@ -431,16 +432,17 @@ func (s *Store) SaveStoreAuthSettings(ctx context.Context, settings domain.Store
 	_, err := s.conn(ctx).Exec(ctx, `
 		INSERT INTO store_auth_settings (
 			store_id, failed_attempt_limit, lockout_duration_seconds, pos_auto_lock_seconds,
-			updated_by_id, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6)
+			safe_cash_limit_minor, updated_by_id, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (store_id) DO UPDATE SET
 			failed_attempt_limit = EXCLUDED.failed_attempt_limit,
 			lockout_duration_seconds = EXCLUDED.lockout_duration_seconds,
 			pos_auto_lock_seconds = EXCLUDED.pos_auto_lock_seconds,
+			safe_cash_limit_minor = EXCLUDED.safe_cash_limit_minor,
 			updated_by_id = EXCLUDED.updated_by_id,
 			updated_at = EXCLUDED.updated_at
 	`, settings.StoreID, settings.FailedAttemptLimit, settings.LockoutDurationSeconds,
-		settings.POSAutoLockSeconds, settings.UpdatedByID, settings.UpdatedAt)
+		settings.POSAutoLockSeconds, settings.SafeCashLimitMinor, settings.UpdatedByID, settings.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("save store auth settings: %w", err)
 	}

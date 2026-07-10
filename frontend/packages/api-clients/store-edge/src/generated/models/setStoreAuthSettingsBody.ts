@@ -22,4 +22,6 @@ export type SetStoreAuthSettingsBody = {
      * @maximum 86400
      */
   posAutoLockSeconds: number;
+  /** @minimum 0 */
+  safeCashLimitMinor: number;
 };
