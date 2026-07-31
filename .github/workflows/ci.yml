@@ -191,15 +191,15 @@ jobs:
           go-version: '1.26.5'
           cache-dependency-path: backend/go.work
 
-      - uses: github/codeql-action/init@v4
+      - uses: github/codeql-action/init@v4.37.3
         with:
           languages: ${{ matrix.language }}
           source-root: ${{ matrix.source-root }}
 
-      - uses: github/codeql-action/autobuild@v4
+      - uses: github/codeql-action/autobuild@v4.37.3
         if: matrix.language == 'go'
 
-      - uses: github/codeql-action/analyze@v4
+      - uses: github/codeql-action/analyze@v4.37.3
 
   ci-gate:
     needs:
