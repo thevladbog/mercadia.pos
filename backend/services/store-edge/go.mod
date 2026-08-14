@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/nats-io/nats.go v1.52.0
+	github.com/nats-io/nats.go v1.53.1
 	golang.org/x/crypto v0.53.0
 	mercadia.dev/pos/platform v0.0.0
 )
